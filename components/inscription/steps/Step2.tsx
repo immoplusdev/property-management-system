@@ -52,7 +52,13 @@ export function Step2({ state, update }: StepProps) {
             <SelectField
               label="Type d'établissement" required
               value={h.type} onChange={(e) => set("type", e.target.value)}
-              options={["Hôtel", "Maison d'hôtes", "Résidence hôtelière", "Auberge", "Villa hôtelière"]}
+              options={[
+                { value: "hotel",       label: "Hôtel" },
+                { value: "auberge",     label: "Auberge" },
+                { value: "apart_hotel", label: "Apart-hôtel" },
+                { value: "residence",   label: "Résidence hôtelière" },
+                { value: "boutique",    label: "Hôtel boutique" },
+              ]}
             />
             <Field label="Catégorie étoiles" required>
               <div className="step2-stars-row">

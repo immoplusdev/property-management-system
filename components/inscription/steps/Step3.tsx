@@ -4,7 +4,6 @@ import { EQUIP_GROUPS } from "../constants";
 import { SectionHead } from "../ui/SectionHead";
 import { Checkbox } from "../ui/Checkbox";
 import { Pill } from "../ui/Pill";
-import { TextField, SelectField } from "../ui/FormFields";
 import { Icon } from "../ui/Icon";
 
 function Tip({ children }: { children: React.ReactNode }) {
@@ -127,25 +126,6 @@ export function Step3({ state, update }: StepProps) {
                 ))}
               </div>
 
-              {e.parking && (
-                <div className="step3-parking-detail">
-                  <div className="step3-grid-3">
-                    <TextField
-                      label="Places de parking"
-                      type="number"
-                      value={String(e.parkingCount)}
-                      onChange={(ev) => set("parkingCount", ev.target.value)}
-                    />
-                    <SelectField
-                      label="Type"
-                      value="Couvert + extérieur"
-                      onChange={() => {}}
-                      options={["Couvert + extérieur", "Couvert uniquement", "Extérieur uniquement"]}
-                    />
-                    <TextField label="Tarif / jour (FCFA)" placeholder="0 si gratuit" defaultValue="0" />
-                  </div>
-                </div>
-              )}
             </section>
           );
         })()}

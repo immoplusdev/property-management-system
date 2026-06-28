@@ -9,7 +9,6 @@ import { Icon } from "../ui/Icon";
 const PAY_METHODS = [
   { id: "payWave",  name: "Wave",              color: "#1BA1F2", icon: "📱", desc: "Paiement instantané · sans frais" },
   { id: "payOM",   name: "Orange Money",       color: "#FF7900", icon: "🟧", desc: "Orange Money Côte d'Ivoire" },
-  { id: "payMTN",  name: "MTN Money",          color: "#FFCC00", icon: "🟨", desc: "MTN Mobile Money" },
   { id: "payCard", name: "Carte bancaire",     color: "#2744DE", icon: "💳", desc: "Visa, Mastercard" },
   { id: "payCash", name: "Espèces à l'arrivée", color: "#16A26B", icon: "💵", desc: "Paiement au check-in" },
 ] as const;

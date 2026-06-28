@@ -8,13 +8,13 @@ import { Pill } from "../ui/Pill";
 import { Icon } from "../ui/Icon";
 
 const VA_DEFS = [
-  { id: "restaurant", title: "Restaurant",           desc: "Cuisine, carte, photos & vidéo ambiance",   icon: "utensils",  color: "amber"   },
-  { id: "bar",        title: "Bar / Lounge",          desc: "Cocktails, happy hour, soirées DJ",         icon: "martini",   color: "pink"    },
-  { id: "pool",       title: "Piscine",               desc: "Type, horaires, service de serviettes",     icon: "waves",     color: "primary" },
-  { id: "gym",        title: "Salle de sport",        desc: "Équipements, coach, accès",                 icon: "dumbbell",  color: "violet"  },
-  { id: "spa",        title: "Spa & bien-être",       desc: "Massages, hammam, soins",                   icon: "sparkles",  color: "teal"    },
-  { id: "conference", title: "Salles de conférence",  desc: "Capacité, équipement A/V, tarifs",          icon: "briefcase", color: "primary" },
-  { id: "outdoor",    title: "Espaces extérieurs",    desc: "Jardin, terrasse, rooftop, privatisation",  icon: "palmtree",  color: "teal"    },
+  { id: "restaurant", apiType: "restaurant",     title: "Restaurant",           desc: "Cuisine, carte, photos & vidéo ambiance",   icon: "utensils",  color: "amber"   },
+  { id: "bar",        apiType: "bar",            title: "Bar / Lounge",          desc: "Cocktails, happy hour, soirées DJ",         icon: "martini",   color: "pink"    },
+  { id: "pool",       apiType: "piscine",        title: "Piscine",               desc: "Type, horaires, service de serviettes",     icon: "waves",     color: "primary" },
+  { id: "gym",        apiType: "salle_de_sport", title: "Salle de sport",        desc: "Équipements, coach, accès",                 icon: "dumbbell",  color: "violet"  },
+  { id: "spa",        apiType: "spa",            title: "Spa & bien-être",       desc: "Massages, hammam, soins",                   icon: "sparkles",  color: "teal"    },
+  { id: "conference", apiType: "salle_conference", title: "Salles de conférence", desc: "Capacité, équipement A/V, tarifs",         icon: "briefcase", color: "primary" },
+  { id: "outdoor",    apiType: "terrasse",       title: "Espaces extérieurs",    desc: "Jardin, terrasse, rooftop, privatisation",  icon: "palmtree",  color: "teal"    },
 ] as const;
 
 const SERVICES = [

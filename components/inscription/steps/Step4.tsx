@@ -15,6 +15,12 @@ const COVER_IMAGES: Record<string, string> = {
 };
 const COVERS = Object.keys(COVER_IMAGES);
 
+const BREAKFAST_LABELS: Record<RoomType["breakfastOption"], string> = {
+  included:      "Inclus",
+  available:     "En option",
+  not_available: "Non disponible",
+};
+
 function Tip({ children }: { children: React.ReactNode }) {
   return (
     <div className="step4-tip">
@@ -50,7 +56,7 @@ function RoomCard({ room, onEdit, onRemove }: { room: RoomType; onEdit: () => vo
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
           <div className="rt-name">{room.name}</div>
           <div className="rt-price" style={{ textAlign: "right", flexShrink: 0 }}>
-            <Fcfa value={room.pricePerNight} />
+            <Fcfa value={room.basePrice} />
             <span style={{ fontSize: 9.5, color: "var(--text-3)", display: "block", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>/nuit</span>
           </div>
         </div>
@@ -58,14 +64,13 @@ function RoomCard({ room, onEdit, onRemove }: { room: RoomType; onEdit: () => vo
         <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Icon name="bed" size={12} /> {room.bedType.split(" ")[0]}</span>
           <span style={{ color: "var(--text-4)" }}>·</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Icon name="users" size={12} /> ×{room.maxOccupants}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Icon name="users" size={12} /> ×{room.maxOccupancy}</span>
           <span style={{ color: "var(--text-4)" }}>·</span>
           <span>{room.surface} m²</span>
         </div>
 
         <div className="rt-feats" style={{ marginTop: "auto", marginBottom: 10 }}>
-          <span className="rt-feat">{room.breakfast}</span>
-          <span className="rt-feat">{room.cancelPolicy}</span>
+          <span className="rt-feat">{BREAKFAST_LABELS[room.breakfastOption]}</span>
         </div>
 
         <div style={{ display: "flex", gap: 6, paddingTop: 10, borderTop: "1px solid var(--border-soft)" }}>
@@ -109,11 +114,15 @@ function RoomModal({ room, setRoom, onSave, onClose }: {
           <SectionHead icon="bed" title="Identification" />
           <div className="grid-2">
             <TextField label="Nom du type" required value={room.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex: Suite Junior Vue Lagune" span={2} />
-            <TextField label="Nombre de chambres" required type="number" value={String(room.count)} onChange={(e) => set("count", Number(e.target.value))} />
+            <TextField label="Nombre de chambres" required type="number" value={String(room.totalRooms)} onChange={(e) => set("totalRooms", Number(e.target.value))} />
             <TextField label="Surface (m²)" type="number" value={String(room.surface)} onChange={(e) => set("surface", e.target.value)} />
+            {/* Étage(s) — non supporté par l'API pour l'instant
             <TextField label="Étage(s)" value={room.floors} onChange={(e) => set("floors", e.target.value)} placeholder="Ex: 2 → 4" />
+            */}
+            {/* Vue — non supporté par l'API pour l'instant
             <SelectField label="Vue" value={room.view} onChange={(e) => set("view", e.target.value)}
               options={["Lagune", "Mer", "Jardin", "Piscine", "Ville", "Panoramique", "Intérieure"]} />
+            */}
           </div>
 
           <hr className="divider" />
@@ -122,42 +131,33 @@ function RoomModal({ room, setRoom, onSave, onClose }: {
             <SelectField label="Type de lit" value={room.bedType} onChange={(e) => set("bedType", e.target.value)}
               options={["Grand lit (King)", "Grand lit (Queen)", "Lits jumeaux", "Lit simple", "Lits superposés"]} />
             <TextField label="Nombre de lits" type="number" value={String(room.bedCount)} onChange={(e) => set("bedCount", Number(e.target.value))} />
-            <TextField label="Capacité max (pers.)" type="number" value={String(room.maxOccupants)} onChange={(e) => set("maxOccupants", Number(e.target.value))} />
+            <TextField label="Capacité max (pers.)" type="number" value={String(room.maxOccupancy)} onChange={(e) => set("maxOccupancy", Number(e.target.value))} />
           </div>
 
           <hr className="divider" />
           <SectionHead icon="moneyBill" title="Tarification" />
           <div className="grid-3">
-            <TextField label="Prix / nuit (FCFA)" required type="number" value={String(room.pricePerNight)} onChange={(e) => set("pricePerNight", Number(e.target.value))} />
-            <TextField label="Prix week-end (FCFA)" type="number" value={String(room.priceWeekend)} onChange={(e) => set("priceWeekend", Number(e.target.value))} hint="Si différent" />
-            <TextField label="Longue durée (FCFA)" type="number" value={String(room.priceLong)} onChange={(e) => set("priceLong", Number(e.target.value))} hint="À partir de 7 nuits" />
+            <TextField label="Prix / nuit (FCFA)" required type="number" value={String(room.basePrice)} onChange={(e) => set("basePrice", Number(e.target.value))} />
+            <TextField label="Prix week-end (FCFA)" type="number" value={String(room.weekendPrice)} onChange={(e) => set("weekendPrice", Number(e.target.value))} hint="Si différent" />
+            <TextField label="Longue durée (FCFA)" type="number" value={String(room.longStayPrice)} onChange={(e) => set("longStayPrice", Number(e.target.value))} hint="À partir de 7 nuits" />
           </div>
 
           <div className="mt-md">
             <Field label="Petit-déjeuner">
               <div className="grid-3" style={{ marginTop: 6 }}>
-                {["inclus", "en option", "non disponible"].map((opt) => (
-                  <div key={opt} className={`radio-card${room.breakfast === opt ? " checked" : ""}`} onClick={() => set("breakfast", opt)}>
+                {(["included", "available", "not_available"] as const).map((opt) => (
+                  <div key={opt} className={`radio-card${room.breakfastOption === opt ? " checked" : ""}`} onClick={() => set("breakfastOption", opt)}>
                     <div className="rc-mark" />
-                    <div style={{ fontWeight: 600, fontSize: 13, textTransform: "capitalize" }}>{opt}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{BREAKFAST_LABELS[opt]}</div>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
-                      {opt === "inclus" && "Inclus dans la nuitée"}
-                      {opt === "en option" && "+ 4 000 FCFA / pers."}
-                      {opt === "non disponible" && "Non proposé"}
+                      {opt === "included"      && "Inclus dans la nuitée"}
+                      {opt === "available"     && "+ 4 000 FCFA / pers."}
+                      {opt === "not_available" && "Non proposé"}
                     </div>
                   </div>
                 ))}
               </div>
             </Field>
-          </div>
-
-          <hr className="divider" />
-          <SectionHead icon="clock" title="Check-in / Check-out" />
-          <div className="grid-2">
-            <SelectField label="Check-in" value={room.checkin} onChange={(e) => set("checkin", e.target.value)}
-              options={["12:00", "13:00", "14:00", "15:00", "16:00"]} />
-            <SelectField label="Check-out" value={room.checkout} onChange={(e) => set("checkout", e.target.value)}
-              options={["10:00", "11:00", "12:00", "13:00"]} />
           </div>
 
           <hr className="divider" />
@@ -186,20 +186,19 @@ export function Step4({ state, update }: StepProps) {
   const rooms = state.roomTypes;
   const [editing, setEditing] = useState<RoomType | null>(null);
 
-  const totalRooms = rooms.reduce((sum, r) => sum + Number(r.count), 0);
+  const totalRooms = rooms.reduce((sum, r) => sum + Number(r.totalRooms), 0);
   const avgPrice = rooms.length
-    ? Math.round(rooms.reduce((s, r) => s + r.pricePerNight, 0) / rooms.length)
+    ? Math.round(rooms.reduce((s, r) => s + r.basePrice, 0) / rooms.length)
     : 0;
 
   const openNew = () =>
     setEditing({
       id: "rt-" + Date.now(),
-      name: "", count: 1, surface: "", floors: "",
-      bedType: "Grand lit (Queen)", bedCount: 1, maxOccupants: 2,
-      pricePerNight: 35000, priceWeekend: "", priceLong: "",
-      breakfast: "inclus", photos: 0, hasVideo: false,
-      view: "Jardin", cancelPolicy: "Modérée",
-      checkin: "14:00", checkout: "12:00",
+      name: "", totalRooms: 1, surface: "", floors: "",
+      bedType: "Grand lit (Queen)", bedCount: 1, maxOccupancy: 2,
+      basePrice: 35000, weekendPrice: "", longStayPrice: "",
+      breakfastOption: "included", photos: 0, hasVideo: false,
+      view: "Jardin",
       complete: false, cover: COVERS[rooms.length % 4],
       isNew: true,
     });
@@ -258,7 +257,7 @@ export function Step4({ state, update }: StepProps) {
 
       <Tip>Nommez vos types avec le lit + la vue : <strong>«&nbsp;Suite King Lagune&nbsp;»</strong> convertit 2× mieux que «&nbsp;Suite Deluxe&nbsp;».</Tip>
 
-      {/* ── Grille 3 × N ── */}
+      {/* ── Grille ── */}
       <div className="step4-rooms-grid">
         {rooms.map((r) => (
           <RoomCard key={r.id} room={r} onEdit={() => setEditing(r)} onRemove={() => remove(r.id)} />

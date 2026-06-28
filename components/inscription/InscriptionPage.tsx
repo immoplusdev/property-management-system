@@ -20,8 +20,8 @@ function computeCompletion(state: InscriptionState): number {
   if (account.fullName) score += 3;
   if (account.email) score += 3;
   if (account.phone) score += 3;
-  if (account.cniUploaded) score += 4;
-  if (account.cgu) score += 2;
+  if (account.idCardFrontFileId && account.idCardBackFileId) score += 4;
+  if (account.acceptedTerms) score += 2;
 
   // Step 2 — 20 pts
   if (hotel.name) score += 3;
@@ -40,7 +40,7 @@ function computeCompletion(state: InscriptionState): number {
   if (roomTypes.length > 0) score += 5;
   const completeRooms = roomTypes.filter((r) => r.complete).length;
   if (completeRooms === roomTypes.length && roomTypes.length > 0) score += 10;
-  const photosTotal = roomTypes.reduce((s, r) => s + r.photos, 0);
+  const photosTotal = roomTypes.reduce((s, r) => s + (r.photos ?? 0), 0);
   if (photosTotal >= 10) score += 5;
   if (roomTypes.some((r) => r.hasVideo)) score += 5;
 
@@ -49,7 +49,7 @@ function computeCompletion(state: InscriptionState): number {
   score += Math.min(10, vaCount * 2);
 
   // Step 6 — 10 pts
-  if (pricing.payWave || pricing.payOM || pricing.payMTN) score += 5;
+  if (pricing.payWave || pricing.payOM || pricing.payCard) score += 5;
   if (pricing.cancelPolicy) score += 3;
   if (pricing.depositRequired !== undefined) score += 2;
 

@@ -64,14 +64,13 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
   const router = useRouter();
 
   const equipChecked = Object.values(equip).filter((v) => v === true).length;
-  const totalRooms = roomTypes.reduce((s, r) => s + Number(r.count), 0);
+  const totalRooms = roomTypes.reduce((s, r) => s + Number(r.totalRooms), 0);
   const completeRooms = roomTypes.filter((r) => r.complete).length;
   const vaConfigured = Object.values(valueAdds).filter((x) => x.configured).length;
-  const totalRevPerNight = roomTypes.reduce((s, r) => s + r.pricePerNight * Number(r.count), 0);
+  const totalRevPerNight = roomTypes.reduce((s, r) => s + r.basePrice * Number(r.totalRooms), 0);
   const payMethods = [
     pricing.payWave && "Wave",
     pricing.payOM && "Orange Money",
-    pricing.payMTN && "MTN",
     pricing.payCard && "Carte",
   ].filter(Boolean).join(" · ");
 
@@ -80,9 +79,9 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
   const sections = [
     {
       id: 1, title: "Compte hôtelier", icon: "user",
-      status: account.cgu ? "ok" : "warn",
+      status: account.acceptedTerms ? "ok" : "warn",
       info: `${account.fullName} · ${account.phone}`,
-      action: account.cgu ? "Validé" : "Accepter les CGU",
+      action: account.acceptedTerms ? "Validé" : "Accepter les CGU",
     },
     {
       id: 2, title: "Établissement", icon: "building",
@@ -251,7 +250,7 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
                 <div className="fc-foot">
                   <div>
                     <div className="fc-price">
-                      à partir de <Fcfa value={Math.min(...roomTypes.map((r) => r.pricePerNight))} />
+                      à partir de <Fcfa value={Math.min(...roomTypes.map((r) => r.basePrice))} />
                     </div>
                     <div style={{ fontSize: 10, color: "var(--text-3)" }}>par nuit · {roomTypes.length} types disponibles</div>
                   </div>

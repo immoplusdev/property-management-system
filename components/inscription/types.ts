@@ -2,10 +2,10 @@ export interface AccountState {
   fullName: string;
   phone: string;
   email: string;
-  password: string;
   rccm: string;
-  cniUploaded: boolean;
-  cgu: boolean;
+  idCardFrontFileId: string | null;
+  idCardBackFileId: string | null;
+  acceptedTerms: boolean;
 }
 
 export interface HotelState {
@@ -38,7 +38,7 @@ export interface EquipState {
   wifi: boolean; wifiFree: boolean;
   aircon: boolean; hotWater: boolean;
   security247: boolean; cctv: boolean;
-  parking: boolean; parkingCount: number | string;
+  parking: boolean;
   safe: boolean; accessBadge: boolean;
   reception247: boolean; laundry: boolean;
   shuttle: boolean; carRental: boolean;
@@ -53,24 +53,21 @@ export interface EquipState {
 export interface RoomType {
   id: string;
   name: string;
-  count: number;
+  totalRooms: number;
   surface: number | string;
   floors: string;
   bedType: string;
   bedCount: number;
-  maxOccupants: number;
-  pricePerNight: number;
-  priceWeekend: number | string;
-  priceLong: number | string;
-  breakfast: string;
+  maxOccupancy: number;
+  basePrice: number;
+  weekendPrice: number | string;
+  longStayPrice: number | string;
+  breakfastOption: "included" | "available" | "not_available";
   photos: number;
   hasVideo: boolean;
   view: string;
-  cancelPolicy: string;
-  checkin: string;
-  checkout: string;
-  complete: boolean;
   cover: string;
+  complete: boolean;
   isNew?: boolean;
 }
 
@@ -92,7 +89,7 @@ export interface ServicesState {
 }
 
 export interface PricingState {
-  payWave: boolean; payOM: boolean; payMTN: boolean;
+  payWave: boolean; payOM: boolean;
   payCard: boolean; payCash: boolean;
   depositRequired: boolean;
   depositPct: number;
