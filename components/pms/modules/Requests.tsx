@@ -1,7 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { Pill, Icon, showToast } from "../shared";
+import { Pill, Icon, showToast, KPICard, Button } from "../shared";
+import { Chip, ChipGroup } from "@/components/ui/Chip";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { APP_REQUESTS, REQUEST_TYPES } from "../data";
 
 type ReqStatus = "pending" | "in-progress" | "confirmed" | "done";
@@ -36,201 +38,140 @@ export function Requests() {
   );
 
   return (
-    <div className="fade-in">
+    <div className="animate-pms-fade-up">
       <PMSHeader
         title="Demandes clients"
         sub="Toutes les demandes envoyées via l'app Immo Plus · mises à jour en temps réel"
         actions={
           <>
-            <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /> Export</button>
-            <button className="btn btn-primary btn-sm"><Icon name="plus" size={14} /> Demande manuelle</button>
+            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export</Button>
+            <Button variant="primary" size="sm"><Icon name="plus" size={14} /> Demande manuelle</Button>
           </>
         }
       />
 
-      {/* ── KPI row ── */}
-      <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(5, 1fr)", marginBottom: 22 }}>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon"><Icon name="list" size={18} /></div>
-          </div>
-          <div className="kpi-value">{APP_REQUESTS.length}</div>
-          <div className="kpi-label">Total aujourd&apos;hui</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}><Icon name="clock" size={18} /></div>
-            <span className="kpi-trend down" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{pending.length} urgentes</span>
-          </div>
-          <div className="kpi-value">{pending.length}</div>
-          <div className="kpi-label">En attente</div>
-          <div className="kpi-sub">À traiter maintenant</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--primary-50)", color: "var(--primary)" }}><Icon name="refresh" size={18} /></div>
-          </div>
-          <div className="kpi-value">{inProgress.length}</div>
-          <div className="kpi-label">En cours</div>
-          <div className="kpi-sub">Pris en charge par l&apos;équipe</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--success-bg)", color: "var(--success)" }}><Icon name="check" size={18} /></div>
-          </div>
-          <div className="kpi-value">{confirmed.length}</div>
-          <div className="kpi-label">Confirmés</div>
-          <div className="kpi-sub">Planifiés, en attente exécution</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--bg-2)", color: "var(--text-3)" }}><Icon name="check" size={18} /></div>
-          </div>
-          <div className="kpi-value">{done.length}</div>
-          <div className="kpi-label">Terminés</div>
-          <div className="kpi-sub">Ce jour</div>
-        </div>
+      {/* KPI row */}
+      <div className="grid grid-cols-5 gap-3 mb-5.5">
+        <KPICard value={APP_REQUESTS.length} label="Total aujourd'hui"
+          icon="list" iconBg="var(--color-surface-2)" iconColor="var(--color-ink-2)" />
+        <KPICard value={pending.length} label="En attente" sub="À traiter maintenant"
+          icon="clock" iconBg="var(--color-warn-bg)" iconColor="var(--color-warn)"
+          trend={`${pending.length} urgentes`} trendUp={false} trendStyle={{ background: "var(--color-warn-bg)", color: "var(--color-warn)" }} />
+        <KPICard value={inProgress.length} label="En cours" sub="Pris en charge par l'équipe"
+          icon="refresh" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)" />
+        <KPICard value={confirmed.length} label="Confirmés" sub="Planifiés, en attente exécution"
+          icon="check" iconBg="var(--color-success-bg)" iconColor="var(--color-success)" />
+        <KPICard value={done.length} label="Terminés" sub="Ce jour"
+          icon="check" iconBg="var(--color-surface-2)" iconColor="var(--color-ink-3)" />
       </div>
 
-      {/* ── Filter bar ── */}
-      <div className="card" style={{ padding: 14, marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div className="search-bar" style={{ width: 280 }}>
-            <Icon name="eye" size={14} color="var(--text-3)" />
-            <input placeholder="Chambre, client, type…" value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Filter bar */}
+      <div className="bg-surface border border-border rounded-[18px] p-3.5 mb-3.5">
+        <div className="flex items-center gap-3.5 flex-wrap">
+          <div className="h-9.5 w-70 bg-surface border border-border rounded-[10px] px-3 flex items-center gap-2 text-[13px] text-ink-3 focus-within:border-ink-3">
+            <Icon name="eye" size={14} color="var(--color-ink-3)" />
+            <input className="flex-1 border-0 outline-none bg-transparent text-[13px] text-ink placeholder:text-ink-4" placeholder="Chambre, client, type…" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <div className="chips">
-            <div className={"chip" + (typeFilter === "all" ? " active" : "")} onClick={() => setTypeFilter("all")}>
-              Tous <span className="chip-count">{APP_REQUESTS.length}</span>
-            </div>
+          <ChipGroup>
+            <Chip label="Tous" count={APP_REQUESTS.length} active={typeFilter === "all"} onClick={() => setTypeFilter("all")} />
             {Object.entries(REQUEST_TYPES).map(([key, meta]) => {
               const count = APP_REQUESTS.filter(r => r.type === key).length;
               return (
-                <div key={key} className={"chip" + (typeFilter === key ? " active" : "")} onClick={() => setTypeFilter(key)}>
-                  {meta.label} <span className="chip-count">{count}</span>
-                </div>
+                <Chip key={key} label={meta.label} count={count} active={typeFilter === key} onClick={() => setTypeFilter(key)} />
               );
             })}
-          </div>
+          </ChipGroup>
         </div>
       </div>
 
-      {/* ── Request list ── */}
-      <div style={{ display: "grid", gap: 10 }}>
+      {/* Request list */}
+      <div className="grid gap-2.5">
         {list.map(req => {
           const typeMeta   = REQUEST_TYPES[req.type];
           const statusMeta = STATUS_META[req.status as ReqStatus];
           const priMeta    = PRIORITY_META[req.priority];
           return (
-            <div key={req.id} className="req-item">
-              <div style={{ display: "grid", gridTemplateColumns: "46px 1fr auto", gap: 14, alignItems: "flex-start" }}>
-                {/* Icon */}
-                <div style={{
-                  width: 46, height: 46, borderRadius: 12, flexShrink: 0,
-                  background: `var(--${typeMeta.color}-bg, var(--primary-50))`,
-                  color: `var(--${typeMeta.color}, var(--primary))`,
-                  display: "grid", placeItems: "center",
-                }}>
-                  <Icon name={typeMeta.icon} size={22} />
-                </div>
+            <div key={req.id} className="grid gap-3.5 items-center px-4 py-3.5 rounded-xl border border-border bg-surface hover:border-ink-3 transition-all duration-120" style={{ gridTemplateColumns: "auto minmax(0,1fr) auto auto" }}>
+              {/* Icon */}
+              <div
+                className="w-11.5 h-11.5 rounded-xl shrink-0 grid place-items-center"
+                style={{ background: `var(--color-${typeMeta.color}-bg, var(--color-primary-50))`, color: `var(--color-${typeMeta.color}, var(--color-primary))` }}
+              >
+                <Icon name={typeMeta.icon} size={22} />
+              </div>
 
-                {/* Main info */}
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{req.title}</span>
-                    <Pill kind={priMeta.kind as "warn" | "success" | "danger" | "muted" | "primary"} dot>{priMeta.label}</Pill>
-                    <Pill kind={statusMeta.kind as "warn" | "success" | "danger" | "muted" | "primary"}>{statusMeta.label}</Pill>
-                  </div>
-                  <div className="text-xs text-muted" style={{ marginBottom: 6 }}>
-                    <Icon name="bed" size={11} /> Ch. {req.room} ·{" "}
-                    <Icon name="user" size={11} /> {req.guest} ·{" "}
-                    <Icon name="clock" size={11} /> {req.time} ·{" "}
-                    {typeMeta.label}
-                    {req.price > 0 && (
-                      <> · <strong style={{ color: "var(--primary)" }}>{req.price.toLocaleString("fr-FR")} FCFA</strong></>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.4 }}>{req.details}</div>
+              {/* Main info */}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="font-bold text-[14px]">{req.title}</span>
+                  <Pill kind={priMeta.kind as "danger" | "muted"}>{priMeta.label}</Pill>
+                  <Pill kind={statusMeta.kind as "warn" | "success" | "primary"}>{statusMeta.label}</Pill>
                 </div>
+                <div className="text-[11.5px] text-ink-3 mb-1.5">
+                  <Icon name="bed" size={11} /> Ch. {req.room} ·{" "}
+                  <Icon name="user" size={11} /> {req.guest} ·{" "}
+                  <Icon name="clock" size={11} /> {req.time} · {typeMeta.label}
+                  {req.price > 0 && (
+                    <> · <strong style={{ color: "var(--color-primary)" }}>{req.price.toLocaleString("fr-FR")} FCFA</strong></>
+                  )}
+                </div>
+                <div className="text-[12.5px] text-ink-2 leading-[1.4]">{req.details}</div>
+              </div>
 
-                {/* Actions */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-                  <div className="text-xs text-muted" style={{ marginBottom: 4 }}>{req.id}</div>
-                  {req.status === "pending" && (
-                    <>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        style={{ minWidth: 130 }}
-                        onClick={() => showToast("Demande prise en charge", "check")}
-                      >
-                        <Icon name="check" size={13} /> Prendre en charge
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ minWidth: 130 }}
-                        onClick={() => showToast("Message WhatsApp envoyé", "check")}
-                      >
-                        <Icon name="send" size={13} /> WhatsApp client
-                      </button>
-                    </>
-                  )}
-                  {req.status === "in-progress" && (
-                    <>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        style={{ minWidth: 130 }}
-                        onClick={() => showToast("Demande marquée terminée", "check")}
-                      >
-                        <Icon name="check" size={13} /> Marquer terminé
-                      </button>
-                      <button className="btn btn-ghost btn-sm" style={{ minWidth: 130 }}>
-                        <Icon name="send" size={13} /> Mise à jour client
-                      </button>
-                    </>
-                  )}
-                  {req.status === "confirmed" && (
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      style={{ minWidth: 130 }}
-                      onClick={() => showToast("Demande finalisée", "check")}
-                    >
-                      <Icon name="check" size={13} /> Finaliser
-                    </button>
-                  )}
-                  {req.status === "done" && (
-                    <Pill kind="success" dot>Terminé</Pill>
-                  )}
-                </div>
+              {/* Actions */}
+              <div className="flex flex-col gap-1.5 items-end">
+                <div className="text-[11.5px] text-ink-3 mb-1">{req.id}</div>
+                {req.status === "pending" && (
+                  <>
+                    <Button variant="primary" size="sm" style={{ minWidth: 130 }} onClick={() => showToast("Demande prise en charge", "check")}>
+                      <Icon name="check" size={13} /> Prendre en charge
+                    </Button>
+                    <Button variant="ghost" size="sm" style={{ minWidth: 130 }} onClick={() => showToast("Message WhatsApp envoyé", "check")}>
+                      <Icon name="send" size={13} /> WhatsApp client
+                    </Button>
+                  </>
+                )}
+                {req.status === "in-progress" && (
+                  <>
+                    <Button variant="primary" size="sm" style={{ minWidth: 130 }} onClick={() => showToast("Demande marquée terminée", "check")}>
+                      <Icon name="check" size={13} /> Marquer terminé
+                    </Button>
+                    <Button variant="ghost" size="sm" style={{ minWidth: 130 }}>
+                      <Icon name="send" size={13} /> Mise à jour client
+                    </Button>
+                  </>
+                )}
+                {req.status === "confirmed" && (
+                  <Button variant="ghost" size="sm" style={{ minWidth: 130 }} onClick={() => showToast("Demande finalisée", "check")}>
+                    <Icon name="check" size={13} /> Finaliser
+                  </Button>
+                )}
+                {req.status === "done" && <Pill kind="success" dot>Terminé</Pill>}
               </div>
             </div>
           );
         })}
 
         {list.length === 0 && (
-          <div className="empty">
-            <div className="e-icon"><Icon name="list" size={24} /></div>
-            <div className="e-title">Aucune demande trouvée</div>
-            <div className="e-sub">Modifiez les filtres ou attendez de nouvelles demandes de l&apos;app</div>
-          </div>
+          <EmptyState icon="list" title="Aucune demande trouvée" sub="Modifiez les filtres ou attendez de nouvelles demandes de l'app" />
         )}
       </div>
 
-      {/* ── Info card ── */}
-      <div className="card" style={{ marginTop: 22, background: "var(--primary-50)", borderColor: "var(--primary-100)" }}>
-        <div className="row-flex" style={{ marginBottom: 8 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--primary)", color: "#fff", display: "grid", placeItems: "center" }}>
+      {/* Info card */}
+      <div className="bg-primary-50 border border-primary-100 rounded-[18px] p-5.5 mt-5.5">
+        <div className="flex items-center gap-2.5 mb-2">
+          <div className="w-9 h-9 rounded-[10px] bg-primary text-white grid place-items-center shrink-0">
             <Icon name="info" size={18} />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Comment fonctionnent les demandes App ?</div>
-            <div className="text-xs text-muted">Flux Immo Plus · app cliente</div>
+          <div className="flex-1">
+            <div className="font-bold text-[14px]">Comment fonctionnent les demandes App ?</div>
+            <div className="text-[11.5px] text-ink-3">Flux Immo Plus · app cliente</div>
           </div>
         </div>
-        <div style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.6 }}>
+        <div className="text-[12.5px] text-ink-2 leading-[1.6]">
           Le client envoie une demande depuis l&apos;app Immo Plus → vous recevez une notification push + la demande apparaît ici en temps réel.
           Vous cliquez <strong>Prendre en charge</strong> → le client reçoit une confirmation dans l&apos;app. Une fois terminé, marquez la demande
-          comme <strong>Terminée</strong> et le client voit l&apos;update dans son historique. Les demandes payantes sont facturées à la note de
-          chambre et apparaissent dans l&apos;onglet Facturation.
+          comme <strong>Terminée</strong> et le client voit l&apos;update dans son historique.
         </div>
       </div>
     </div>

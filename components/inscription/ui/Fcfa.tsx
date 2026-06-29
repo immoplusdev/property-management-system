@@ -4,10 +4,10 @@ interface FcfaProps {
 
 export function Fcfa({ value }: FcfaProps) {
   return (
-    <span className="text-num">
+    <span className="font-bold tabular-nums">
       {Number(value).toLocaleString("fr-FR")}
       {" "}
-      <span className="fcfa-unit">FCFA</span>
+      <span className="text-[0.7em] text-ink-3 font-semibold">FCFA</span>
     </span>
   );
 }

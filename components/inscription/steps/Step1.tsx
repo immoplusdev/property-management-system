@@ -1,4 +1,5 @@
 "use client";
+import { useRef, useState, useEffect } from "react";
 import type { StepProps } from "../types";
 import { SectionHead } from "../ui/SectionHead";
 import { TextField } from "../ui/FormFields";
@@ -6,31 +7,149 @@ import { UploadZone } from "../ui/UploadZone";
 import { Checkbox } from "../ui/Checkbox";
 import { Pill } from "../ui/Pill";
 import { Icon } from "../ui/Icon";
+import { PageHead } from "../ui/PageHead";
+import { InsCard } from "../ui/InsCard";
+import { Tip } from "../ui/Tip";
+import { Btn } from "../ui/Btn";
+import { uploadFile } from "@/lib/api/files/files.client";
+import { fileUrl } from "@/lib/utils/fileUrl";
 
-function Tip({ children }: { children: React.ReactNode }) {
+type SlotStatus = "idle" | "loading" | "done" | "error";
+
+interface SlotState {
+  status: SlotStatus;
+  fileId: string | null;
+  fileName: string;
+  fileSize: number;
+  previewUrl: string | null;
+  mimeType: string;
+  error: string;
+}
+
+const emptySlot = (): SlotState => ({
+  status: "idle",
+  fileId: null,
+  fileName: "",
+  fileSize: 0,
+  previewUrl: null,
+  mimeType: "",
+  error: "",
+});
+
+function fmtSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+}
+
+function UploadLoading() {
   return (
-    <div className="step1-tip">
-      <div className="step1-tip-dot"><Icon name="sparkles" size={12} /></div>
-      <p className="step1-tip-text">{children}</p>
+    <div className="w-full flex flex-col items-center gap-2 text-center px-5 py-8 rounded-2xl border-2 border-dashed border-primary/40 bg-primary-50">
+      <div className="w-13 h-13 rounded-[14px] bg-white/70 grid place-items-center shadow-[0_0_0_1px_rgba(var(--color-primary-rgb),0.12)]">
+        <svg
+          className="animate-spin w-6 h-6 text-primary"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden
+        >
+          <circle
+            className="opacity-20"
+            cx="12" cy="12" r="10"
+            stroke="currentColor" strokeWidth="3"
+          />
+          <path
+            className="opacity-80"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
+        </svg>
+      </div>
+      <div className="text-[13px] font-semibold text-primary">Envoi en cours…</div>
     </div>
   );
 }
 
-function UploadDone({ filename, onRemove }: { filename: string; onRemove: () => void }) {
+function UploadDone({
+  slot,
+  onRemove,
+}: {
+  slot: SlotState;
+  onRemove: () => void;
+}) {
+  const isImage = slot.mimeType.startsWith("image/");
   return (
-    <div className="step1-upload-done">
-      <div className="step1-upload-icon">
-        <Icon name="fileText" size={20} />
+    <div className="flex items-center gap-3 px-3.5 py-3 border-[1.5px] border-success bg-success-bg rounded-2xl">
+      <div className="shrink-0 w-10 h-10 rounded-[10px] overflow-hidden bg-white border border-success/20 grid place-items-center text-success">
+        {isImage && slot.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={slot.previewUrl}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Icon name="fileText" size={20} />
+        )}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="step1-upload-name">{filename}</div>
-        <div className="step1-upload-meta">Uploadé</div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-[13px] text-ink truncate leading-tight">
+          {slot.fileName}
+        </div>
+        <div className="text-[11px] text-ink-3 mt-0.5">{fmtSize(slot.fileSize)}</div>
       </div>
       <Pill kind="success" dot>Reçu</Pill>
-      <button className="btn-icon" onClick={onRemove}>
+      <Btn
+        variant="icon"
+        size="sm"
+        onClick={onRemove}
+        aria-label="Retirer le fichier"
+      >
         <Icon name="x" size={14} />
-      </button>
+      </Btn>
     </div>
+  );
+}
+
+function IdCardSlot({
+  label,
+  slot,
+  onPick,
+  onRemove,
+}: {
+  label: string;
+  slot: SlotState;
+  onPick: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  if (slot.status === "loading") return <UploadLoading />;
+  if (slot.status === "done") return <UploadDone slot={slot} onRemove={onRemove} />;
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onPick(file);
+          // reset so the same file can be re-selected after removal
+          e.target.value = "";
+        }}
+      />
+      <UploadZone
+        icon="camera"
+        title={label}
+        sub="JPG, PNG ou PDF · max 5 Mo"
+        onClick={() => inputRef.current?.click()}
+      />
+      {slot.status === "error" && (
+        <p className="text-[11px] text-danger mt-1 pl-0.5">{slot.error}</p>
+      )}
+    </>
   );
 }
 
@@ -39,32 +158,87 @@ export function Step1({ state, update }: StepProps) {
   const set = <K extends keyof typeof s>(k: K, v: typeof s[K]) =>
     update("account", { ...s, [k]: v });
 
-  const bothUploaded = !!s.idCardFrontFileId && !!s.idCardBackFileId;
-  const anyUploaded = !!s.idCardFrontFileId || !!s.idCardBackFileId;
+  const [frontSlot, setFrontSlot] = useState<SlotState>(() =>
+    s.idCardFrontFileId
+      ? { status: "done", fileId: s.idCardFrontFileId, fileName: "Pièce d'identité (recto)", fileSize: 0, previewUrl: fileUrl(s.idCardFrontFileId), mimeType: "image/jpeg", error: "" }
+      : emptySlot()
+  );
+  const [backSlot, setBackSlot] = useState<SlotState>(() =>
+    s.idCardBackFileId
+      ? { status: "done", fileId: s.idCardBackFileId, fileName: "Pièce d'identité (verso)", fileSize: 0, previewUrl: fileUrl(s.idCardBackFileId), mimeType: "image/jpeg", error: "" }
+      : emptySlot()
+  );
+
+  // Revoke preview objectURLs when the component unmounts (only blob: URLs, BFF URLs are no-ops)
+  useEffect(() => {
+    return () => {
+      if (frontSlot.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(frontSlot.previewUrl);
+      if (backSlot.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(backSlot.previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handlePick(file: File, side: "front" | "back") {
+    const setSlot = side === "front" ? setFrontSlot : setBackSlot;
+    const previewUrl = file.type.startsWith("image/")
+      ? URL.createObjectURL(file)
+      : null;
+
+    setSlot({
+      status: "loading",
+      fileId: null,
+      fileName: file.name,
+      fileSize: file.size,
+      previewUrl,
+      mimeType: file.type,
+      error: "",
+    });
+
+    try {
+      const uploaded = await uploadFile(file);
+      setSlot((prev) => ({ ...prev, status: "done", fileId: uploaded.id }));
+      if (side === "front") set("idCardFrontFileId", uploaded.id);
+      else set("idCardBackFileId", uploaded.id);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Échec de l'envoi. Réessayez.";
+      setSlot((prev) => ({ ...prev, status: "error", error: message }));
+    }
+  }
+
+  function handleRemove(side: "front" | "back") {
+    const slot = side === "front" ? frontSlot : backSlot;
+    if (slot.previewUrl) URL.revokeObjectURL(slot.previewUrl);
+    if (side === "front") {
+      setFrontSlot(emptySlot());
+      set("idCardFrontFileId", null);
+    } else {
+      setBackSlot(emptySlot());
+      set("idCardBackFileId", null);
+    }
+  }
+
+  const bothUploaded = frontSlot.status === "done" && backSlot.status === "done";
+  const anyUploaded  = frontSlot.status === "done" || backSlot.status === "done";
 
   return (
-    <div className="step1-shell fade-in">
+    <div className="flex flex-col gap-5 animate-insc-fade">
+      <PageHead
+        eyebrow="Étape 1 sur 7"
+        title="Créons votre compte hôtelier"
+        desc="Ce compte est distinct du compte agence immobilière. Vos informations restent en attente de vérification jusqu'à validation de votre pièce d'identité (24–48h)."
+      />
 
-      {/* ── En-tête ── */}
-      <div className="page-head">
-        <div className="page-eyebrow">Étape 1 sur 7</div>
-        <h1 className="page-title">Créons votre compte hôtelier</h1>
-        <p className="page-desc">
-          Ce compte est distinct du compte agence immobilière. Vos informations restent en attente
-          de vérification jusqu&apos;à validation de votre pièce d&apos;identité (24–48h).
-        </p>
-      </div>
+      <div className="grid grid-cols-12 gap-4.5">
 
-      <div className="step1-bento">
-
-        {/* ── 1. Identité du gérant ── */}
-        <section className="card step1-card step1-id-card">
+        {/* 1. Identité du gérant */}
+        <InsCard flat className="col-span-12">
           <SectionHead
             icon="user"
             title="Identité du gérant"
             sub="Le responsable principal de l'établissement"
           />
-          <div className="grid-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TextField
               label="Nom complet du gérant" required
               value={s.fullName} onChange={(e) => set("fullName", e.target.value)}
@@ -82,67 +256,57 @@ export function Step1({ state, update }: StepProps) {
               onChange={(e) => set("phone", "+225 " + e.target.value)}
             />
           </div>
-          <Tip>Ce numéro doit être lié à un compte <strong>Wave</strong>, <strong>Orange Money</strong> ou <strong>MTN Money</strong> — il sert à recevoir vos paiements de réservations.</Tip>
-        </section>
+          <Tip>
+            Ce numéro doit être lié à un compte{" "}
+            <strong>Wave</strong>, <strong>Orange Money</strong> ou <strong>MTN Money</strong>{" "}
+            — il sert à recevoir vos paiements de réservations.
+          </Tip>
+        </InsCard>
 
-        {/* ── 2. Vérification d'identité ── */}
-        <section className="card step1-card step1-kyc-card">
+        {/* 2. Vérification d'identité */}
+        <InsCard flat className="col-span-12 md:col-span-7">
           <SectionHead
             icon="shield"
             title="Vérification d'identité"
             sub="Obligatoire pour passer en statut « Vérifié »"
             right={
-              <Pill kind={bothUploaded ? "success" : anyUploaded ? "warn" : "warn"} dot>
+              <Pill kind={bothUploaded ? "success" : "warn"} dot>
                 {bothUploaded ? "Complet" : anyUploaded ? "Incomplet" : "En attente"}
               </Pill>
             }
           />
 
-          <div className="step1-kyc-stack">
-            {/* Recto + Verso côte à côte */}
+          <div className="flex flex-col gap-4">
             <div>
-              <div className="field-label" style={{ marginBottom: 8 }}>
-                Pièce d&apos;identité du propriétaire <span className="req">*</span>
+              <div className="text-[11px] font-bold tracking-wider uppercase text-ink-2 mb-2">
+                Pièce d&apos;identité du propriétaire{" "}
+                <span className="text-danger">*</span>
               </div>
-              <div className="grid-2" style={{ gap: 12 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <div style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600, marginBottom: 6 }}>
+                  <div className="text-[12px] text-ink-3 font-semibold mb-1.5">
                     Recto (face avant)
                   </div>
-                  {s.idCardFrontFileId ? (
-                    <UploadDone
-                      filename="CNI_recto.jpg"
-                      onRemove={() => set("idCardFrontFileId", null)}
-                    />
-                  ) : (
-                    <UploadZone
-                      icon="camera"
-                      title="Face avant"
-                      sub="JPG ou PDF · max 5 Mo"
-                      onClick={() => set("idCardFrontFileId", "mock-front-" + Date.now())}
-                    />
-                  )}
+                  <IdCardSlot
+                    label="Face avant"
+                    slot={frontSlot}
+                    onPick={(f) => handlePick(f, "front")}
+                    onRemove={() => handleRemove("front")}
+                  />
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600, marginBottom: 6 }}>
+                  <div className="text-[12px] text-ink-3 font-semibold mb-1.5">
                     Verso (face arrière)
                   </div>
-                  {s.idCardBackFileId ? (
-                    <UploadDone
-                      filename="CNI_verso.jpg"
-                      onRemove={() => set("idCardBackFileId", null)}
-                    />
-                  ) : (
-                    <UploadZone
-                      icon="camera"
-                      title="Face arrière"
-                      sub="JPG ou PDF · max 5 Mo"
-                      onClick={() => set("idCardBackFileId", "mock-back-" + Date.now())}
-                    />
-                  )}
+                  <IdCardSlot
+                    label="Face arrière"
+                    slot={backSlot}
+                    onPick={(f) => handlePick(f, "back")}
+                    onRemove={() => handleRemove("back")}
+                  />
                 </div>
               </div>
-              <div className="field-help" style={{ marginTop: 6 }}>
+              <div className="text-[11.5px] text-ink-3 mt-1.5 leading-[1.4]">
                 Acceptés : CNI ivoirienne, passeport, attestation d&apos;identité
               </div>
             </div>
@@ -155,18 +319,27 @@ export function Step1({ state, update }: StepProps) {
               placeholder="CI-ABJ-2024-B-XXXXX"
             />
           </div>
-          <Tip>La vérification est traitée en <strong>24–48h</strong> — vous recevrez un SMS de confirmation dès validation de votre dossier.</Tip>
-        </section>
+          <Tip>
+            La vérification est traitée en <strong>24–48h</strong> — vous recevrez un SMS
+            de confirmation dès validation de votre dossier.
+          </Tip>
+        </InsCard>
 
-        {/* ── 3. Conditions d'utilisation ── */}
-        <section className="card step1-card step1-cgu-card">
+        {/* 3. Conditions d'utilisation */}
+        <InsCard flat className="col-span-12 md:col-span-5">
           <SectionHead icon="fileText" title="Conditions d'utilisation" />
 
-          <div className="step1-commission">
-            <div className="step1-commission-rate">8%</div>
+          <div className="flex items-center gap-4 px-4 py-3.5 border border-border rounded-2xl mb-4 bg-primary-50">
+            <div className="text-[32px] font-black tracking-tighter text-primary shrink-0 leading-none">
+              8%
+            </div>
             <div>
-              <div className="step1-commission-label">Commission par réservation</div>
-              <div className="step1-commission-sub">Prélevée automatiquement — aucune avance requise</div>
+              <div className="font-bold text-[13.5px] text-ink">
+                Commission par réservation
+              </div>
+              <div className="text-[11.5px] text-ink-3 mt-0.75 leading-[1.4]">
+                Prélevée automatiquement — aucune avance requise
+              </div>
             </div>
           </div>
 
@@ -177,15 +350,15 @@ export function Step1({ state, update }: StepProps) {
             sub="Vous pouvez consulter le contrat hôtelier complet et la grille tarifaire avant de signer."
           />
 
-          <div className="step1-cgu-links">
-            <a className="step1-cgu-link">
+          <div className="flex flex-col gap-2 mt-3.5 pt-3.5 border-t border-border">
+            <a className="flex items-center gap-1.75 text-primary text-[12.5px] font-medium cursor-pointer no-underline transition-opacity duration-120 hover:opacity-70">
               <Icon name="fileText" size={13} /> Voir les CGU
             </a>
-            <a className="step1-cgu-link">
+            <a className="flex items-center gap-1.75 text-primary text-[12.5px] font-medium cursor-pointer no-underline transition-opacity duration-120 hover:opacity-70">
               <Icon name="fileText" size={13} /> Grille des commissions
             </a>
           </div>
-        </section>
+        </InsCard>
 
       </div>
     </div>

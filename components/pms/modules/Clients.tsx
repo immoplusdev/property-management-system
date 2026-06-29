@@ -1,8 +1,17 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, StarRating, Icon, Pill } from "../shared";
-import { CLIENTS, BOOKINGS, REVIEWS, formatFCFA, formatDate, type Client } from "../data";
+import { SectionHead, StarRating, Icon, Button } from "../shared";
+import { Chip, ChipGroup } from "@/components/ui/Chip";
+import { Modal } from "@/components/ui/Modal";
+import { Tabs } from "@/components/ui/Tabs";
+import { Pill } from "@/components/ui/Pill";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { CLIENTS, BOOKINGS, REVIEWS, formatFCFA, formatDate, type Client, type Review } from "../data";
+
+const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
+const avatarColor = (n: number) => AV_COLORS[(n - 1) % AV_COLORS.length];
+const initials = (name: string) => name.split(" ").map(x => x[0]).join("").slice(0, 2);
 
 export function Clients() {
   const [filter,   setFilter]   = useState("all");
@@ -19,43 +28,48 @@ export function Clients() {
   );
 
   return (
-    <div className="fade-in">
+    <div className="animate-pms-fade-up">
       <PMSHeader
         title="Clients"
         sub={`${CLIENTS.length} fiches clients · ${CLIENTS.filter(c => c.vip).length} VIP · ${CLIENTS.filter(c => c.corporate).length} comptes corporate`}
         actions={
           <>
-            <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /> Export CRM</button>
-            <button className="btn btn-primary btn-sm"><Icon name="plus" size={14} /> Nouveau client</button>
+            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export CRM</Button>
+            <Button variant="primary" size="sm"><Icon name="plus" size={14} /> Nouveau client</Button>
           </>
         }
       />
 
-      {/* ── Filters ── */}
-      <div className="card" style={{ padding: 14, marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div className="search-bar" style={{ width: 320 }}>
-            <Icon name="eye" size={14} color="var(--text-3)" />
-            <input placeholder="Nom, email, téléphone…" value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Filters */}
+      <div className="bg-surface border border-border rounded-[18px] p-3.5 mb-3.5">
+        <div className="flex items-center gap-3.5 flex-wrap">
+          <div className="h-9.5 w-80 bg-surface border border-border rounded-[10px] px-3 flex items-center gap-2 focus-within:border-ink-3">
+            <Icon name="eye" size={14} color="var(--color-ink-3)" />
+            <input
+              className="flex-1 border-0 outline-none bg-transparent text-[13px] text-ink placeholder:text-ink-4"
+              placeholder="Nom, email, téléphone…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
-          <div className="chips">
+          <ChipGroup>
             {([
               ["all",  "Tous",      CLIENTS.length],
               ["vip",  "VIP",       CLIENTS.filter(c => c.vip).length],
               ["corp", "Corporate", CLIENTS.filter(c => c.corporate).length],
               ["new",  "Nouveaux",  CLIENTS.filter(c => c.stays <= 1).length],
             ] as [string, string, number][]).map(([id, label, count]) => (
-              <div key={id} className={"chip" + (filter === id ? " active" : "")} onClick={() => setFilter(id)}>
-                {label} <span className="chip-count">{count}</span>
-              </div>
+              <Chip key={id} label={label} count={count} active={filter === id} onClick={() => setFilter(id)} />
             ))}
-          </div>
+          </ChipGroup>
         </div>
       </div>
 
-      {/* ── Card grid ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-        {list.map(c => <ClientCard key={c.id} client={c} onClick={() => setSelected(c)} />)}
+      {/* Card grid */}
+      <div className="grid grid-cols-3 gap-3">
+        {list.map(c => (
+          <ClientCard key={c.id} client={c} onClick={() => setSelected(c)} />
+        ))}
       </div>
 
       {selected && <ClientDetail client={selected} onClose={() => setSelected(null)} />}
@@ -65,300 +79,275 @@ export function Clients() {
 
 function ClientCard({ client, onClick }: { client: Client; onClick: () => void }) {
   return (
-    <div className="card" style={{ cursor: "pointer", padding: 18 }} onClick={onClick}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <div className={"av av-" + client.avatar} style={{ width: 48, height: 48, fontSize: 16 }}>
-          {client.name.split(" ").map(x => x[0]).join("").slice(0, 2)}
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left bg-surface border border-border rounded-[18px] p-4.5 cursor-pointer hover:border-ink-3 transition-colors duration-120"
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="w-12 h-12 rounded-full inline-grid place-items-center text-white font-semibold text-[16px] shrink-0"
+          style={{ background: avatarColor(client.avatar) }}
+        >
+          {initials(client.name)}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{client.name}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="font-bold text-[14px]">{client.name}</div>
             {client.vip && (
-              <span style={{ background: "var(--amber)", color: "#fff", padding: "2px 7px", borderRadius: 99, fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}>
+              <span className="inline-flex items-center gap-0.75 text-white text-[10px] font-bold px-1.75 py-0.5 rounded-full bg-amber">
                 <Icon name="star" size={10} /> VIP
               </span>
             )}
           </div>
-          <div style={{ fontSize: 11.5, color: "var(--text-3)", marginTop: 2 }}>
+          <div className="text-[11.5px] text-ink-3 mt-0.5">
             {client.corporate
-              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="briefcase" size={10} /> {client.corporate}</span>
+              ? <span className="inline-flex items-center gap-1"><Icon name="briefcase" size={10} /> {client.corporate}</span>
               : <>{client.country} · {client.idType}</>}
           </div>
         </div>
-        <Icon name="chevronRight" size={16} color="var(--text-3)" />
+        <Icon name="chevronRight" size={16} color="var(--color-ink-3)" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+      <div className="grid grid-cols-3 gap-2.5 mt-3.5 pt-3.5 border-t border-border">
         <div>
-          <div className="text-xs text-muted">Séjours</div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{client.stays}</div>
+          <div className="text-[11px] text-ink-3">Séjours</div>
+          <div className="font-bold text-[15px]">{client.stays}</div>
         </div>
         <div>
-          <div className="text-xs text-muted">Total dépensé</div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--primary)" }}>{(client.totalSpent / 1000).toFixed(0)}k</div>
+          <div className="text-[11px] text-ink-3">Total dépensé</div>
+          <div className="font-bold text-[13px] text-primary">{(client.totalSpent / 1000).toFixed(0)}k</div>
         </div>
         <div>
-          <div className="text-xs text-muted">Dernier séjour</div>
-          <div style={{ fontWeight: 600, fontSize: 12 }}>{client.lastStay ? formatDate(client.lastStay) : "—"}</div>
+          <div className="text-[11px] text-ink-3">Dernier séjour</div>
+          <div className="font-semibold text-[12px]">{client.lastStay ? formatDate(client.lastStay) : "—"}</div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
+
+const PREFERENCES: [boolean, string][] = [
+  [true,  "Chambre haut étage"],
+  [true,  "Vue lagune préférée"],
+  [false, "Lit jumeau"],
+  [true,  "Petit-déjeuner en chambre"],
+  [true,  "Ne pas déranger après 22h"],
+  [false, "Chambre fumeur"],
+];
 
 function ClientDetail({ client, onClose }: { client: Client; onClose: () => void }) {
   const [tab, setTab] = useState("info");
   const clientBookings = BOOKINGS.filter(b => b.guestId === client.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const clientReviews  = (REVIEWS as any[]).filter(r => r.guest === client.name);
+  const clientReviews: Review[] = REVIEWS.filter(r => r.guest === client.name);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 760 }} onClick={e => e.stopPropagation()}>
-
-        {/* ── Dark header ── */}
-        <div style={{
-          padding: "24px 24px 18px",
-          background: client.vip ? "var(--amber)" : "var(--text)",
-          color: "#fff",
-          position: "relative",
-        }}>
-          <button
-            className="btn-icon"
-            style={{ position: "absolute", top: 16, right: 16, background: "rgba(255,255,255,0.2)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}
-            onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      maxWidth={760}
+      footer={
+        <>
+          <Button variant="ghost" size="sm"><Icon name="trash" size={13} /> Supprimer</Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm"><Icon name="send" size={13} /> WhatsApp</Button>
+            <Button variant="primary" size="sm" onClick={onClose}><Icon name="plus" size={13} /> Nouvelle résa</Button>
+          </div>
+        </>
+      }
+    >
+      {/* Bleed header */}
+      <div
+        className="-m-5.5 mb-5 px-6 pt-6 pb-4.5 text-white relative"
+        style={{ background: client.vip ? "var(--color-amber)" : "var(--color-ink)" }}
+      >
+        <button
+          className="absolute top-4 right-4 w-8.5 h-8.5 grid place-items-center rounded-[9px] bg-white/20 border border-white/20 text-white hover:bg-white/30"
+          onClick={onClose}
+          aria-label="Fermer"
+        >
+          <Icon name="x" size={16} />
+        </button>
+        <div className="flex items-center gap-3.5">
+          <div
+            className="w-16 h-16 rounded-full inline-grid place-items-center text-white font-bold text-[22px] shrink-0 shadow-[0_0_0_4px_rgba(255,255,255,0.3)]"
+            style={{ background: avatarColor(client.avatar) }}
           >
-            <Icon name="x" size={16} />
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div className={"av av-" + client.avatar} style={{ width: 64, height: 64, fontSize: 22, boxShadow: "0 0 0 4px rgba(255,255,255,0.3)" }}>
-              {client.name.split(" ").map(x => x[0]).join("").slice(0, 2)}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{client.name}</div>
-              <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                {client.vip      && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="star" size={11} /> Client VIP</span>}
-                {client.corporate && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="briefcase" size={11} /> {client.corporate}</span>}
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="mapPin" size={11} /> {client.country}</span>
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, opacity: 0.85 }}>Total dépensé</div>
-              <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>
-                {(client.totalSpent / 1000).toFixed(0)}k <span style={{ fontSize: 11, opacity: 0.85 }}>FCFA</span>
-              </div>
-              <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>sur {client.stays} séjours</div>
+            {initials(client.name)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[22px] font-bold tracking-[-0.02em]">{client.name}</div>
+            <div className="text-[12px] opacity-90 mt-1 flex gap-3 flex-wrap">
+              {client.vip       && <span className="inline-flex items-center gap-1"><Icon name="star" size={11} /> Client VIP</span>}
+              {client.corporate && <span className="inline-flex items-center gap-1"><Icon name="briefcase" size={11} /> {client.corporate}</span>}
+              <span className="inline-flex items-center gap-1"><Icon name="mapPin" size={11} /> {client.country}</span>
             </div>
           </div>
+          <div className="text-right shrink-0">
+            <div className="text-[11px] opacity-85">Total dépensé</div>
+            <div className="text-[24px] font-extrabold tracking-[-0.02em]">
+              {(client.totalSpent / 1000).toFixed(0)}k <span className="text-[11px] opacity-85">FCFA</span>
+            </div>
+            <div className="text-[11px] opacity-85 mt-0.5">sur {client.stays} séjours</div>
+          </div>
         </div>
+      </div>
 
-        {/* ── Tabs ── */}
-        <div style={{ padding: "0 24px" }}>
-          <div className="tabs-line">
-            {([
-              ["info",    "Informations"],
-              ["history", `Historique · ${client.stays} séjours`],
-              ["reviews", "Avis postés"],
-              ["prefs",   "Préférences & notes"],
-            ] as [string, string][]).map(([id, label]) => (
-              <div key={id} className={"tab" + (tab === id ? " active" : "")} onClick={() => setTab(id)}>{label}</div>
+      {/* Tabs */}
+      <Tabs
+        variant="line"
+        active={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "info",    label: "Informations" },
+          { id: "history", label: `Historique · ${client.stays} séjours` },
+          { id: "reviews", label: "Avis postés" },
+          { id: "prefs",   label: "Préférences & notes" },
+        ]}
+      />
+
+      {/* Info */}
+      {tab === "info" && (
+        <div className="grid grid-cols-2 gap-2">
+          <DetailRow label="Téléphone (WhatsApp)" value={client.phone} action={<Button variant="soft" size="sm"><Icon name="send" size={13} /> Message</Button>} />
+          <DetailRow label="Email" value={client.email} valueClass="text-[13px]" action={<Button variant="icon" size="md"><Icon name="mail" size={14} /></Button>} />
+          <DetailRow label="Pièce d&apos;identité" value={`${client.idType} · ${client.idNumber}`} action={<Button variant="icon" size="md"><Icon name="eye" size={14} /></Button>} />
+          <DetailRow label="Pays / Nationalité" value={client.country} />
+          {client.corporate && (
+            <div className="col-span-2 p-4 bg-surface-2 border border-primary-100 rounded-[14px]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9.5 h-9.5 rounded-[10px] bg-primary text-white grid place-items-center shrink-0">
+                  <Icon name="briefcase" size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-[14px]">{client.corporate}</div>
+                  <div className="text-[11px] text-ink-3">Compte corporate · facturation centralisée</div>
+                </div>
+                <Pill kind="primary" dot>Contrat actif</Pill>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* History */}
+      {tab === "history" && (
+        <div>
+          <div className="grid grid-cols-3 gap-3 mb-3.5">
+            <StatBox label="Séjours total" value={`${client.stays}`} />
+            <StatBox label="Panier moyen" value={`${client.stays > 0 ? Math.round(client.totalSpent / client.stays / 1000) : 0}k`} unit="FCFA" />
+            <StatBox label="Total dépensé" value={`${(client.totalSpent / 1000).toFixed(0)}k`} unit="FCFA" valueClass="text-primary" />
+          </div>
+          {clientBookings.length > 0 ? (
+            <div className="relative pl-5 border-l-2 border-border grid gap-3.5">
+              {clientBookings.map(b => (
+                <div key={b.id} className="relative">
+                  <div className="absolute -left-6.25 top-1 w-2.5 h-2.5 rounded-full border-2 border-primary bg-surface" />
+                  <div className="flex items-center gap-2">
+                    <div className="font-semibold text-[13px]">Chambre {b.room} · {b.roomType} · {b.nights} nuit{b.nights > 1 ? "s" : ""}</div>
+                    <span className="text-[11px] text-ink-3 ml-auto">{formatDate(b.checkin)}</span>
+                  </div>
+                  <div className="text-[11px] text-ink-3">{b.ref} · via {b.source} · {b.payment.toUpperCase()}</div>
+                  <div className="mt-1 font-bold text-primary text-[13px]">{formatFCFA(b.amount)}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon="calendar" title="Aucun séjour enregistré" sub="Les réservations de ce client apparaîtront ici" />
+          )}
+        </div>
+      )}
+
+      {/* Reviews */}
+      {tab === "reviews" && (
+        <div>
+          {clientReviews.length === 0 ? (
+            <EmptyState icon="star" title="Pas encore d'avis posté" sub="Ce client n'a pas encore évalué de séjour via l'app Immo Plus" />
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="text-[13px] text-ink-2">Avis postés via l&apos;app Immo Plus</div>
+                <div className="text-[12px] text-ink-3">
+                  Note moyenne :{" "}
+                  <strong className="text-amber text-[14px]">
+                    {(clientReviews.reduce((s, r) => s + r.overall, 0) / clientReviews.length).toFixed(1)}★
+                  </strong>
+                </div>
+              </div>
+              {clientReviews.map(r => (
+                <div key={r.id} className="p-4 border border-border rounded-xl mb-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <StarRating value={r.overall} size={13} />
+                      <span className="font-bold">{r.overall}/5</span>
+                    </div>
+                    <span className="text-[11px] text-ink-3">{r.date} · {r.roomType}</span>
+                  </div>
+                  <div className="font-bold text-[14px] mb-1">{r.title}</div>
+                  <div className="text-[13px] text-ink-2 leading-normal">{r.text}</div>
+                  {r.reply && (
+                    <div className="mt-2.5 p-2.5 bg-primary-50 rounded-lg text-[12px] border-l-[3px] border-primary">
+                      <div className="text-[10px] font-bold text-primary uppercase tracking-[0.04em] mb-0.75">Votre réponse</div>
+                      {r.reply}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Preferences */}
+      {tab === "prefs" && (
+        <div>
+          <SectionHead icon="star" title="Préférences" />
+          <div className="grid grid-cols-2 gap-2">
+            {PREFERENCES.map(([checked, label], i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-[9px] border ${checked ? "border-primary-100 bg-primary-50" : "border-border bg-surface"}`}
+              >
+                <div className={`w-4.5 h-4.5 rounded-[5px] shrink-0 grid place-items-center text-white border-[1.5px] ${checked ? "bg-ink border-ink" : "bg-white border-border-strong"}`}>
+                  {checked && <Icon name="check" size={12} />}
+                </div>
+                <span className="text-[13px] font-medium">{label}</span>
+              </div>
             ))}
           </div>
-        </div>
-
-        <div className="modal-body" style={{ paddingTop: 4 }}>
-
-          {/* ── Info tab ── */}
-          {tab === "info" && (
-            <div className="grid-2">
-              <div className="row" style={{ margin: 0 }}>
-                <div>
-                  <div className="text-xs text-muted">Téléphone (WhatsApp)</div>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginTop: 2 }}>{client.phone}</div>
-                </div>
-                <button className="btn btn-soft btn-sm"><Icon name="send" size={13} /> Message</button>
+          {client.notes && (
+            <>
+              <div className="h-px bg-border-soft my-4" />
+              <SectionHead icon="fileText" title="Notes équipe" />
+              <div className="px-3.5 py-3 bg-surface-2 rounded-[10px] text-[12.5px] text-ink-2 leading-normal">
+                {client.notes}
               </div>
-              <div className="row" style={{ margin: 0 }}>
-                <div>
-                  <div className="text-xs text-muted">Email</div>
-                  <div style={{ fontWeight: 600, fontSize: 13, marginTop: 2 }}>{client.email}</div>
-                </div>
-                <button className="btn-icon"><Icon name="mail" size={14} /></button>
-              </div>
-              <div className="row" style={{ margin: 0 }}>
-                <div>
-                  <div className="text-xs text-muted">Pièce d&apos;identité</div>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginTop: 2 }}>{client.idType} · {client.idNumber}</div>
-                </div>
-                <button className="btn-icon"><Icon name="eye" size={14} /></button>
-              </div>
-              <div className="row" style={{ margin: 0 }}>
-                <div>
-                  <div className="text-xs text-muted">Pays / Nationalité</div>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginTop: 2 }}>{client.country}</div>
-                </div>
-              </div>
-              {client.corporate && (
-                <div style={{ gridColumn: "span 2", padding: 16, background: "var(--bg)", border: "1px solid var(--primary-100)", borderRadius: 14 }}>
-                  <div className="row-flex" style={{ marginBottom: 10 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--primary)", color: "#fff", display: "grid", placeItems: "center" }}>
-                      <Icon name="briefcase" size={18} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{client.corporate}</div>
-                      <div className="text-xs text-muted">Compte corporate · facturation centralisée</div>
-                    </div>
-                    <Pill kind="primary" dot>Contrat actif</Pill>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── History tab ── */}
-          {tab === "history" && (
-            <div>
-              <div className="grid-3" style={{ marginBottom: 14 }}>
-                <div className="stat" style={{ padding: 14 }}>
-                  <div className="s-label">Séjours total</div>
-                  <div className="s-value" style={{ fontSize: 22 }}>{client.stays}</div>
-                </div>
-                <div className="stat" style={{ padding: 14 }}>
-                  <div className="s-label">Panier moyen</div>
-                  <div className="s-value" style={{ fontSize: 20 }}>
-                    {client.stays > 0 ? Math.round(client.totalSpent / client.stays / 1000) : 0}k
-                    <span className="text-xs text-muted" style={{ marginLeft: 4 }}>FCFA</span>
-                  </div>
-                </div>
-                <div className="stat" style={{ padding: 14 }}>
-                  <div className="s-label">Total dépensé</div>
-                  <div className="s-value" style={{ fontSize: 18, color: "var(--primary)" }}>
-                    {(client.totalSpent / 1000).toFixed(0)}k
-                    <span className="text-xs text-muted" style={{ marginLeft: 4 }}>FCFA</span>
-                  </div>
-                </div>
-              </div>
-              {clientBookings.length > 0 ? (
-                <div className="timeline">
-                  {clientBookings.map(b => (
-                    <div key={b.id} className="timeline-item">
-                      <div className="row-flex" style={{ marginBottom: 2 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>
-                          Chambre {b.room} · {b.roomType} · {b.nights} nuit{b.nights > 1 ? "s" : ""}
-                        </div>
-                        <span className="text-xs text-muted" style={{ marginLeft: "auto" }}>{formatDate(b.checkin)}</span>
-                      </div>
-                      <div className="text-xs text-muted">{b.ref} · via {b.source} · {b.payment.toUpperCase()}</div>
-                      <div style={{ marginTop: 4, fontWeight: 700, color: "var(--primary)", fontSize: 13 }}>{formatFCFA(b.amount)}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty">
-                  <div className="e-icon"><Icon name="calendar" size={24} /></div>
-                  <div className="e-title">Aucun séjour enregistré</div>
-                  <div className="e-sub">Les réservations de ce client apparaîtront ici</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Reviews tab ── */}
-          {tab === "reviews" && (
-            <div>
-              {clientReviews.length === 0 ? (
-                <div className="empty">
-                  <div className="e-icon"><Icon name="star" size={24} /></div>
-                  <div className="e-title">Pas encore d&apos;avis posté</div>
-                  <div className="e-sub">Ce client n&apos;a pas encore évalué de séjour via l&apos;app Immo Plus</div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div className="text-sm" style={{ color: "var(--text-2)" }}>Avis postés via l&apos;app Immo Plus</div>
-                    <div style={{ fontSize: 12, color: "var(--text-3)" }}>
-                      Note moyenne :{" "}
-                      <strong style={{ color: "var(--amber)", fontSize: 14 }}>
-                        {(clientReviews.reduce((s: number, r: { overall: number }) => s + r.overall, 0) / clientReviews.length).toFixed(1)}★
-                      </strong>
-                    </div>
-                  </div>
-                  {clientReviews.map((r: { id: string; overall: number; date: string; roomType: string; title: string; text: string; reply?: string }) => (
-                    <div key={r.id} style={{ padding: 16, border: "1px solid var(--border)", borderRadius: 12, marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <StarRating value={r.overall} size={13} />
-                          <span style={{ fontWeight: 700 }}>{r.overall}/5</span>
-                        </div>
-                        <span className="text-xs text-muted">{r.date} · {r.roomType}</span>
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{r.title}</div>
-                      <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}>{r.text}</div>
-                      {r.reply && (
-                        <div style={{ marginTop: 10, padding: 10, background: "var(--primary-50)", borderRadius: 8, fontSize: 12, borderLeft: "3px solid var(--primary)" }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>Votre réponse</div>
-                          {r.reply}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ── Preferences tab ── */}
-          {tab === "prefs" && (
-            <div>
-              <SectionHead icon="star" title="Préférences" />
-              <div className="grid-2">
-                {([
-                  [true,  "Chambre haut étage"],
-                  [true,  "Vue lagune préférée"],
-                  [false, "Lit jumeau"],
-                  [true,  "Petit-déjeuner en chambre"],
-                  [true,  "Ne pas déranger après 22h"],
-                  [false, "Chambre fumeur"],
-                ] as [boolean, string][]).map(([checked, label], i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 12px",
-                    border: "1px solid " + (checked ? "var(--primary-100)" : "var(--border)"),
-                    borderRadius: 9,
-                    background: checked ? "var(--primary-50)" : "var(--surface)",
-                  }}>
-                    <div style={{
-                      width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                      background: checked ? "var(--text)" : "#fff",
-                      border: "1.5px solid " + (checked ? "var(--text)" : "var(--border-strong)"),
-                      display: "grid", placeItems: "center", color: "#fff",
-                    }}>
-                      {checked && <Icon name="check" size={12} />}
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
-                  </div>
-                ))}
-              </div>
-              {client.notes && (
-                <>
-                  <div className="divider" />
-                  <SectionHead icon="fileText" title="Notes équipe" />
-                  <div style={{ padding: "12px 14px", background: "var(--bg-2)", borderRadius: 10, fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.5 }}>
-                    {client.notes}
-                  </div>
-                </>
-              )}
-            </div>
+            </>
           )}
         </div>
+      )}
+    </Modal>
+  );
+}
 
-        <div className="modal-foot">
-          <button className="btn btn-ghost btn-sm"><Icon name="trash" size={13} /> Supprimer</button>
-          <div className="row-flex">
-            <button className="btn btn-ghost btn-sm"><Icon name="send" size={13} /> WhatsApp</button>
-            <button className="btn btn-primary btn-sm" onClick={onClose}><Icon name="plus" size={13} /> Nouvelle résa</button>
-          </div>
-        </div>
+function DetailRow({ label, value, valueClass, action }: { label: string; value: string; valueClass?: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border border-border rounded-[10px]">
+      <div className="min-w-0">
+        <div className="text-[11px] text-ink-3">{label}</div>
+        <div className={`font-semibold mt-0.5 ${valueClass ?? "text-[14px]"}`}>{value}</div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function StatBox({ label, value, unit, valueClass }: { label: string; value: string; unit?: string; valueClass?: string }) {
+  return (
+    <div className="px-3.5 py-3 bg-surface-2 border border-border rounded-xl">
+      <div className="text-[11px] text-ink-3 font-medium">{label}</div>
+      <div className={`font-bold text-[20px] tracking-[-0.02em] ${valueClass ?? ""}`}>
+        {value}{unit && <span className="text-[11px] text-ink-3 ml-1 font-normal">{unit}</span>}
       </div>
     </div>
   );

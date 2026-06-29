@@ -13,8 +13,10 @@ export interface HotelState {
   type: string;
   stars: number;
   address: string;
-  commune: string;
-  city: string;
+  villeId: string | null;
+  villeName: string;
+  communeId: string | null;
+  communeName: string;
   phone: string;
   email: string;
   website: string;
@@ -26,10 +28,10 @@ export interface HotelState {
   shortDesc: string;
   longDesc: string;
   strengths: string[];
-  coverPhoto: boolean;
-  galleryCount: number;
-  hasVideo: boolean;
-  hasDrone: boolean;
+  coverFileId: string | null;
+  galleryFileIds: string[];
+  videoFileId: string | null;
+  droneVideoFileId: string | null;
   lat: number;
   lng: number;
 }
@@ -55,7 +57,6 @@ export interface RoomType {
   name: string;
   totalRooms: number;
   surface: number | string;
-  floors: string;
   bedType: string;
   bedCount: number;
   maxOccupancy: number;
@@ -63,22 +64,38 @@ export interface RoomType {
   weekendPrice: number | string;
   longStayPrice: number | string;
   breakfastOption: "included" | "available" | "not_available";
-  photos: number;
-  hasVideo: boolean;
-  view: string;
-  cover: string;
+  imageIds: string[];
+  amenities: string[];
   complete: boolean;
   isNew?: boolean;
 }
 
+export type SpaceKey = "restaurant" | "bar" | "pool" | "gym" | "spa" | "conference" | "outdoor";
+
+interface ValueAddBase {
+  configured: boolean;
+  isOpenToPublic: boolean;
+  imageIds: string[];
+}
+
+export interface CustomSpace {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  isOpenToPublic: boolean;
+  imageIds: string[];
+}
+
 export interface ValueAddsState {
-  restaurant: { configured: boolean; name?: string; cuisine?: string; priceAvg?: number };
-  bar: { configured: boolean; name?: string; type?: string };
-  pool: { configured: boolean; type?: string };
-  gym: { configured: boolean };
-  spa: { configured: boolean };
-  conference: { configured: boolean; rooms?: number; capacity?: number };
-  outdoor: { configured: boolean };
+  restaurant: ValueAddBase & { name?: string; cuisine?: string; priceAvg?: number; capacity?: string };
+  bar:        ValueAddBase & { name?: string; type?: string };
+  pool:       ValueAddBase & { type?: string; depth?: number };
+  gym:        ValueAddBase & { description?: string; hours?: string };
+  spa:        ValueAddBase & { description?: string; hours?: string };
+  conference: ValueAddBase & { rooms?: number; capacity?: number; description?: string; hours?: string };
+  outdoor:    ValueAddBase & { description?: string; hours?: string };
+  customSpaces: CustomSpace[];
 }
 
 export interface ServicesState {
@@ -114,7 +131,10 @@ export interface InscriptionState {
   pricing: PricingState;
 }
 
-export type UpdateFn = <K extends keyof InscriptionState>(key: K, value: InscriptionState[K]) => void;
+export type UpdateFn = <K extends keyof InscriptionState>(
+  key: K,
+  value: InscriptionState[K] | ((prev: InscriptionState[K]) => InscriptionState[K]),
+) => void;
 
 export interface StepProps {
   state: InscriptionState;

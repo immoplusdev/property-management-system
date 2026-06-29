@@ -6,14 +6,20 @@ import { TextField, SelectField, Field } from "../ui/FormFields";
 import { Pill } from "../ui/Pill";
 import { Fcfa } from "../ui/Fcfa";
 import { Icon } from "../ui/Icon";
+import { PageHead } from "../ui/PageHead";
+import { InsCard } from "../ui/InsCard";
+import { Tip } from "../ui/Tip";
+import { Btn } from "../ui/Btn";
+import { InsModal } from "../ui/InsModal";
+import { PhotoGallery } from "../ui/PhotoGallery";
+import { RadioMark } from "../ui/RadioMark";
 
-const COVER_IMAGES: Record<string, string> = {
-  "rt-cover-1": "https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&q=80",
-  "rt-cover-2": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
-  "rt-cover-3": "https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=800&q=80",
-  "rt-cover-4": "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80",
-};
-const COVERS = Object.keys(COVER_IMAGES);
+const CARD_COLORS = [
+  { bg: "var(--primary-50)", fg: "var(--primary)" },
+  { bg: "var(--violet-bg)",  fg: "var(--violet)" },
+  { bg: "var(--teal-bg)",    fg: "var(--teal)" },
+  { bg: "var(--amber-bg)",   fg: "var(--amber)" },
+];
 
 const BREAKFAST_LABELS: Record<RoomType["breakfastOption"], string> = {
   included:      "Inclus",
@@ -21,71 +27,95 @@ const BREAKFAST_LABELS: Record<RoomType["breakfastOption"], string> = {
   not_available: "Non disponible",
 };
 
-function Tip({ children }: { children: React.ReactNode }) {
+function RoomCard({ room, idx, onEdit, onRemove }: {
+  room: RoomType; idx: number; onEdit: () => void; onRemove: () => void;
+}) {
+  const c = CARD_COLORS[idx % 4];
   return (
-    <div className="step4-tip">
-      <div className="step4-tip-dot"><Icon name="sparkles" size={12} /></div>
-      <p className="step4-tip-text">{children}</p>
+    <div className="rounded-[20px] bg-surface overflow-hidden shadow-card transition-[transform,box-shadow] duration-220 hover:shadow-card-hover hover:-translate-y-0.75 flex flex-col">
+      <div
+        className="relative h-36 flex flex-col items-center justify-center gap-1.5 shrink-0"
+        style={{ background: c.bg, color: c.fg }}
+      >
+        <Icon name="bed" size={38} />
+        {room.bedType && (
+          <div className="text-[10.5px] font-bold tracking-wider uppercase" style={{ opacity: 0.55 }}>
+            {room.bedType}
+          </div>
+        )}
+        <div className="absolute top-2.5 left-2.5">
+          <Pill kind={room.complete ? "success" : "warn"} dot>
+            {room.complete ? "Complet" : "À compléter"}
+          </Pill>
+        </div>
+        {room.imageIds.length > 0 && (
+          <div className="absolute top-2.5 right-2.5 rounded-lg px-1.5 py-0.75 text-[10px] font-semibold flex items-center gap-1" style={{ background: "rgba(0,0,0,0.15)" }}>
+            <Icon name="image" size={11} /> {room.imageIds.length}
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 bg-surface flex flex-col flex-1">
+        <div className="flex justify-between items-start gap-2">
+          <div className="text-[14.5px] font-bold tracking-[-0.015em] leading-snug">{room.name}</div>
+          <div className="text-right shrink-0 text-[15px] font-bold text-ink tabular-nums">
+            <Fcfa value={room.basePrice} />
+            <span className="block text-[9.5px] text-ink-3 font-semibold uppercase tracking-wider mt-0.5">/nuit</span>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-ink-2 mt-2 flex items-center gap-1.5 flex-wrap">
+          <span className="flex items-center gap-0.75"><Icon name="users" size={12} /> ×{room.maxOccupancy}</span>
+          {room.surface !== "" && room.surface !== 0 && (
+            <>
+              <span className="text-ink-4">·</span>
+              <span>{room.surface} m²</span>
+            </>
+          )}
+          {Number(room.totalRooms) > 0 && (
+            <>
+              <span className="text-ink-4">·</span>
+              <span>{room.totalRooms} ch.</span>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-1.25 mt-auto pt-2 mb-2.5">
+          <span className="text-[9px] font-semibold px-1.5 py-0.75 bg-surface-2 rounded-sm text-ink-2 uppercase tracking-wider">
+            {BREAKFAST_LABELS[room.breakfastOption]}
+          </span>
+        </div>
+
+        <div className="flex gap-1.5 pt-2.5 border-t border-border-soft">
+          <Btn variant="ghost" size="sm" className="flex-1 h-7 text-[11.5px] justify-center" onClick={onEdit}>
+            <Icon name="edit" size={13} /> Modifier
+          </Btn>
+          <Btn variant="icon" size="sm" className="w-7 h-7" onClick={onRemove} aria-label="Supprimer">
+            <Icon name="trash" size={13} />
+          </Btn>
+        </div>
+      </div>
     </div>
   );
 }
 
-function RoomCard({ room, onEdit, onRemove }: { room: RoomType; onEdit: () => void; onRemove: () => void }) {
-  const bgImage = COVER_IMAGES[room.cover] || COVER_IMAGES["rt-cover-1"];
+function RadioCard({ checked, title, sub, onClick }: {
+  checked: boolean; title: string; sub: string; onClick: () => void;
+}) {
   return (
-    <div className="rt-card">
-      <div className="rt-cover" style={{ backgroundImage: `url('${bgImage}')`, backgroundSize: "cover", backgroundPosition: "center" }}>
-        <div style={{ position: "absolute", top: 10, left: 10, right: 10, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Pill kind={room.complete ? "success" : "warn"} dot>
-            {room.complete ? "Complet" : "À compléter"}
-          </Pill>
-          <div style={{ display: "flex", gap: 4 }}>
-            {room.hasVideo && (
-              <div style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", borderRadius: 8, padding: "3px 6px", color: "#fff", display: "flex", alignItems: "center" }}>
-                <Icon name="video" size={11} />
-              </div>
-            )}
-            <div style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", borderRadius: 8, padding: "3px 6px", color: "#fff", fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-              <Icon name="image" size={11} /> {room.photos}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rt-body">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-          <div className="rt-name">{room.name}</div>
-          <div className="rt-price" style={{ textAlign: "right", flexShrink: 0 }}>
-            <Fcfa value={room.basePrice} />
-            <span style={{ fontSize: 9.5, color: "var(--text-3)", display: "block", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 2 }}>/nuit</span>
-          </div>
-        </div>
-
-        <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Icon name="bed" size={12} /> {room.bedType.split(" ")[0]}</span>
-          <span style={{ color: "var(--text-4)" }}>·</span>
-          <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Icon name="users" size={12} /> ×{room.maxOccupancy}</span>
-          <span style={{ color: "var(--text-4)" }}>·</span>
-          <span>{room.surface} m²</span>
-        </div>
-
-        <div className="rt-feats" style={{ marginTop: "auto", marginBottom: 10 }}>
-          <span className="rt-feat">{BREAKFAST_LABELS[room.breakfastOption]}</span>
-        </div>
-
-        <div style={{ display: "flex", gap: 6, paddingTop: 10, borderTop: "1px solid var(--border-soft)" }}>
-          <button className="btn btn-ghost btn-sm" style={{ flex: 1, height: 28, fontSize: 11.5, justifyContent: "center" }} onClick={onEdit}>
-            <Icon name="edit" size={13} /> Modifier
-          </button>
-          <button className="btn-icon" style={{ width: 28, height: 28 }} onClick={onRemove} title="Supprimer">
-            <Icon name="trash" size={13} />
-          </button>
-          <button className="btn-icon" style={{ width: 28, height: 28 }} title="Calendrier">
-            <Icon name="calendar" size={13} />
-          </button>
-        </div>
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative text-left border-[1.5px] rounded-2xl p-4 cursor-pointer transition-all duration-220 active:scale-[0.99] ${
+        checked
+          ? "border-primary-200 bg-primary-50"
+          : "border-border bg-surface hover:border-border-strong hover:bg-surface-2 hover:-translate-y-px hover:shadow-sm"
+      }`}
+    >
+      <RadioMark checked={checked} className="absolute top-3.5 right-3.5" />
+      <div className="font-semibold text-[13px] pr-6">{title}</div>
+      <div className="text-[11px] text-ink-3 mt-0.5">{sub}</div>
+    </button>
   );
 }
 
@@ -97,88 +127,154 @@ function RoomModal({ room, setRoom, onSave, onClose }: {
 }) {
   const set = <K extends keyof RoomType>(k: K, v: RoomType[K]) => setRoom({ ...room, [k]: v });
 
+  const BREAKFAST_SUB: Record<RoomType["breakfastOption"], string> = {
+    included:      "Inclus dans la nuitée",
+    available:     "+ 4 000 FCFA / pers.",
+    not_available: "Non proposé",
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <div>
-            <div style={{ fontSize: 12, color: "var(--primary)", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-              {room.isNew ? "Nouveau type" : "Modifier le type"}
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{room.name || "Sans nom"}</div>
-          </div>
-          <button className="btn-icon" onClick={onClose}><Icon name="x" size={16} /></button>
-        </div>
+    <InsModal
+      eyebrow={room.isNew ? "Nouveau type de chambre" : "Modifier le type"}
+      title={room.name || "Nouveau type de chambre"}
+      onClose={onClose}
+      footer={
+        <>
+          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
+          <Btn variant="primary" onClick={onSave}>
+            <Icon name="check" size={15} />
+            {room.isNew ? "Ajouter le type" : "Enregistrer"}
+          </Btn>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5">
 
-        <div className="modal-body">
+        {/* Identification */}
+        <div>
           <SectionHead icon="bed" title="Identification" />
-          <div className="grid-2">
-            <TextField label="Nom du type" required value={room.name} onChange={(e) => set("name", e.target.value)} placeholder="Ex: Suite Junior Vue Lagune" span={2} />
-            <TextField label="Nombre de chambres" required type="number" value={String(room.totalRooms)} onChange={(e) => set("totalRooms", Number(e.target.value))} />
-            <TextField label="Surface (m²)" type="number" value={String(room.surface)} onChange={(e) => set("surface", e.target.value)} />
-            {/* Étage(s) — non supporté par l'API pour l'instant
-            <TextField label="Étage(s)" value={room.floors} onChange={(e) => set("floors", e.target.value)} placeholder="Ex: 2 → 4" />
-            */}
-            {/* Vue — non supporté par l'API pour l'instant
-            <SelectField label="Vue" value={room.view} onChange={(e) => set("view", e.target.value)}
-              options={["Lagune", "Mer", "Jardin", "Piscine", "Ville", "Panoramique", "Intérieure"]} />
-            */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TextField
+              label="Nom du type" required
+              value={room.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Ex: Suite Junior Vue Lagune"
+              span={2}
+            />
+            <TextField
+              label="Nombre de chambres" required
+              type="number"
+              value={String(room.totalRooms || "")}
+              onChange={(e) => set("totalRooms", Number(e.target.value))}
+              placeholder="10"
+            />
+            <TextField
+              label="Surface (m²)"
+              type="number"
+              value={String(room.surface || "")}
+              onChange={(e) => set("surface", e.target.value)}
+              placeholder="22"
+            />
           </div>
+        </div>
 
-          <hr className="divider" />
+        <hr className="border-0 border-t border-border" />
+
+        {/* Configuration du lit */}
+        <div>
           <SectionHead icon="bed" title="Configuration du lit" />
-          <div className="grid-3">
-            <SelectField label="Type de lit" value={room.bedType} onChange={(e) => set("bedType", e.target.value)}
-              options={["Grand lit (King)", "Grand lit (Queen)", "Lits jumeaux", "Lit simple", "Lits superposés"]} />
-            <TextField label="Nombre de lits" type="number" value={String(room.bedCount)} onChange={(e) => set("bedCount", Number(e.target.value))} />
-            <TextField label="Capacité max (pers.)" type="number" value={String(room.maxOccupancy)} onChange={(e) => set("maxOccupancy", Number(e.target.value))} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            <SelectField
+              label="Type de lit"
+              value={room.bedType}
+              onChange={(e) => set("bedType", e.target.value)}
+              options={[
+                { value: "",                        label: "Sélectionner…" },
+                { value: "Grand lit (King)",         label: "Grand lit (King)" },
+                { value: "Grand lit (Queen)",        label: "Grand lit (Queen)" },
+                { value: "Lits jumeaux",             label: "Lits jumeaux" },
+                { value: "Lit simple",               label: "Lit simple" },
+                { value: "Lits superposés",          label: "Lits superposés" },
+                { value: "Canapé-lit",               label: "Canapé-lit" },
+              ]}
+            />
+            <TextField
+              label="Nombre de lits"
+              type="number"
+              value={String(room.bedCount || "")}
+              onChange={(e) => set("bedCount", Number(e.target.value))}
+              placeholder="1"
+            />
+            <TextField
+              label="Capacité max (pers.)"
+              type="number"
+              value={String(room.maxOccupancy || "")}
+              onChange={(e) => set("maxOccupancy", Number(e.target.value))}
+              placeholder="2"
+            />
           </div>
+        </div>
 
-          <hr className="divider" />
+        <hr className="border-0 border-t border-border" />
+
+        {/* Tarification */}
+        <div>
           <SectionHead icon="moneyBill" title="Tarification" />
-          <div className="grid-3">
-            <TextField label="Prix / nuit (FCFA)" required type="number" value={String(room.basePrice)} onChange={(e) => set("basePrice", Number(e.target.value))} />
-            <TextField label="Prix week-end (FCFA)" type="number" value={String(room.weekendPrice)} onChange={(e) => set("weekendPrice", Number(e.target.value))} hint="Si différent" />
-            <TextField label="Longue durée (FCFA)" type="number" value={String(room.longStayPrice)} onChange={(e) => set("longStayPrice", Number(e.target.value))} hint="À partir de 7 nuits" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            <TextField
+              label="Prix / nuit (FCFA)" required
+              type="number"
+              value={String(room.basePrice || "")}
+              onChange={(e) => set("basePrice", Number(e.target.value))}
+              placeholder="35 000"
+            />
+            <TextField
+              label="Prix week-end (FCFA)"
+              type="number"
+              value={String(room.weekendPrice || "")}
+              onChange={(e) => set("weekendPrice", e.target.value)}
+              hint="Si différent du prix standard"
+              placeholder="40 000"
+            />
+            <TextField
+              label="Longue durée (FCFA)"
+              type="number"
+              value={String(room.longStayPrice || "")}
+              onChange={(e) => set("longStayPrice", e.target.value)}
+              hint="À partir de 7 nuits"
+              placeholder="30 000"
+            />
           </div>
 
-          <div className="mt-md">
-            <Field label="Petit-déjeuner">
-              <div className="grid-3" style={{ marginTop: 6 }}>
-                {(["included", "available", "not_available"] as const).map((opt) => (
-                  <div key={opt} className={`radio-card${room.breakfastOption === opt ? " checked" : ""}`} onClick={() => set("breakfastOption", opt)}>
-                    <div className="rc-mark" />
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{BREAKFAST_LABELS[opt]}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
-                      {opt === "included"      && "Inclus dans la nuitée"}
-                      {opt === "available"     && "+ 4 000 FCFA / pers."}
-                      {opt === "not_available" && "Non proposé"}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Field>
-          </div>
-
-          <hr className="divider" />
-          <SectionHead icon="image" title="Photos & médias" />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0" }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{room.photos} photo(s) uploadée(s)</div>
-              <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Minimum 4 photos par type recommandé</div>
+          <Field label="Petit-déjeuner" className="mt-4.5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-1.5">
+              {(["included", "available", "not_available"] as const).map((opt) => (
+                <RadioCard
+                  key={opt}
+                  checked={room.breakfastOption === opt}
+                  title={BREAKFAST_LABELS[opt]}
+                  sub={BREAKFAST_SUB[opt]}
+                  onClick={() => set("breakfastOption", opt)}
+                />
+              ))}
             </div>
-            <button className="btn btn-ghost btn-sm"><Icon name="upload" size={13} /> Ajouter des photos</button>
-          </div>
+          </Field>
         </div>
 
-        <div className="modal-foot">
-          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-          <button className="btn btn-primary" onClick={onSave}>
-            <Icon name="check" size={15} /> {room.isNew ? "Ajouter le type" : "Enregistrer"}
-          </button>
+        <hr className="border-0 border-t border-border" />
+
+        {/* Photos */}
+        <div>
+          <SectionHead icon="image" title="Photos de la chambre" />
+          <PhotoGallery
+            imageIds={room.imageIds}
+            onChange={(ids) => set("imageIds", ids)}
+            hint="Minimum 4 photos recommandées par type de chambre"
+          />
         </div>
+
       </div>
-    </div>
+    </InsModal>
   );
 }
 
@@ -194,21 +290,29 @@ export function Step4({ state, update }: StepProps) {
   const openNew = () =>
     setEditing({
       id: "rt-" + Date.now(),
-      name: "", totalRooms: 1, surface: "", floors: "",
-      bedType: "Grand lit (Queen)", bedCount: 1, maxOccupancy: 2,
-      basePrice: 35000, weekendPrice: "", longStayPrice: "",
-      breakfastOption: "included", photos: 0, hasVideo: false,
-      view: "Jardin",
-      complete: false, cover: COVERS[rooms.length % 4],
+      name: "",
+      totalRooms: 0,
+      surface: "",
+      bedType: "",
+      bedCount: 1,
+      maxOccupancy: 2,
+      basePrice: 0,
+      weekendPrice: "",
+      longStayPrice: "",
+      breakfastOption: "not_available",
+      imageIds: [],
+      amenities: [],
+      complete: false,
       isNew: true,
     });
 
   const save = () => {
     if (!editing) return;
+    const complete = !!editing.name && editing.basePrice > 0;
     if (editing.isNew) {
-      update("roomTypes", [...rooms, { ...editing, complete: true, isNew: false }]);
+      update("roomTypes", [...rooms, { ...editing, complete, isNew: false }]);
     } else {
-      update("roomTypes", rooms.map((r) => (r.id === editing.id ? editing : r)));
+      update("roomTypes", rooms.map((r) => r.id === editing.id ? { ...editing, complete } : r));
     }
     setEditing(null);
   };
@@ -216,79 +320,88 @@ export function Step4({ state, update }: StepProps) {
   const remove = (id: string) => update("roomTypes", rooms.filter((r) => r.id !== id));
 
   const stats = [
-    { icon: "layers",     color: "primary-50", col: "primary", val: rooms.length,                                  label: "Types de chambres" },
-    { icon: "bed",        color: "violet-bg",  col: "violet",  val: totalRooms,                                    label: "Chambres au total" },
-    { icon: "moneyBill",  color: "teal-bg",    col: "teal",    val: <Fcfa value={avgPrice} />,                     label: "Prix moyen / nuit" },
-    { icon: "image",      color: "amber-bg",   col: "amber",   val: rooms.reduce((s, r) => s + r.photos, 0),      label: "Photos uploadées" },
+    { icon: "layers",    color: "primary-50", col: "primary", val: rooms.length,                                  label: "Types de chambres" },
+    { icon: "bed",       color: "violet-bg",  col: "violet",  val: totalRooms,                                    label: "Chambres au total" },
+    { icon: "moneyBill", color: "teal-bg",    col: "teal",    val: <Fcfa value={avgPrice} />,                     label: "Prix moyen / nuit" },
+    { icon: "image",     color: "amber-bg",   col: "amber",   val: rooms.reduce((s, r) => s + r.imageIds.length, 0), label: "Photos uploadées" },
   ] as const;
 
   return (
-    <div className="step4-shell fade-in">
+    <div className="flex flex-col gap-5 animate-insc-fade">
 
-      {/* ── En-tête + bouton ── */}
-      <div className="step4-page-head">
-        <div>
-          <div className="page-eyebrow">Étape 4 sur 7 — cœur du flow</div>
-          <h1 className="page-title">Vos types de chambres</h1>
-          <p className="page-desc">
-            Chaque « type » est une entité indépendante avec ses propres prix, photos et calendrier.
-            Un hôtel de 30 chambres avec 4 types remplit ce formulaire 4 fois.
-          </p>
-        </div>
-        <button className="btn btn-primary step4-add-btn" onClick={openNew}>
+      <div className="flex items-end justify-between gap-6">
+        <PageHead
+          eyebrow="Étape 4 sur 7 — cœur du flow"
+          title="Vos types de chambres"
+          desc="Chaque « type » est une entité indépendante avec ses propres prix, photos et calendrier. Un hôtel de 30 chambres avec 4 types remplit ce formulaire 4 fois."
+        />
+        <Btn variant="primary" className="shrink-0" onClick={openNew}>
           <Icon name="plus" size={16} /> Ajouter un type
-        </button>
+        </Btn>
       </div>
 
-      {/* ── Stats ── */}
-      <section className="card step4-card step4-stats-card">
-        <div className="step4-stats-row">
+      {/* Stats */}
+      <InsCard flat className="p-0! overflow-hidden">
+        <div className="flex items-stretch">
           {stats.map((s) => (
-            <div key={s.label} className="step4-stat">
-              <div className="step4-stat-icon" style={{ background: `var(--${s.color})`, color: `var(--${s.col})` }}>
+            <div key={s.label} className="flex-1 px-6 py-5.5 border-r border-border last:border-r-0 flex flex-col gap-2">
+              <div
+                className="w-8.5 h-8.5 rounded-xl grid place-items-center shrink-0"
+                style={{ background: `var(--${s.color})`, color: `var(--${s.col})` }}
+              >
                 <Icon name={s.icon} size={16} />
               </div>
-              <div className="step4-stat-value">{s.val}</div>
-              <div className="step4-stat-label">{s.label}</div>
+              <div className="text-[26px] font-extrabold tracking-tighter tabular-nums leading-none text-ink">{s.val}</div>
+              <div className="text-[11.5px] text-ink-3 font-medium">{s.label}</div>
             </div>
           ))}
         </div>
-      </section>
+      </InsCard>
 
       <Tip>Nommez vos types avec le lit + la vue : <strong>«&nbsp;Suite King Lagune&nbsp;»</strong> convertit 2× mieux que «&nbsp;Suite Deluxe&nbsp;».</Tip>
 
-      {/* ── Grille ── */}
-      <div className="step4-rooms-grid">
-        {rooms.map((r) => (
-          <RoomCard key={r.id} room={r} onEdit={() => setEditing(r)} onRemove={() => remove(r.id)} />
+      {/* Grille */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {rooms.map((r, idx) => (
+          <RoomCard
+            key={r.id}
+            room={r}
+            idx={idx}
+            onEdit={() => setEditing({ ...r })}
+            onRemove={() => remove(r.id)}
+          />
         ))}
-        <button className="step4-add-card" onClick={openNew}>
-          <div className="step4-add-icon">
+        <button
+          type="button"
+          onClick={openNew}
+          className="group border-[1.5px] border-dashed border-border-strong rounded-[20px] bg-surface flex flex-col items-center justify-center gap-3.5 min-h-70 cursor-pointer transition-colors duration-150 p-7 text-center hover:border-primary hover:bg-primary-50"
+        >
+          <div className="w-13 h-13 rounded-full bg-surface-2 text-ink-2 grid place-items-center transition-colors duration-150 group-hover:bg-primary group-hover:text-white">
             <Icon name="plus" size={22} />
           </div>
-          <div className="step4-add-label">Ajouter un type de chambre</div>
-          <div className="step4-add-sub">Suite Junior, Familiale, Communicante, Dortoir…</div>
+          <div className="font-bold text-[14px] text-ink transition-colors duration-150 group-hover:text-primary">
+            Ajouter un type de chambre
+          </div>
+          <div className="text-[12px] text-ink-3 leading-normal">
+            Suite Junior, Familiale, Communicante, Dortoir…
+          </div>
         </button>
       </div>
 
-      {/* ── Card astuce calendrier ── */}
-      <section className="card step4-card step4-cal-card">
-        <div className="step4-cal-head">
-          <div className="step4-cal-icon">
+      <InsCard flat className="flex flex-col gap-4 px-6 py-5.5">
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 w-11 h-11 rounded-xl bg-amber-bg text-amber grid place-items-center">
             <Icon name="calendar" size={20} />
           </div>
-          <div className="step4-cal-text">
-            <div className="step4-cal-title">Pensez à charger un calendrier par type de chambre</div>
-            <div className="step4-cal-sub">
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-[14px] text-ink">Pensez à charger un calendrier par type de chambre</div>
+            <div className="text-[12.5px] text-ink-3 mt-0.75 leading-normal">
               Pour chaque type, vous pourrez bloquer des dates indisponibles directement depuis le tableau de bord PMS.
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" style={{ flexShrink: 0 }}>
-            <Icon name="calendar" size={14} /> Voir le planning
-          </button>
         </div>
         <Tip>Un prix week-end <strong>+15%</strong> est standard pour les hôtels urbains en Côte d&apos;Ivoire — activez-le dans chaque type de chambre.</Tip>
-      </section>
+      </InsCard>
 
       {editing && (
         <RoomModal

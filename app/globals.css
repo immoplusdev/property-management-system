@@ -1,26 +1,233 @@
 @import "tailwindcss";
 
+/* ══════════════════════════════════════════════
+   Immo Plus — Design Tokens 2026
+   3-level: Primitives → Semantic → Component
+   ══════════════════════════════════════════════ */
+@theme {
+  /* ── Fonts ── */
+  --font-sans: var(--font-geist-sans, "Geist", "Inter", -apple-system, sans-serif);
+  --font-mono: var(--font-geist-mono, "Geist Mono", "SF Mono", monospace);
+
+  /* ── Brand / Primary ── */
+  --color-primary:     #2744DE;
+  --color-primary-600: #1D36C0;
+  --color-primary-700: #1729A3;
+  --color-primary-50:  #EEF1FE;
+  --color-primary-100: #DDE2FD;
+  --color-primary-200: #BFC8FB;
+
+  /* ── Neutral — Ink ── */
+  --color-black:  #000000;
+  --color-dark:   #0A0A0A;
+  --color-ink:    #12131A;
+  --color-ink-2:  #494C57;
+  --color-ink-3:  #888B96;
+  --color-ink-4:  #B4B6C0;
+
+  /* ── Surface ── */
+  --color-surface:   #FFFFFF;
+  --color-surface-2: #F4F5F8;
+
+  /* ── Border ── */
+  --color-border:        #E8E9EE;
+  --color-border-soft:   #F1F1F5;
+  --color-border-strong: #C8C8E0;
+
+  /* ── Semantic — Status ── */
+  --color-success:    #1F8A5B;
+  --color-success-bg: #E8F4EE;
+  --color-warn:       #B86B0A;
+  --color-warn-bg:    #FBF1DE;
+  --color-danger:     #C13838;
+  --color-danger-bg:  #FBE7E5;
+
+  /* ── Semantic — Accent ── */
+  --color-violet:    #6240E0;
+  --color-violet-bg: #ECE8FB;
+  --color-teal:      #0E8E8E;
+  --color-teal-bg:   #E2F0EF;
+  --color-amber:     #C28100;
+  --color-amber-bg:  #FBEFCE;
+  --color-coral:     #E07A4A;
+  --color-coral-bg:  #FBEEE6;
+  --color-pink:      #BC3679;
+  --color-pink-bg:   #F8E3ED;
+
+  /* ── Shadows ── */
+  --shadow-xs: 0 1px 2px rgba(18, 19, 26, 0.04);
+  --shadow-sm: 0 1px 2px rgba(18, 19, 26, 0.04);
+  --shadow-md: 0 4px 16px rgba(18, 19, 26, 0.06);
+  --shadow-lg: 0 14px 44px rgba(18, 19, 26, 0.10);
+  --shadow-xl: 0 26px 70px rgba(18, 19, 26, 0.14);
+
+  /* ── Inscription card shadows (Phase 4) ── */
+  --shadow-card:       0 0 0 1px rgba(10,10,15,0.06), 0 2px 8px rgba(10,10,4,0.05), 0 8px 24px rgba(10,10,4,0.05), inset 0 1px 0 #fff;
+  --shadow-card-hover: 0 0 0 1px rgba(10,10,15,0.08), 0 4px 16px rgba(10,10,4,0.08), 0 20px 48px rgba(10,10,4,0.10), inset 0 1px 0 #fff;
+
+  /* ── Entry animations ── */
+  --animate-fade-in:  fade-in 0.16s ease both;
+  --animate-slide-up: slide-up 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  /* ── PMS animations (Phase 3) ── */
+  --animate-pms-fade:     pms-fade 0.15s ease both;
+  --animate-pms-slide-up: pms-slide-up 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pms-slide-in: pms-slide-in 0.2s ease both;
+  --animate-pms-fade-up:  pms-fade-up 0.2s ease both;
+
+  /* ── Inscription animations (Phase 4) ── */
+  --animate-insc-fade:        insc-fade 0.3s ease both;
+  --animate-insc-fade-up:     insc-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-insc-slide-up:    insc-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-insc-step-enter:  insc-step-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-insc-pulse:       insc-pulse 1.4s ease-in-out infinite;
+
+  /* ── Inscription dark sidebar tokens (Phase 4) ── */
+  --color-sb-bg:     #0C1023;
+  --color-sb-bg-2:   rgba(255, 255, 255, 0.04);
+  --color-sb-border: rgba(255, 255, 255, 0.07);
+  --color-sb-text:   rgba(255, 255, 255, 0.92);
+  --color-sb-text-2: rgba(255, 255, 255, 0.55);
+  --color-sb-text-3: rgba(255, 255, 255, 0.32);
+  --color-sb-active: rgba(39, 68, 222, 0.22);
+}
+
+/* ── Keyframes — CSS exception (section 5.3: entry animations on modal) ── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── PMS keyframes — CSS exception (section 5.3: multi-state modal/toast entry animations) ── */
+@keyframes pms-fade    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pms-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pms-slide-in { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes pms-fade-up  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Inscription keyframes — CSS exception (section 5.3: multi-step entry + pulse) ── */
+@keyframes insc-fade       { from { opacity: 0; } to { opacity: 1; } }
+@keyframes insc-fade-up    { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes insc-slide-up   { from { opacity: 0; transform: translateY(14px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes insc-step-enter { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes insc-pulse      { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── PMS variable bridge — maps old .pms-root scoped vars to global @theme tokens ── */
+/* Allows existing inline style={{ color: "var(--primary)" }} to remain valid */
+/* after pms.css deletion. Planned clean-up: replace all inline var refs with Tailwind classes */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary:       var(--color-primary);
+  --primary-600:   var(--color-primary-600);
+  --primary-700:   var(--color-primary-700);
+  --primary-50:    var(--color-primary-50);
+  --primary-100:   var(--color-primary-100);
+  --primary-200:   var(--color-primary-200);
+  --primary-soft:  rgba(39, 68, 222, 0.07);
+  --bg:            var(--color-surface);
+  --bg-2:          var(--color-surface-2);
+  --surface:       var(--color-surface);
+  --surface-soft:  var(--color-surface-2);
+  --border:        var(--color-border);
+  --border-soft:   var(--color-border-soft);
+  --border-strong: var(--color-border-strong);
+  --text:          var(--color-ink);
+  --text-2:        var(--color-ink-2);
+  --text-3:        var(--color-ink-3);
+  --text-4:        var(--color-ink-4);
+  --success:       var(--color-success);
+  --success-bg:    var(--color-success-bg);
+  --warn:          var(--color-warn);
+  --warn-bg:       var(--color-warn-bg);
+  --danger:        var(--color-danger);
+  --danger-bg:     var(--color-danger-bg);
+  --info:          var(--color-primary);
+  --info-bg:       var(--color-primary-50);
+  --violet:        var(--color-violet);
+  --violet-bg:     var(--color-violet-bg);
+  --teal:          var(--color-teal);
+  --teal-bg:       var(--color-teal-bg);
+  --amber:         var(--color-amber);
+  --amber-bg:      var(--color-amber-bg);
+  --pink:          var(--color-pink);
+  --pink-bg:       var(--color-pink-bg);
+  --font:          var(--font-sans);
+  --mono:          var(--font-mono);
+  --shadow-primary: 0 4px 14px rgba(39, 68, 222, 0.20);
+
+  /* Inscription bridge (Phase 4) — surface alias, radii, durations, eases, dark sidebar */
+  --surface-2:     var(--color-surface-2);
+  --r-xs:  6px;
+  --r-sm:  8px;
+  --r-md:  12px;
+  --r-lg:  16px;
+  --r-xl:  20px;
+  --r-2xl: 26px;
+  --r-pill: 999px;
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 400ms;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sb-bg:     var(--color-sb-bg);
+  --sb-bg-2:   var(--color-sb-bg-2);
+  --sb-border: var(--color-sb-border);
+  --sb-text:   var(--color-sb-text);
+  --sb-text-2: var(--color-sb-text-2);
+  --sb-text-3: var(--color-sb-text-3);
+  --sb-active: var(--color-sb-active);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ── Scrollbar — CSS exception (section 5.3: ::-webkit-scrollbar not in Tailwind) ── */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
   }
+  .scrollbar-thin::-webkit-scrollbar       { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track  { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb  { background: var(--color-border-strong); border-radius: 4px; }
+
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
 }
 
+/* ── Leaflet control overrides — CSS exception (section 5.3: third-party library internals) ── */
+.location-map-container .leaflet-control-zoom a {
+  width: 36px !important; height: 36px !important; line-height: 36px !important;
+  font-size: 16px !important; color: var(--color-ink) !important;
+  background: rgba(255, 255, 255, 0.95) !important; backdrop-filter: blur(10px);
+  border: none !important; border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+.location-map-container .leaflet-control-zoom a:hover { background: #fff !important; color: var(--color-primary) !important; }
+.location-map-container .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.75) !important; backdrop-filter: blur(6px);
+  font-size: 9px !important; border-radius: 8px 0 0 0; padding: 3px 8px !important;
+}
+
+/* ── Inscription scope resets — preserved from .insc-root (a11y focus ring + spring easing) ── */
+.insc-root *, .insc-root *::before, .insc-root *::after {
+  transition-timing-function: var(--ease-spring);
+}
+.insc-root :focus-visible {
+  outline: 2.5px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 5px;
+}
+.insc-root input:focus-visible,
+.insc-root select:focus-visible,
+.insc-root textarea:focus-visible {
+  outline: none;
+}
+
+/* ── Base ── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.006em;
+  font-feature-settings: "ss01", "cv11";
 }

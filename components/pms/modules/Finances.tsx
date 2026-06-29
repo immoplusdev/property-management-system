@@ -1,8 +1,13 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Donut, Icon } from "../shared";
+import { SectionHead, Donut, Icon, KPICard, Button } from "../shared";
+import { Pill } from "@/components/ui/Pill";
 import { TRANSACTIONS, formatFCFA } from "../data";
+
+const PAY_COLORS: Record<string, string> = {
+  wave: "#1BA1F2", om: "#FF7900", mtn: "#FFCC00", card: "#2744DE", cash: "#16A26B",
+};
 
 export function Finances() {
   const [period, setPeriod] = useState("month");
@@ -16,65 +21,57 @@ export function Finances() {
     { id:"cash", label:"Espèces",        value:741000,  color:"#16A26B", pct:5,  count:28  },
   ];
   const byRoomType = [
-    { type:"Standard",          revenue:4880000, share:33, color:"#7B8DFF" },
-    { type:"Supérieure",        revenue:5860000, share:40, color:"#FF8E73" },
-    { type:"Suite Junior",      revenue:2950000, share:20, color:"#6FB5A8" },
-    { type:"Présidentielle",    revenue:1130000, share:7,  color:"#B57BE6" },
+    { type:"Standard",       revenue:4880000, share:33, color:"#7B8DFF" },
+    { type:"Supérieure",     revenue:5860000, share:40, color:"#FF8E73" },
+    { type:"Suite Junior",   revenue:2950000, share:20, color:"#6FB5A8" },
+    { type:"Présidentielle", revenue:1130000, share:7,  color:"#B57BE6" },
   ];
 
   return (
-    <div className="fade-in">
+    <div className="animate-pms-fade-up">
       <PMSHeader
         title="Finances"
         sub="Vue financière complète · revenus, remboursements, commissions"
         actions={
           <>
-            <div className="tabs">
+            <div className="flex gap-0.5 bg-surface-2 p-0.75 rounded-[9px]">
               {["day","week","month"].map(p => (
-                <div key={p} className={"tab"+(period===p?" active":"")} onClick={() => setPeriod(p)}>
-                  {{day:"Jour",week:"Semaine",month:"Mois"}[p]}
-                </div>
+                <button
+                  key={p}
+                  className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-medium ${period===p ? "bg-surface text-ink border border-border shadow-xs" : "text-ink-2"}`}
+                  onClick={() => setPeriod(p)}
+                >
+                  {{day:"Jour",week:"Semaine",month:"Mois"}[p as "day"|"week"|"month"]}
+                </button>
               ))}
             </div>
-            <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /> Export</button>
+            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export</Button>
           </>
         }
       />
 
-      <div className="kpi-grid">
-        <div className="kpi">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background:"var(--success-bg)", color:"var(--success)" }}><Icon name="trendingUp" size={18} /></div><span className="kpi-trend up">↑ 18% vs avril</span></div>
-          <div className="kpi-value" style={{ fontSize:28 }}>{(totalMonth/1000000).toFixed(1)}<span className="kpi-unit">M FCFA</span></div>
-          <div className="kpi-sub">434 transactions · 287 séjours</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background:"var(--primary-50)", color:"var(--primary)" }}><Icon name="creditCard" size={18} /></div><span className="kpi-trend up">↑ 4 pts</span></div>
-          <div className="kpi-value">82%</div>
-          <div className="kpi-sub">Part mobile money</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background:"var(--teal-bg)", color:"var(--teal)" }}><Icon name="barChart" size={18} /></div><span className="kpi-trend up">↑ 12%</span></div>
-          <div className="kpi-value">74<span className="kpi-unit">%</span></div>
-          <div className="kpi-sub">Taux d&apos;occupation moyen</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top"><div className="kpi-icon" style={{ background:"var(--violet-bg)", color:"var(--violet)" }}><Icon name="award" size={18} /></div><span className="kpi-trend down">−2%</span></div>
-          <div className="kpi-value">1<span className="kpi-unit">%</span></div>
-          <div className="kpi-sub">Taux de remboursement</div>
-        </div>
+      <div className="grid grid-cols-4 gap-3 mb-5.5">
+        <KPICard value={(totalMonth/1000000).toFixed(1)} unit="M FCFA" sub="434 transactions · 287 séjours"
+          icon="trendingUp" iconBg="var(--color-success-bg)" iconColor="var(--color-success)" trend="↑ 18% vs avril" trendUp />
+        <KPICard value="82%" sub="Part mobile money"
+          icon="creditCard" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)" trend="↑ 4 pts" trendUp />
+        <KPICard value="74" unit="%" sub="Taux d'occupation moyen"
+          icon="barChart" iconBg="var(--color-teal-bg)" iconColor="var(--color-teal)" trend="↑ 12%" trendUp />
+        <KPICard value="1" unit="%" sub="Taux de remboursement"
+          icon="award" iconBg="var(--color-violet-bg)" iconColor="var(--color-violet)" trend="−2%" trendUp={false} />
       </div>
 
-      <div className="grid-dash-3" style={{ marginBottom:14 }}>
+      <div className="grid grid-cols-3 gap-3.5 mb-3.5">
         {/* Payment mix */}
-        <div className="card">
+        <div className="bg-surface border border-border rounded-[18px] p-5.5">
           <SectionHead icon="pieChart" title="Mix paiement" sub="Ce mois" />
           <Donut data={byMethod.map(m => ({ label:m.label, value:m.pct, color:m.color }))} centerValue="82%" centerLabel="Mobile money" />
-          <div style={{ marginTop:14, display:"grid", gap:7 }}>
+          <div className="mt-3.5 grid gap-1.75">
             {byMethod.map(m => (
-              <div key={m.id} style={{ display:"flex", alignItems:"center", gap:8, fontSize:12 }}>
-                <span style={{ width:10, height:10, borderRadius:3, background:m.color, flexShrink:0 }} />
-                <span style={{ flex:1, color:"var(--text-2)" }}>{m.label}</span>
-                <span style={{ color:"var(--text-3)" }}>{m.count} tx</span>
+              <div key={m.id} className="flex items-center gap-2 text-[12px]">
+                <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: m.color }} />
+                <span className="flex-1 text-ink-2">{m.label}</span>
+                <span className="text-ink-3">{m.count} tx</span>
                 <strong>{m.pct}%</strong>
               </div>
             ))}
@@ -82,34 +79,34 @@ export function Finances() {
         </div>
 
         {/* Revenue by room type */}
-        <div className="card">
+        <div className="bg-surface border border-border rounded-[18px] p-5.5">
           <SectionHead icon="bed" title="Revenus par type" sub="Ce mois" />
           {byRoomType.map(r => (
-            <div key={r.type} style={{ marginBottom:12 }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-                <span style={{ fontSize:12.5, fontWeight:500 }}>{r.type}</span>
-                <span style={{ fontSize:12, color:"var(--text-3)" }}>{r.share}% · {(r.revenue/1000).toFixed(0)}k</span>
+            <div key={r.type} className="mb-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[12.5px] font-medium">{r.type}</span>
+                <span className="text-[12px] text-ink-3">{r.share}% · {(r.revenue/1000).toFixed(0)}k</span>
               </div>
-              <div style={{ height:6, background:"var(--bg-2)", borderRadius:99, overflow:"hidden" }}>
-                <div style={{ height:"100%", width:r.share+"%", background:r.color, borderRadius:99 }} />
+              <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: r.share+"%", background: r.color }} />
               </div>
             </div>
           ))}
         </div>
 
         {/* Monthly summary */}
-        <div className="card">
+        <div className="bg-surface border border-border rounded-[18px] p-5.5">
           <SectionHead icon="trendingUp" title="Résumé mensuel" />
-          <div className="stat-grid" style={{ gridTemplateColumns:"1fr" }}>
+          <div className="grid gap-1.5">
             {[
-              { label:"Revenu brut",      value:formatFCFA(totalMonth),        color:"var(--success)" },
-              { label:"Commission (8%)",  value:"− "+formatFCFA(totalMonth*0.08), color:"var(--danger)" },
-              { label:"Remboursements",   value:"− "+formatFCFA(65000),         color:"var(--danger)" },
-              { label:"Revenu net",       value:formatFCFA(totalMonth*0.92-65000), color:"var(--text)" },
+              { label:"Revenu brut",      value:formatFCFA(totalMonth),              color:"var(--color-success)" },
+              { label:"Commission (8%)",  value:"− "+formatFCFA(totalMonth*0.08),    color:"var(--color-danger)"  },
+              { label:"Remboursements",   value:"− "+formatFCFA(65000),              color:"var(--color-danger)"  },
+              { label:"Revenu net",       value:formatFCFA(totalMonth*0.92-65000),   color:"var(--color-ink)"     },
             ].map(s => (
-              <div key={s.label} className="row" style={{ marginBottom:6 }}>
-                <span className="text-muted text-sm">{s.label}</span>
-                <strong style={{ color:s.color, fontSize:13 }}>{s.value}</strong>
+              <div key={s.label} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px]">
+                <span className="text-ink-3 text-[13px]">{s.label}</span>
+                <strong style={{ color: s.color, fontSize: 13 }}>{s.value}</strong>
               </div>
             ))}
           </div>
@@ -117,32 +114,43 @@ export function Finances() {
       </div>
 
       {/* Transactions */}
-      <div className="card" style={{ padding:0 }}>
-        <div style={{ padding:"16px 22px", borderBottom:"1px solid var(--border)" }}>
+      <div className="bg-surface border border-border rounded-[18px] overflow-hidden">
+        <div className="px-5.5 py-4 border-b border-border">
           <SectionHead icon="fileText" title="Dernières transactions" sub={`${TRANSACTIONS.length} transactions récentes`} />
         </div>
-        <table className="tbl">
+        <table className="w-full border-collapse text-[13px]">
           <thead>
-            <tr><th>ID</th><th>Date & heure</th><th>Description</th><th>Méthode</th><th>Montant</th><th>Statut</th></tr>
+            <tr>
+              {["ID","Date & heure","Description","Méthode","Montant","Statut"].map(h => (
+                <th key={h} className="text-left font-medium text-ink-3 text-[11.5px] px-3.5 py-2.5 border-b border-border">{h}</th>
+              ))}
+            </tr>
           </thead>
           <tbody>
             {TRANSACTIONS.map(t => (
-              <tr key={t.id}>
-                <td><code style={{ fontSize:11, fontFamily:"var(--mono)", color:"var(--text-3)" }}>{t.id}</code></td>
-                <td className="text-num text-muted" style={{ fontSize:12 }}>{t.time}</td>
-                <td style={{ maxWidth:280 }}><span style={{ fontSize:12.5 }}>{t.desc}</span></td>
-                <td>
-                  <span className={"pay-icon pay-"+t.method} style={{ textTransform:"uppercase" }}>{t.method}</span>
+              <tr key={t.id} className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2">
+                <td className="px-3.5 py-3.5 align-middle">
+                  <code style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--color-ink-3)" }}>{t.id}</code>
                 </td>
-                <td className="text-num">
-                  <strong style={{ color: t.amount < 0 ? "var(--danger)" : "var(--success)", fontSize:13 }}>
+                <td className="px-3.5 py-3.5 align-middle tabular-nums text-ink-3 text-[12px]">{t.time}</td>
+                <td className="px-3.5 py-3.5 align-middle max-w-70"><span className="text-[12.5px]">{t.desc}</span></td>
+                <td className="px-3.5 py-3.5 align-middle">
+                  <span
+                    className="w-7.5 h-5.5 rounded-[5px] inline-grid place-items-center text-[9.5px] font-bold tracking-[0.04em] uppercase"
+                    style={{ background: PAY_COLORS[t.method] ?? "#ccc", color: t.method === "mtn" ? "#111" : "#fff" }}
+                  >
+                    {t.method}
+                  </span>
+                </td>
+                <td className="px-3.5 py-3.5 align-middle tabular-nums">
+                  <strong style={{ color: t.amount < 0 ? "var(--color-danger)" : "var(--color-success)", fontSize: 13 }}>
                     {t.amount < 0 ? "−" : "+"} {formatFCFA(Math.abs(t.amount))}
                   </strong>
                 </td>
-                <td>
-                  <span className={"pill dot " + (t.status==="ok" ? "success" : t.status==="refunded" ? "danger" : "warn")}>
+                <td className="px-3.5 py-3.5 align-middle">
+                  <Pill kind={t.status==="ok" ? "success" : t.status==="refunded" ? "danger" : "warn"} dot>
                     {t.status==="ok" ? "OK" : t.status==="refunded" ? "Remboursé" : t.status}
-                  </span>
+                  </Pill>
                 </td>
               </tr>
             ))}

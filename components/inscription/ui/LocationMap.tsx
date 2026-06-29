@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
+import type * as L from "leaflet";
 
-/* ---------- Leaflet CSS (loaded once) ---------- */
+/* ---------- Leaflet CSS (loaded once) — third-party stylesheet (section 5.3) ---------- */
 import "leaflet/dist/leaflet.css";
 
 /* ---------- Types ---------- */
@@ -22,6 +23,10 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
   const [coords, setCoords] = useState({ lat, lng });
   const [locationName, setLocationName] = useState(label || "");
   const [locationSub, setLocationSub] = useState(subLabel || "");
+
+  // Always hold the latest callback — avoids stale closure in the Leaflet dragend listener
+  const onPositionChangeRef = useRef(onPositionChange);
+  onPositionChangeRef.current = onPositionChange;
 
   /* Reverse geocode using Nominatim (free, no key) */
   const reverseGeocode = useCallback(async (latitude: number, longitude: number) => {
@@ -43,12 +48,15 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
   }, []);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (mapRef.current) return;
+    let cancelled = false;
 
-    const L = require("leaflet");
+    void (async () => {
+      const L = (await import("leaflet")).default;
+      if (cancelled || !containerRef.current || mapRef.current) return;
 
     /* Fix Leaflet default icon paths in webpack/next.js */
-    delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
+    delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
       iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -109,18 +117,20 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
     marker.on("dragend", () => {
       const pos = marker.getLatLng();
       setCoords({ lat: +pos.lat.toFixed(5), lng: +pos.lng.toFixed(5) });
-      onPositionChange?.(+pos.lat.toFixed(5), +pos.lng.toFixed(5));
+      onPositionChangeRef.current?.(+pos.lat.toFixed(5), +pos.lng.toFixed(5));
       reverseGeocode(pos.lat, pos.lng);
     });
 
-    mapRef.current = map;
-    markerRef.current = marker;
+      mapRef.current = map;
+      markerRef.current = marker;
 
-    /* Initial reverse geocode */
-    reverseGeocode(lat, lng);
+      /* Initial reverse geocode */
+      reverseGeocode(lat, lng);
+    })();
 
     return () => {
-      map.remove();
+      cancelled = true;
+      mapRef.current?.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,7 +152,7 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
           const newLat = +pos.coords.latitude.toFixed(5);
           const newLng = +pos.coords.longitude.toFixed(5);
           setCoords({ lat: newLat, lng: newLng });
-          onPositionChange?.(newLat, newLng);
+          onPositionChangeRef.current?.(newLat, newLng);
           if (mapRef.current && markerRef.current) {
             mapRef.current.setView([newLat, newLng], 16);
             markerRef.current.setLatLng([newLat, newLng]);
@@ -156,35 +166,29 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
   };
 
   return (
-    <div className="location-map-wrapper">
-      <div ref={containerRef} className="location-map-container" />
+    <div className="relative rounded-2xl overflow-hidden shadow-[0_0_0_1px_rgba(10,10,15,0.06),0_4px_20px_rgba(10,10,15,0.08)]">
+      <div ref={containerRef} className="location-map-container h-80 w-full z-0" />
 
       {/* Floating info card */}
-      <div className="location-map-info">
-        <div className="location-map-info-row">
+      <div className="absolute bottom-3.5 left-3.5 z-1000 bg-white/96 backdrop-blur-[12px] rounded-xl px-4 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.04)] max-w-[320px]">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>
-              {locationName || "Position sur la carte"}
-            </div>
-            {locationSub && (
-              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
-                {locationSub}
-              </div>
-            )}
+            <div className="font-bold text-[13px] text-ink">{locationName || "Position sur la carte"}</div>
+            {locationSub && <div className="text-[11px] text-ink-3 mt-0.5">{locationSub}</div>}
           </div>
-          <div className="location-map-coords">
+          <div className="flex items-center gap-1 text-[11px] font-semibold tabular-nums text-primary bg-[rgba(39,68,222,0.08)] px-2.5 py-1 rounded-lg whitespace-nowrap">
             <span>{coords.lat.toFixed(3)}° N</span>
-            <span style={{ color: "var(--text-4)" }}>,</span>
+            <span className="text-ink-4">,</span>
             <span>{Math.abs(coords.lng).toFixed(3)}° W</span>
           </div>
         </div>
       </div>
 
       {/* Floating action buttons */}
-      <div className="location-map-actions">
+      <div className="absolute bottom-3.5 right-3.5 z-1000 flex gap-2">
         <button
           type="button"
-          className="location-map-btn"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border-0 bg-white/96 backdrop-blur-[12px] shadow-[0_2px_12px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.04)] text-[12px] font-semibold text-ink cursor-pointer transition-all duration-150 hover:bg-white hover:text-primary hover:shadow-[0_4px_16px_rgba(39,68,222,0.15),0_0_0_1px_rgba(39,68,222,0.1)]"
           onClick={handleRecenter}
           title="Utiliser ma position GPS"
         >
@@ -197,7 +201,7 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
       </div>
 
       {/* Hint */}
-      <div className="location-map-hint">
+      <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-1000 bg-black/65 backdrop-blur-[8px] text-white text-[11px] font-semibold px-4 py-1.5 rounded-full pointer-events-none opacity-85">
         Glissez le pin pour repositionner
       </div>
     </div>
@@ -208,10 +212,7 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
 const LocationMap = dynamic(() => Promise.resolve(MapInner), {
   ssr: false,
   loading: () => (
-    <div style={{
-      height: 320, borderRadius: 16, background: "var(--bg-2)",
-      display: "grid", placeItems: "center", color: "var(--text-3)", fontSize: 13,
-    }}>
+    <div className="h-80 rounded-2xl bg-surface-2 grid place-items-center text-ink-3 text-[13px]">
       Chargement de la carte…
     </div>
   ),

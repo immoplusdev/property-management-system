@@ -1,8 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, StarRating, showToast, Icon } from "../shared";
-import { REVIEWS, REVIEW_STATS } from "../data";
+import { SectionHead, StarRating, showToast, Icon, KPICard, Button } from "../shared";
+import { Chip, ChipGroup } from "@/components/ui/Chip";
+import { REVIEWS, REVIEW_STATS, type Review } from "../data";
 
 export function Reviews() {
   const [filter,   setFilter]   = useState("all");
@@ -10,8 +11,7 @@ export function Reviews() {
   const [search,   setSearch]   = useState("");
   const [replying, setReplying] = useState<string | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let list: any[] = [...REVIEWS];
+  let list: Review[] = [...REVIEWS];
   if (filter === "needs-reply") list = list.filter(r => !r.reply);
   if (filter === "replied")     list = list.filter(r => r.reply);
   if (filter === "high")        list = list.filter(r => r.overall >= 4);
@@ -21,49 +21,51 @@ export function Reviews() {
     r.text.toLowerCase().includes(search.toLowerCase())
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const allReviews = REVIEWS as any[];
+  const allReviews: Review[] = REVIEWS;
   const needsReplyCount = allReviews.filter(r => !r.reply).length;
 
+  const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
+
   return (
-    <div className="fade-in">
+    <div className="animate-pms-fade-up">
       <PMSHeader
         title="Avis clients"
         sub="Tous les avis sont collectés via l'app Immo Plus · contribue à la confiance de votre fiche dans le feed"
         actions={
           <>
-            <div className="tabs">
+            <div className="flex gap-0.5 bg-surface-2 p-0.75 rounded-[9px]">
               {(["week", "month", "year"] as const).map(p => (
-                <div key={p} className={"tab" + (period === p ? " active" : "")} onClick={() => setPeriod(p)}>
+                <button
+                  key={p}
+                  className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-medium ${period===p ? "bg-surface text-ink border border-border shadow-xs" : "text-ink-2"}`}
+                  onClick={() => setPeriod(p)}
+                >
                   {p === "week" ? "Semaine" : p === "month" ? "Mois" : "Année"}
-                </div>
+                </button>
               ))}
             </div>
-            <button className="btn btn-ghost btn-sm"><Icon name="download" size={14} /> Export</button>
+            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export</Button>
           </>
         }
       />
 
-      {/* ── Overview 3-col ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr", gap: 14, marginBottom: 22 }}>
-
+      {/* Overview 3-col */}
+      <div className="grid gap-3.5 mb-5.5" style={{ gridTemplateColumns: "1fr 1.4fr 1fr" }}>
         {/* Global score — dark card */}
-        <div className="card" style={{ background: "var(--text)", color: "#fff", borderColor: "transparent", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", right: -40, top: -40, width: 160, height: 160, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-          <div style={{ position: "relative" }}>
-            <div style={{ fontSize: 11, opacity: 0.85, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>Note globale</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
-              <div style={{ fontSize: 54, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>
-                {REVIEW_STATS.overall.toFixed(1)}
-              </div>
-              <div style={{ fontSize: 18, opacity: 0.85 }}>/5</div>
+        <div className="bg-ink text-white border-transparent rounded-[18px] p-5.5 relative overflow-hidden">
+          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/[0.08]" />
+          <div className="relative">
+            <div className="text-[11px] opacity-85 font-semibold tracking-[0.05em] uppercase">Note globale</div>
+            <div className="flex items-baseline gap-1.5 mt-2">
+              <div className="text-[54px] font-extrabold tracking-[-0.03em] leading-none">{REVIEW_STATS.overall.toFixed(1)}</div>
+              <div className="text-[18px] opacity-85">/5</div>
             </div>
-            <div style={{ marginTop: 8, display: "flex", gap: 2 }}>
+            <div className="mt-2 flex gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Icon key={i} name="starFilled" size={18} color={i < Math.round(REVIEW_STATS.overall) ? "#FFCB47" : "rgba(255,255,255,0.25)"} />
               ))}
             </div>
-            <div style={{ marginTop: 12, fontSize: 12.5, opacity: 0.9 }}>
+            <div className="mt-3 text-[12.5px] opacity-90">
               <strong>{REVIEW_STATS.count} avis</strong> au total ·{" "}
               <span style={{ color: "#A8FFCB" }}>↑ {REVIEW_STATS.monthCount} ce mois</span>
             </div>
@@ -71,25 +73,27 @@ export function Reviews() {
         </div>
 
         {/* Distribution */}
-        <div className="card">
+        <div className="bg-surface border border-border rounded-[18px] p-5.5">
           <SectionHead icon="barChart" title="Distribution des notes" sub={`${REVIEW_STATS.count} avis cumulés`} />
           {([5, 4, 3, 2, 1] as const).map(n => {
             const count = REVIEW_STATS.distribution[n];
             const pct   = Math.round((count / REVIEW_STATS.count) * 100);
             return (
-              <div key={n} className="rate-bar-row">
-                <span style={{ fontWeight: 600, fontSize: 11 }}>{n}★</span>
-                <div className="rate-bar"><div style={{ width: pct + "%" }} /></div>
-                <span className="text-num text-muted" style={{ fontSize: 11, textAlign: "right" }}>{count}</span>
+              <div key={n} className="grid gap-2.5 items-center text-[12px] mb-1.5" style={{ gridTemplateColumns: "22px 1fr 32px" }}>
+                <span className="font-semibold text-[11px]">{n}★</span>
+                <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full" style={{ width: pct+"%" }} />
+                </div>
+                <span className="tabular-nums text-ink-3 text-[11px] text-right">{count}</span>
               </div>
             );
           })}
         </div>
 
         {/* By category */}
-        <div className="card">
+        <div className="bg-surface border border-border rounded-[18px] p-5.5">
           <SectionHead icon="award" title="Détail par catégorie" />
-          <div style={{ display: "grid", gap: 10 }}>
+          <div className="grid gap-2.5">
             {([
               ["Propreté",          "cleanliness",    "droplet"   ],
               ["Personnel",         "staff",          "users"     ],
@@ -99,11 +103,11 @@ export function Reviews() {
             ] as [string, keyof typeof REVIEW_STATS.byCategory, string][]).map(([label, key, icon]) => {
               const v = REVIEW_STATS.byCategory[key];
               return (
-                <div key={key} style={{ display: "grid", gridTemplateColumns: "16px 1fr auto auto", gap: 8, alignItems: "center", fontSize: 12 }}>
-                  <Icon name={icon} size={12} color="var(--text-3)" />
+                <div key={key} className="grid items-center text-[12px] gap-2" style={{ gridTemplateColumns: "16px 1fr auto auto" }}>
+                  <Icon name={icon} size={12} color="var(--color-ink-3)" />
                   <div>{label}</div>
                   <StarRating value={v} size={10} />
-                  <div style={{ fontWeight: 700, fontSize: 12, width: 28, textAlign: "right" }}>{v.toFixed(1)}</div>
+                  <div className="font-bold text-[12px] w-7 text-right">{v.toFixed(1)}</div>
                 </div>
               );
             })}
@@ -111,54 +115,28 @@ export function Reviews() {
         </div>
       </div>
 
-      {/* ── KPI row ── */}
-      <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--success-bg)", color: "var(--success)" }}><Icon name="trendingUp" size={18} /></div>
-            <span className="kpi-trend up">↑ 0.3</span>
-          </div>
-          <div className="kpi-value">{REVIEW_STATS.monthAvg.toFixed(1)}<span style={{ fontSize: 16, color: "var(--text-3)", fontWeight: 500 }}>/5</span></div>
-          <div className="kpi-label">Note moyenne ce mois</div>
-          <div className="kpi-sub">vs 4.4 le mois dernier</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--primary-50)", color: "var(--primary)" }}><Icon name="send" size={18} /></div>
-            <span className="kpi-trend up">+12</span>
-          </div>
-          <div className="kpi-value">{REVIEW_STATS.responseRate}%</div>
-          <div className="kpi-label">Taux de réponse</div>
-          <div className="kpi-sub">Cible : 95% — répondez aux 2 derniers</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--violet-bg)", color: "var(--violet)" }}><Icon name="clock" size={18} /></div>
-            <span className="kpi-trend up" style={{ background: "var(--success-bg)", color: "var(--success)" }}>−1h</span>
-          </div>
-          <div className="kpi-value">{REVIEW_STATS.avgResponseTime}</div>
-          <div className="kpi-label">Délai moyen de réponse</div>
-          <div className="kpi-sub">Excellent · benchmark 24h</div>
-        </div>
-        <div className="kpi">
-          <div className="kpi-top">
-            <div className="kpi-icon" style={{ background: "var(--amber-bg)", color: "var(--amber)" }}><Icon name="bell" size={18} /></div>
-            <span className="kpi-trend down" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>{needsReplyCount} à traiter</span>
-          </div>
-          <div className="kpi-value">{needsReplyCount}</div>
-          <div className="kpi-label">Avis sans réponse</div>
-          <div className="kpi-sub">Répondez sous 24h pour rester top du feed</div>
-        </div>
+      {/* KPI row */}
+      <div className="grid grid-cols-4 gap-3 mb-5.5">
+        <KPICard value={REVIEW_STATS.monthAvg.toFixed(1)} unit="/5" label="Note moyenne ce mois" sub="vs 4.4 le mois dernier"
+          icon="trendingUp" iconBg="var(--color-success-bg)" iconColor="var(--color-success)" trend="↑ 0.3" trendUp />
+        <KPICard value={`${REVIEW_STATS.responseRate}%`} label="Taux de réponse" sub="Cible : 95% — répondez aux 2 derniers"
+          icon="send" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)" trend="+12" trendUp />
+        <KPICard value={REVIEW_STATS.avgResponseTime} label="Délai moyen de réponse" sub="Excellent · benchmark 24h"
+          icon="clock" iconBg="var(--color-violet-bg)" iconColor="var(--color-violet)"
+          trend="−1h" trendUp trendStyle={{ background: "var(--color-success-bg)", color: "var(--color-success)" }} />
+        <KPICard value={needsReplyCount} label="Avis sans réponse" sub="Répondez sous 24h pour rester top du feed"
+          icon="bell" iconBg="var(--color-amber-bg)" iconColor="var(--color-amber)"
+          trend={`${needsReplyCount} à traiter`} trendUp={false} trendStyle={{ background: "var(--color-warn-bg)", color: "var(--color-warn)" }} />
       </div>
 
-      {/* ── Filter bar ── */}
-      <div className="card" style={{ padding: 14, marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div className="search-bar" style={{ width: 320 }}>
-            <Icon name="eye" size={14} color="var(--text-3)" />
-            <input placeholder="Rechercher dans les avis…" value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Filter bar */}
+      <div className="bg-surface border border-border rounded-[18px] p-3.5 mb-3.5">
+        <div className="flex items-center gap-3.5 flex-wrap">
+          <div className="h-9.5 w-80 bg-surface border border-border rounded-[10px] px-3 flex items-center gap-2 text-[13px] text-ink-3 focus-within:border-ink-3">
+            <Icon name="eye" size={14} color="var(--color-ink-3)" />
+            <input className="flex-1 border-0 outline-none bg-transparent text-[13px] text-ink placeholder:text-ink-4" placeholder="Rechercher dans les avis…" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <div className="chips">
+          <ChipGroup>
             {([
               ["all",         "Tous",         allReviews.length],
               ["needs-reply", "Sans réponse", needsReplyCount],
@@ -166,47 +144,54 @@ export function Reviews() {
               ["high",        "4★ et +",      allReviews.filter(r => r.overall >= 4).length],
               ["low",         "3★ et −",      allReviews.filter(r => r.overall <= 3).length],
             ] as [string, string, number][]).map(([id, label, count]) => (
-              <div key={id} className={"chip" + (filter === id ? " active" : "")} onClick={() => setFilter(id)}>
-                {label} <span className="chip-count">{count}</span>
-              </div>
+              <Chip key={id} label={label} count={count} active={filter === id} onClick={() => setFilter(id)} />
             ))}
-          </div>
+          </ChipGroup>
         </div>
       </div>
 
-      {/* ── Review cards ── */}
-      <div>
+      {/* Review cards */}
+      <div className="grid gap-3">
         {list.map(r => (
-          <div key={r.id} className={"review-card" + (!r.reply ? " needs-reply" : "")}>
-            <div className="rev-head">
-              <div className="rev-author">
-                <div className={"av av-" + r.avatar} style={{ width: 46, height: 46, fontSize: 15 }}>
+          <div
+            key={r.id}
+            className={`bg-surface border rounded-[18px] p-5 ${!r.reply ? "border-warn" : "border-border"}`}
+          >
+            {/* Head */}
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-[46px] h-[46px] rounded-full inline-grid place-items-center text-white font-semibold text-[15px] shrink-0"
+                  style={{ background: AV_COLORS[(r.avatar - 1) % 8] }}
+                >
                   {(r.guest as string).split(" ").map((x: string) => x[0]).join("").slice(0, 2)}
                 </div>
                 <div>
-                  <div className="rev-name">{r.guest}</div>
-                  <div className="rev-meta">
-                    {r.country} · {r.roomType} · {r.stays} séjour{r.stays > 1 ? "s" : ""} · {r.date}
-                  </div>
+                  <div className="font-semibold text-[14px]">{r.guest}</div>
+                  <div className="text-[11.5px] text-ink-3 mt-0.5">{r.country} · {r.roomType} · {r.stays} séjour{r.stays > 1 ? "s" : ""} · {r.date}</div>
                 </div>
               </div>
-              <div className="rev-stars-block">
-                <div className="rev-overall">{r.overall}<small>/5</small></div>
+              <div className="text-right">
+                <div className="text-[22px] font-semibold tracking-[-0.03em] inline-flex items-baseline gap-1">
+                  {r.overall}<small className="text-[12px] text-ink-3 font-medium">/5</small>
+                </div>
                 <StarRating value={r.overall} size={14} />
               </div>
             </div>
 
-            <div className="rev-title">{r.title}</div>
-            <div className="rev-text">{r.text}</div>
+            <div className="text-[15px] font-semibold mb-1.5 tracking-[-0.01em]">{r.title}</div>
+            <div className="text-[13.5px] leading-[1.6] text-ink-2">{r.text}</div>
 
             {r.photos > 0 && (
-              <div className="rev-photos">
-                {Array.from({ length: r.photos as number }).map((_, i) => <div key={i} className="rev-photo" />)}
+              <div className="flex gap-1.5 mt-3">
+                {Array.from({ length: r.photos as number }).map((_, i) => (
+                  <div key={i} className="w-16 h-16 rounded-lg bg-surface-2" />
+                ))}
               </div>
             )}
 
             {/* Sub-scores */}
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 14, padding: "10px 14px", background: "var(--surface-soft)", borderRadius: 10, fontSize: 11.5 }}>
+            <div className="flex gap-3.5 flex-wrap mt-3.5 px-3.5 py-2.5 bg-surface-2 rounded-[10px] text-[11.5px]">
               {([
                 ["Propreté",    r.scores.cleanliness],
                 ["Personnel",   r.scores.staff],
@@ -214,71 +199,69 @@ export function Reviews() {
                 ["Emplacement", r.scores.location],
                 ["Rapport Q/P", r.scores.valueForMoney],
               ] as [string, number][]).map(([label, score]) => (
-                <div key={label} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ color: "var(--text-3)" }}>{label}</span>
-                  <span style={{ fontWeight: 700 }}>{score}</span>
-                  <Icon name="starFilled" size={10} color="var(--amber)" />
+                <div key={label} className="inline-flex items-center gap-1.25">
+                  <span className="text-ink-3">{label}</span>
+                  <span className="font-bold">{score}</span>
+                  <Icon name="starFilled" size={10} color="var(--color-amber)" />
                 </div>
               ))}
             </div>
 
             {/* Existing reply */}
             {r.reply && (
-              <div className="rev-reply">
-                <div className="rev-reply-head"><Icon name="send" size={12} /> Votre réponse · publique</div>
-                <div className="rev-reply-text">{r.reply}</div>
-                <div className="rev-reply-date">Publié le {r.replyDate} · visible dans le feed et l&apos;app Immo Plus</div>
+              <div className="mt-3 px-4 py-3.5 bg-surface-2 rounded-[10px] border-l-2 border-primary">
+                <div className="text-[10.5px] text-ink-3 font-semibold uppercase tracking-[0.05em] mb-1 flex items-center gap-1.5">
+                  <Icon name="send" size={12} /> Votre réponse · publique
+                </div>
+                <div className="text-[13px] leading-[1.55] text-ink">{r.reply}</div>
+                <div className="text-[11px] text-ink-3 mt-1">Publié le {r.replyDate} · visible dans le feed et l&apos;app Immo Plus</div>
               </div>
             )}
 
             {/* Awaiting reply */}
             {!r.reply && replying !== r.id && (
-              <div className="rev-foot">
-                <div style={{ color: "var(--warn)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <div className="flex items-center justify-between mt-3.5 pt-3.5 border-t border-border-soft text-[12px] text-ink-3">
+                <div className="text-warn font-semibold inline-flex items-center gap-1.5">
                   <Icon name="bell" size={13} /> Cet avis attend votre réponse
                 </div>
-                <div className="row-flex">
-                  <button className="btn btn-ghost btn-sm"><Icon name="sparkles" size={13} /> Suggérer IA</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => setReplying(r.id)}>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm"><Icon name="sparkles" size={13} /> Suggérer IA</Button>
+                  <Button variant="primary" size="sm" onClick={() => setReplying(r.id)}>
                     <Icon name="send" size={13} /> Répondre
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
             {/* Reply form */}
             {replying === r.id && (
-              <div style={{ marginTop: 14, padding: 14, background: "var(--primary-50)", borderRadius: 12, border: "1.5px dashed var(--primary)" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", marginBottom: 8 }}>
-                  ✍️ Écrire une réponse publique
-                </div>
+              <div className="mt-3.5 p-3.5 bg-primary-50 rounded-xl border-[1.5px] border-dashed border-primary">
+                <div className="text-[12px] font-bold text-primary mb-2">✍️ Écrire une réponse publique</div>
                 <textarea
-                  className="textarea"
+                  className="w-full bg-surface border border-border rounded-[9px] px-3 py-2.5 text-[13.5px] text-ink outline-none focus:border-ink-3 resize-vertical min-h-[88px] leading-[1.5] placeholder:text-ink-4"
                   rows={3}
                   placeholder="Soyez chaleureux, personnel, court. Évitez le copier-coller."
                   defaultValue={`Bonjour ${(r.guest as string).split(" ")[0]}, merci pour votre retour ! `}
                 />
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-                  <div className="text-xs text-muted"><Icon name="info" size={11} /> Réponse visible dans le feed et l&apos;app</div>
-                  <div className="row-flex">
-                    <button className="btn btn-ghost btn-sm" onClick={() => setReplying(null)}>Annuler</button>
-                    <button className="btn btn-primary btn-sm" onClick={() => { setReplying(null); showToast("Réponse publiée", "check"); }}>
+                <div className="flex justify-between items-center mt-2.5">
+                  <div className="text-[11.5px] text-ink-3"><Icon name="info" size={11} /> Réponse visible dans le feed et l&apos;app</div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setReplying(null)}>Annuler</Button>
+                    <Button variant="primary" size="sm" onClick={() => { setReplying(null); showToast("Réponse publiée", "check"); }}>
                       <Icon name="send" size={13} /> Publier
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Footer for replied reviews */}
+            {/* Footer for replied */}
             {r.reply && (
-              <div className="rev-foot">
-                <div className="text-xs text-muted">
+              <div className="flex items-center justify-between mt-3.5 pt-3.5 border-t border-border-soft text-[12px] text-ink-3">
+                <div className="inline-flex items-center gap-1.5">
                   <Icon name="users" size={12} /> {r.helpful} personnes ont trouvé cet avis utile
                 </div>
-                <div className="row-flex">
-                  <button className="btn btn-ghost btn-sm"><Icon name="edit" size={12} /> Modifier réponse</button>
-                </div>
+                <Button variant="ghost" size="sm"><Icon name="edit" size={12} /> Modifier réponse</Button>
               </div>
             )}
           </div>

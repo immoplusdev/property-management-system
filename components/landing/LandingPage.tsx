@@ -2,33 +2,79 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
-import "../../styles/landing.css";
+import { cva } from "class-variance-authority";
+import { cn } from "@/lib/utils/cn";
 import SignUpModal from "../signup/SignUpModal";
+import LoginModal from "../signup/LoginModal";
 
-/* ──────────── Variants ──────────── */
+/* ──────────── Motion presets ──────────── */
 const ease = [0.22, 1, 0.36, 1] as const;
 
 const fadeUp = (delay = 0) => ({
-  initial:  { opacity: 0, y: 22 },
-  animate:  { opacity: 1, y: 0 },
+  initial:    { opacity: 0, y: 22 },
+  animate:    { opacity: 1, y: 0 },
   transition: { duration: 0.6, ease, delay },
 });
 
 const reveal = (delay = 0) => ({
-  initial:   { opacity: 0, y: 18 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport:  { once: true, margin: "-80px" },
-  transition: { duration: 0.55, ease, delay },
+  initial:      { opacity: 0, y: 18 },
+  whileInView:  { opacity: 1, y: 0 },
+  viewport:     { once: true, margin: "-80px" },
+  transition:   { duration: 0.55, ease, delay },
 });
 
 const stagger = (i: number) => reveal(i * 0.08);
 
 const float = (amplitude = 10, duration = 6, delay = 0) => ({
-  animate: { y: [0, -amplitude, 0] as number[] },
+  animate:    { y: [0, -amplitude, 0] as number[] },
   transition: { duration, delay, repeat: Infinity, ease: "easeInOut" as const },
 });
 
-/* ──────────── Animated Counter ──────────── */
+/* ──────────── Button variants (cva) ──────────── */
+const btn = cva(
+  "inline-flex items-center gap-2 font-semibold rounded-full transition-all whitespace-nowrap",
+  {
+    variants: {
+      variant: {
+        primary:      "bg-primary text-white hover:bg-primary-600",
+        dark:         "bg-ink text-white hover:bg-dark",
+        outline:      "text-ink border border-border-strong hover:bg-surface-2",
+        outlineLight: "text-white border border-white/20 hover:bg-white/10 hover:border-white/45",
+      },
+      size: {
+        default: "text-[14.5px] py-3 px-[22px]",
+        lg:      "text-[15.5px] py-[15px] px-7",
+        nav:     "text-[13.5px] py-[10px] px-[18px]",
+      },
+    },
+    defaultVariants: { variant: "primary", size: "default" },
+  }
+);
+
+/* ──────────── Layout wrapper ──────────── */
+const Wrap = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <div className={cn("max-w-[1180px] mx-auto px-7 max-[560px]:px-[18px]", className)}>
+    {children}
+  </div>
+);
+
+/* ──────────── Brand mark ──────────── */
+const BrandMark = () => (
+  <span className="w-9 h-9 rounded-[10px] bg-ink text-white grid place-items-center font-bold text-base tracking-[-0.04em] shrink-0">
+    IP
+  </span>
+);
+
+const BrandName = () => (
+  <span className="font-semibold text-[17px] tracking-[-0.02em] flex items-center gap-2">
+    Immo Plus{" "}
+    <span className="text-[9px] font-semibold tracking-[0.1em] uppercase text-primary border border-primary/35 px-1.5 py-px rounded-[5px]">
+      PMS
+    </span>
+  </span>
+);
+
+/* ──────────── Animated counter ──────────── */
 function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
   const [val, setVal] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
@@ -48,8 +94,13 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
 }
 
 /* ──────────── Check icon ──────────── */
-const Check = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round">
+const CheckIcon = ({ size = 17 }: { size?: number }) => (
+  <svg
+    width={size} height={size}
+    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M20 6 9 17l-5-5" />
   </svg>
 );
@@ -64,140 +115,196 @@ function Nav({ onDemo }: { onDemo: () => void }) {
   }, []);
 
   return (
-    <header className={"lp-nav" + (scrolled ? " scrolled" : "")}>
-      <div className="lp-wrap lp-nav-in">
-        <Link href="/" className="lp-brand">
-          <span className="brand-mark">IP</span>
-          <span className="lp-brand-name">
-            Immo Plus <span className="lp-brand-tag">PMS</span>
-          </span>
+    <header className={cn(
+      "sticky top-0 z-50 bg-white/[0.82] backdrop-saturate-[180%] backdrop-blur-[14px]",
+      "border-b border-transparent transition-[border-color] duration-200",
+      scrolled && "border-border"
+    )}>
+      <Wrap className="flex items-center justify-between h-[74px]">
+        <Link href="/" className="flex items-center gap-[11px]">
+          <BrandMark />
+          <BrandName />
         </Link>
-        <nav className="lp-nav-links">
-          <a href="#features">Fonctionnalités</a>
-          <a href="#showcase">Le produit</a>
-          <a href="#paiements">Paiements</a>
-          <a href="#tarifs">Tarifs</a>
+
+        <nav className="hidden min-[880px]:flex items-center gap-[30px]">
+          {([
+            ["#features", "Fonctionnalités"],
+            ["#showcase", "Le produit"],
+            ["#paiements", "Paiements"],
+            ["#tarifs", "Tarifs"],
+          ] as const).map(([href, label]) => (
+            <a
+              key={href}
+              href={href}
+              className="text-sm font-medium text-ink-2 hover:text-ink transition-colors duration-[120ms]"
+            >
+              {label}
+            </a>
+          ))}
         </nav>
-        <div className="lp-nav-cta">
-          <Link href="/pms" className="btn btn-out lp-login" style={{ fontSize: 13.5, padding: "9px 18px" }}>
+
+        <div className="flex items-center gap-2.5">
+          <Link href="/login" className={cn(btn({ variant: "outline", size: "nav" }), "hidden min-[560px]:inline-flex")}>
             Connexion
           </Link>
-          <button className="btn btn-dk" style={{ fontSize: 13.5, padding: "9px 18px" }} onClick={onDemo}>
+          <button className={btn({ variant: "dark", size: "nav" })} onClick={onDemo}>
             Réserver une démo
           </button>
         </div>
-      </div>
+      </Wrap>
     </header>
   );
 }
 
-/* ──────────── HERO CARDS (flex row) ──────────── */
+/* ──────────── HERO CARDS ──────────── */
 function HeroCards() {
   return (
-    <div className="lp-hero-cards">
+    <div className="flex justify-center items-start gap-[26px] max-w-[1040px] mx-auto mt-[58px] flex-wrap max-[760px]:gap-y-[34px]">
 
       {/* Occupation card */}
-      <motion.div className="fc hc-occ" {...float(8, 6.5, 0)}>
-        <div className="between" style={{ marginBottom: 12 }}>
-          <div className="row">
-            <div className="fc-thumb">
+      <motion.div
+        className="bg-white border border-border rounded-2xl shadow-lg w-[330px] p-[18px] relative"
+        {...float(8, 6.5, 0)}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-[42px] h-[42px] rounded-[10px] bg-gradient-to-br from-[#dfe3f7] to-[#eef0fb] shrink-0 grid place-items-center text-primary">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5" />
               </svg>
             </div>
             <div>
-              <div className="fc-addr">Résidence Lagune Bleue</div>
-              <div className="fc-units">42 chambres · Abidjan</div>
+              <div className="font-semibold text-[14.5px]">Résidence Lagune Bleue</div>
+              <div className="text-xs text-ink-3">42 chambres · Abidjan</div>
             </div>
           </div>
-          <div className="fc-ring-lg"><i>87%</i></div>
+          <div
+            className="w-[52px] h-[52px] rounded-full shrink-0 grid place-items-center"
+            style={{ background: "conic-gradient(#2744DE 87%, #E8E9EE 0)" }}
+          >
+            <i className="w-[38px] h-[38px] rounded-full bg-white grid place-items-center not-italic font-semibold text-[12.5px]">87%</i>
+          </div>
         </div>
-        <div className="fc-k" style={{ marginBottom: 6 }}>Taux d&apos;occupation</div>
-        <div className="fc-bar-lg"><i style={{ width: "87%" }} /></div>
-        <div className="between" style={{ marginTop: 11, fontSize: 12, color: "var(--ink-3)" }}>
+        <div className="text-[10.5px] font-semibold tracking-[0.06em] uppercase text-ink-3 mb-1.5">
+          Taux d&apos;occupation
+        </div>
+        <div className="h-[5px] rounded-full bg-border overflow-hidden mt-2.5">
+          <i className="block h-full rounded-full bg-primary not-italic" style={{ width: "87%" }} />
+        </div>
+        <div className="flex items-center justify-between mt-[11px] text-xs text-ink-3">
           <span>36 occupées</span><span>6 libres</span>
         </div>
-        <motion.div className="fpill hc-pill-a" {...float(7, 7, 0.8)}>
-          <div className="av av-2" style={{ width: 34, height: 34, fontSize: 12 }}>AK</div>
+        <motion.div
+          className="absolute left-[-10px] bottom-[-22px] bg-white border border-border rounded-xl shadow-lg p-[9px] pr-[13px] flex items-center gap-2.5 max-[760px]:static max-[760px]:inline-flex max-[760px]:mt-3.5"
+          {...float(7, 7, 0.8)}
+        >
+          <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-[#6FB5A8]">AK</div>
           <div>
-            <div className="fpill-nm">Aïcha Koné</div>
-            <div className="fpill-rl">Réceptionniste</div>
+            <div className="font-semibold text-[13px] leading-[1.15]">Aïcha Koné</div>
+            <div className="text-[11px] text-ink-3">Réceptionniste</div>
           </div>
         </motion.div>
       </motion.div>
 
       {/* Invoice card */}
-      <motion.div className="fc hc-invoice" {...float(10, 7, 0.5)}>
-        <div className="between" style={{ marginBottom: 14 }}>
-          <div className="row">
-            <div className="av av-3" style={{ width: 34, height: 34, fontSize: 12 }}>DK</div>
+      <motion.div
+        className="bg-white border border-border rounded-2xl shadow-lg w-[330px] p-[18px] mt-[30px] relative max-[760px]:mt-0"
+        {...float(10, 7, 0.5)}
+      >
+        <div className="flex items-center justify-between mb-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-[#7B8DFF]">DK</div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>Facture séjour</div>
-              <div style={{ fontSize: 11.5, color: "var(--ink-3)", fontFamily: "var(--mono)" }}>RES-2026-0518-004</div>
+              <div className="font-semibold text-sm">Facture séjour</div>
+              <div className="text-[11.5px] text-ink-3 font-mono">RES-2026-0518-004</div>
             </div>
           </div>
-          <span className="stamp">Payé</span>
+          <span className="font-mono text-[11px] font-semibold tracking-[0.04em] text-success border-[1.5px] border-success rounded-[6px] px-2 py-[3px] rotate-[-7deg] uppercase inline-block">
+            Payé
+          </span>
         </div>
-        <div className="between" style={{ marginBottom: 14 }}>
+        <div className="flex items-center justify-between mb-3.5">
           <div>
-            <div className="fc-k">Montant</div>
-            <div style={{ fontWeight: 600, fontSize: 17, marginTop: 3 }}>
-              380 000 <span style={{ fontSize: 11, color: "var(--ink-3)", fontWeight: 500 }}>FCFA</span>
+            <div className="text-[10.5px] font-semibold tracking-[0.06em] uppercase text-ink-3">Montant</div>
+            <div className="font-semibold text-[17px] mt-[3px]">
+              380 000 <span className="text-[11px] text-ink-3 font-medium">FCFA</span>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div className="fc-k">Méthode</div>
-            <span className="chip chip-wave" style={{ display: "inline-flex", marginTop: 5 }}>Wave</span>
+          <div className="text-right">
+            <div className="text-[10.5px] font-semibold tracking-[0.06em] uppercase text-ink-3">Méthode</div>
+            <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full bg-[#e8f0ff] text-[#1a6dff] mt-[5px]">
+              Wave
+            </span>
           </div>
         </div>
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-          <div className="fc-k" style={{ marginBottom: 9 }}>Statut réservation</div>
-          <div className="lease-row">
-            <span className="lease-step">
-              <span className="dotc dotc-on">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9 }}>
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
+        <div className="border-t border-border pt-3">
+          <div className="text-[10.5px] font-semibold tracking-[0.06em] uppercase text-ink-3 mb-[9px]">Statut réservation</div>
+          <div className="flex items-center gap-3.5 flex-wrap">
+            {([
+              { label: "Confirmée", state: "on",   muted: false },
+              { label: "Check-in",  state: "half", muted: false },
+              { label: "Facturée",  state: "off",  muted: true  },
+            ] as const).map(({ label, state, muted }) => (
+              <span key={label} className={cn("flex items-center gap-[7px] text-xs", muted && "text-ink-3")}>
+                <span className={cn(
+                  "w-4 h-4 rounded-full grid place-items-center shrink-0",
+                  state === "on"   && "bg-primary text-white",
+                  state === "half" && "[background:color-mix(in_srgb,#2744DE_22%,#fff)]",
+                  state === "off"  && "border-[1.5px] border-border"
+                )}>
+                  {state === "on" && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ width: 9, height: 9 }}>
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  )}
+                </span>
+                {label}
               </span>
-              Confirmée
-            </span>
-            <span className="lease-step">
-              <span className="dotc dotc-half" />
-              Check-in
-            </span>
-            <span className="lease-step" style={{ color: "var(--ink-3)" }}>
-              <span className="dotc dotc-off" />
-              Facturée
-            </span>
+            ))}
           </div>
         </div>
-        <motion.div className="fpill hc-pill-b" {...float(8, 5.5, 1.4)}>
-          <div className="av av-4" style={{ width: 34, height: 34, fontSize: 12 }}>DK</div>
+        <motion.div
+          className="absolute right-[-10px] bottom-[-22px] bg-white border border-border rounded-xl shadow-lg p-[9px] pr-[13px] flex items-center gap-2.5 max-[760px]:static max-[760px]:inline-flex max-[760px]:mt-3.5"
+          {...float(8, 5.5, 1.4)}
+        >
+          <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-[#B57BE6]">DK</div>
           <div>
-            <div className="fpill-nm">Daniel Kouassi</div>
-            <div className="fpill-rl">Suite Junior</div>
+            <div className="font-semibold text-[13px] leading-[1.15]">Daniel Kouassi</div>
+            <div className="text-[11px] text-ink-3">Suite Junior</div>
           </div>
         </motion.div>
       </motion.div>
 
       {/* Revenue card */}
-      <motion.div className="fc hc-rev" {...float(9, 6, 1)}>
-        <div className="between" style={{ marginBottom: 9 }}>
-          <span className="fc-k">Revenu net · mai</span>
-          <span className="chip chip-pay">À jour</span>
+      <motion.div
+        className="bg-white border border-border rounded-2xl shadow-lg w-[236px] p-4 mt-2"
+        {...float(9, 6, 1)}
+      >
+        <div className="flex items-center justify-between mb-[9px]">
+          <span className="text-[10.5px] font-semibold tracking-[0.06em] uppercase text-ink-3">Revenu net · mai</span>
+          <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full bg-success-bg text-success">
+            À jour
+          </span>
         </div>
-        <div className="rev-amt">
-          4 250 000<span className="rev-cfa">FCFA</span>
+        <div className="text-[23px] font-semibold tracking-[-0.03em]">
+          4 250 000<span className="text-[13px] text-ink-3 font-medium ml-[3px]">FCFA</span>
         </div>
-        <div className="trend">
+        <div className="inline-flex items-center gap-[3px] text-success text-xs font-semibold mt-[5px]">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
             <path d="M7 17 17 7M9 7h8v8" />
           </svg>
           +18% vs avril
         </div>
-        <div className="minichart">
+        <div className="flex items-end gap-[5px] h-[38px] mt-3.5">
           {[42, 58, 50, 72, 64, 88, 78].map((h, i) => (
-            <b key={i} className={i === 6 ? "mc-last" : ""} style={{ height: `${h}%` }} />
+            <b
+              key={i}
+              className={cn(
+                "flex-1 rounded-t-sm block",
+                i === 6 ? "bg-primary" : "[background:color-mix(in_srgb,#2744DE_24%,#fff)]"
+              )}
+              style={{ height: `${h}%` }}
+            />
           ))}
         </div>
       </motion.div>
@@ -209,14 +316,16 @@ function HeroCards() {
 /* ──────────── HERO ──────────── */
 function Hero({ onDemo }: { onDemo: () => void }) {
   return (
-    <section className="lp-hero" id="top">
-      <div className="lp-hero-bg" />
-      <div className="lp-hero-stage">
-        <div className="lp-hero-center">
+    <section className="relative overflow-hidden pt-[46px]" id="top">
+      <div className="absolute inset-0 z-0 pointer-events-none bg-white" />
+      <div className="relative z-[1] max-w-[1220px] mx-auto px-7 pb-[70px] max-[1080px]:pb-[30px]">
+        <div className="relative z-[6] max-w-[760px] mx-auto text-center pt-[18px]">
+
           <motion.div {...fadeUp(0)}>
-            <div className="lp-eyebrow">
-              <span className="tag">Nouveau</span>
-              <span className="txt">Encaissez par Wave &amp; Orange Money
+            <div className="inline-flex items-center bg-white border border-border rounded-full py-[5px] px-[6px] pl-[5px] text-[13px] shadow-xs mb-[26px]">
+              <span className="bg-primary-50 text-primary font-semibold rounded-full px-[11px] py-[3px] text-xs">Nouveau</span>
+              <span className="px-3 pl-[11px] text-ink-2 flex items-center gap-2 font-medium">
+                Encaissez par Wave &amp; Orange Money
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
@@ -224,23 +333,36 @@ function Hero({ onDemo }: { onDemo: () => void }) {
             </div>
           </motion.div>
 
-          <motion.h1 {...fadeUp(0.06)}>
-            Tout votre hôtel,<br />dans un seul <span className="accent">logiciel.</span>
+          <motion.h1
+            className="text-[clamp(40px,6vw,72px)] leading-[1.02] font-semibold tracking-[-0.035em] m-0"
+            {...fadeUp(0.06)}
+          >
+            Tout votre hôtel,<br />dans un seul <span className="text-primary">logiciel.</span>
           </motion.h1>
 
-          <motion.p className="lp-hero-sub" {...fadeUp(0.12)}>
-            Réservations, planning, check-in, encaissements mobile money et finances — réunis dans Immo Plus. Le PMS tout-en-un pensé pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.
+          <motion.p
+            className="text-[clamp(16px,2vw,19px)] leading-[1.55] text-ink-2 max-w-[540px] mx-auto mt-6 m-0"
+            {...fadeUp(0.12)}
+          >
+            Réservations, planning, check-in, encaissements mobile money et finances  réunis dans Immo Plus. Le PMS tout-en-un pensé pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.
           </motion.p>
 
-          <motion.div className="lp-hero-actions" {...fadeUp(0.18)}>
-            <button className="btn btn-p btn-lg" onClick={onDemo}>Démarrer gratuitement</button>
-            <button className="btn btn-out btn-lg" onClick={onDemo}>Réserver une démo →</button>
+          <motion.div className="flex gap-[13px] justify-center mt-8 flex-wrap" {...fadeUp(0.18)}>
+            <button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo}>
+              Démarrer gratuitement
+            </button>
+            <button className={btn({ variant: "outline", size: "lg" })} onClick={onDemo}>
+              Réserver une démo →
+            </button>
           </motion.div>
 
-          <motion.div className="lp-hero-note" {...fadeUp(0.24)}>
+          <motion.div
+            className="mt-[18px] text-[13px] text-ink-3 flex gap-[18px] justify-center flex-wrap"
+            {...fadeUp(0.24)}
+          >
             {["Sans carte bancaire", "Installation en 10 min", "Support en français"].map(t => (
-              <span key={t}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+              <span key={t} className="inline-flex items-center gap-1.5">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className="text-success">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
                 {t}
@@ -266,12 +388,12 @@ function Strip() {
     { name: "Résidence Cocody", svg: <circle cx="12" cy="12" r="10" /> },
   ];
   return (
-    <div className="lp-strip">
-      <div className="lp-strip-in">
-        <span className="lp-strip-lbl">La confiance des hôtels, résidences et maisons d&apos;hôtes</span>
+    <div className="border-y border-border-soft bg-white">
+      <div className="flex items-center justify-center gap-[46px] py-[26px] px-7 flex-wrap">
+        <span className="text-xs text-ink-3 font-medium">La confiance des hôtels, résidences et maisons d&apos;hôtes</span>
         {logos.map(l => (
-          <span key={l.name} className="logo-ghost">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">{l.svg}</svg>
+          <span key={l.name} className="font-semibold text-base text-ink-4 tracking-[-0.02em] flex items-center gap-[7px]">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{l.svg}</svg>
             {l.name}
           </span>
         ))}
@@ -282,49 +404,59 @@ function Strip() {
 
 /* ──────────── FEATURES ──────────── */
 const FEATS = [
-  { icon: "calendar", color: "i-blue",   title: "Réservations",        desc: "Encaissez les réservations directes et synchronisez vos canaux. Vue claire des arrivées et départs du jour." },
-  { icon: "grid",     color: "i-teal",   title: "Planning chambres",   desc: "Un planning visuel par étage : libre, occupée, ménage, départ. Glissez-déposez pour réattribuer en un geste." },
-  { icon: "key",      color: "i-violet", title: "Check-in express",    desc: "Enregistrez vos clients en moins d'une minute. Pièce d'identité, signature et fiche de police générées automatiquement." },
-  { icon: "card",     color: "i-coral",  title: "Encaissements",       desc: "Wave, Orange Money, MTN, espèces ou carte. Chaque paiement est rattaché à la bonne facture, sans saisie double." },
-  { icon: "chart",    color: "i-amber",  title: "Finances & rapports", desc: "Chiffre d'affaires, RevPAR, taux d'occupation et dépenses en temps réel. Exportez vos rapports en un clic." },
-  { icon: "users",    color: "i-green",  title: "Clients & fidélité",  desc: "Historique des séjours, préférences et statut VIP. Reconnaissez vos habitués et personnalisez l'accueil." },
+  { icon: "calendar", iconClass: "bg-primary-50 text-primary",  title: "Réservations",        desc: "Encaissez les réservations directes et synchronisez vos canaux. Vue claire des arrivées et départs du jour." },
+  { icon: "grid",     iconClass: "bg-teal-bg text-teal",        title: "Planning chambres",   desc: "Un planning visuel par étage : libre, occupée, ménage, départ. Glissez-déposez pour réattribuer en un geste." },
+  { icon: "key",      iconClass: "bg-violet-bg text-violet",    title: "Check-in express",    desc: "Enregistrez vos clients en moins d'une minute. Pièce d'identité, signature et fiche de police générées automatiquement." },
+  { icon: "card",     iconClass: "bg-coral-bg text-coral",      title: "Encaissements",       desc: "Wave, Orange Money, MTN, espèces ou carte. Chaque paiement est rattaché à la bonne facture, sans saisie double." },
+  { icon: "chart",    iconClass: "bg-amber-bg text-amber",      title: "Finances & rapports", desc: "Chiffre d'affaires, RevPAR, taux d'occupation et dépenses en temps réel. Exportez vos rapports en un clic." },
+  { icon: "users",    iconClass: "bg-success-bg text-success",  title: "Clients & fidélité",  desc: "Historique des séjours, préférences et statut VIP. Reconnaissez vos habitués et personnalisez l'accueil." },
 ] as const;
 
-const FeatIcon = ({ name }: { name: string }) => {
-  const icons: Record<string, React.ReactElement> = {
-    calendar: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
-    grid:     <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M8 14h3M8 17h6" /></>,
-    key:      <><path d="M15 7a4 4 0 1 0-4 4M11 11l-7 7v3h3l1-1h2v-2h2l2-2" /></>,
-    card:     <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>,
-    chart:    <><path d="M3 3v18h18M7 14l3-4 3 3 5-6" /></>,
-    users:    <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11" /></>,
-  };
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
-      {icons[name]}
-    </svg>
-  );
+const FEAT_ICONS: Record<string, React.ReactElement> = {
+  calendar: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
+  grid:     <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M8 14h3M8 17h6" /></>,
+  key:      <><path d="M15 7a4 4 0 1 0-4 4M11 11l-7 7v3h3l1-1h2v-2h2l2-2" /></>,
+  card:     <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>,
+  chart:    <><path d="M3 3v18h18M7 14l3-4 3 3 5-6" /></>,
+  users:    <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11" /></>,
 };
 
 function Features() {
   return (
-    <section className="lp-sec" id="features">
-      <div className="lp-wrap">
-        <motion.div className="sec-head" {...reveal(0)}>
-          <div className="kicker">Une plateforme, tous vos outils</div>
-          <h2>Arrêtez de jongler entre dix outils.</h2>
-          <p>Cahier de réservations, registre, caisse, Excel, WhatsApp… Immo Plus réunit tout ce qui fait tourner votre établissement au même endroit.</p>
+    <section className="py-24 max-[560px]:py-16" id="features">
+      <Wrap>
+        <motion.div className="max-w-[680px] mx-auto mb-14 text-center" {...reveal(0)}>
+          <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">
+            Une plateforme, tous vos outils
+          </div>
+          <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+            Arrêtez de jongler entre dix outils.
+          </h2>
+          <p className="text-[17px] leading-[1.55] text-ink-2 mt-[18px] max-w-[560px] mx-auto m-0">
+            Cahier de réservations, registre, caisse, Excel, WhatsApp… Immo Plus réunit tout ce qui fait tourner votre établissement au même endroit.
+          </p>
         </motion.div>
-        <div className="feat-grid">
+
+        <div className="grid grid-cols-3 gap-5 max-[880px]:grid-cols-2 max-[560px]:grid-cols-1">
           {FEATS.map((f, i) => (
-            <motion.div key={f.title} className="feat-card" {...stagger(i)} whileHover={{ y: -4 }} transition={{ duration: 0.18, ease }}>
-              <div className={`feat-ico ${f.color}`}><FeatIcon name={f.icon} /></div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
+            <motion.div
+              key={f.title}
+              className="bg-white border border-border rounded-[28px] p-[30px] px-[28px] transition-all duration-[180ms] cursor-default hover:shadow-lg"
+              {...stagger(i)}
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.18, ease }}
+            >
+              <div className={cn("w-[50px] h-[50px] rounded-[14px] grid place-items-center mb-[22px] [&>svg]:w-6 [&>svg]:h-6", f.iconClass)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+                  {FEAT_ICONS[f.icon]}
+                </svg>
+              </div>
+              <h3 className="text-[19px] font-semibold tracking-[-0.02em] m-0 mb-[9px]">{f.title}</h3>
+              <p className="text-[14.5px] leading-[1.55] text-ink-2 m-0">{f.desc}</p>
             </motion.div>
           ))}
         </div>
-      </div>
+      </Wrap>
     </section>
   );
 }
@@ -332,66 +464,96 @@ function Features() {
 /* ──────────── DASHBOARD SHOWCASE ──────────── */
 function DashboardShowcase() {
   return (
-    <section className="lp-sec lp-showcase" id="showcase">
-      <div className="lp-wrap">
-        <div className="show-grid">
-          <motion.div className="show-text" {...reveal(0)}>
-            <div className="kicker">Le tableau de bord</div>
-            <h2>Pilotez votre établissement d&apos;un coup d&apos;œil.</h2>
-            <p className="lede">Occupation, recettes du jour, arrivées et départs : l&apos;essentiel s&apos;affiche dès la connexion. Plus besoin de fouiller dix écrans pour savoir où vous en êtes.</p>
-            <div className="feat-list">
-              {[
-                ["Indicateurs en temps réel", "Taux d'occupation, RevPAR et recettes mis à jour automatiquement."],
+    <section className="py-24 bg-white border-y border-border-soft max-[560px]:py-16" id="showcase">
+      <Wrap>
+        <div className="grid grid-cols-[1fr_1.15fr] gap-16 items-center max-[880px]:grid-cols-1 max-[880px]:gap-10">
+
+          <motion.div {...reveal(0)}>
+            <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">Le tableau de bord</div>
+            <h2 className="text-[clamp(28px,3.4vw,40px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+              Pilotez votre établissement d&apos;un coup d&apos;œil.
+            </h2>
+            <p className="text-[16.5px] leading-[1.55] text-ink-2 mt-4 m-0">
+              Occupation, recettes du jour, arrivées et départs : l&apos;essentiel s&apos;affiche dès la connexion. Plus besoin de fouiller dix écrans pour savoir où vous en êtes.
+            </p>
+            <div className="mt-7 flex flex-col gap-4">
+              {([
+                ["Indicateurs en temps réel",  "Taux d'occupation, RevPAR et recettes mis à jour automatiquement."],
                 ["Plan des chambres en direct", "Visualisez l'état de chaque chambre par étage et par statut."],
-                ["Arrivées & départs du jour", "Préparez l'accueil sans rien oublier, chaque matin."],
-              ].map(([b, p]) => (
-                <div className="li" key={b}>
-                  <span className="ck"><Check /></span>
-                  <div><b>{b}</b><p>{p}</p></div>
+                ["Arrivées & départs du jour",  "Préparez l'accueil sans rien oublier, chaque matin."],
+              ] as const).map(([b, p]) => (
+                <div key={b} className="flex gap-[13px] items-start">
+                  <span className="w-6 h-6 rounded-[7px] bg-primary-50 text-primary grid place-items-center shrink-0 mt-px">
+                    <CheckIcon size={13} />
+                  </span>
+                  <div>
+                    <b className="font-semibold text-[15px] block">{b}</b>
+                    <p className="m-0 mt-[3px] text-[13.5px] text-ink-2 leading-[1.5]">{p}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </motion.div>
 
           <motion.div {...reveal(0.1)}>
-            <div className="mock">
-              <div className="mock-bar">
-                <div className="mock-dot" /><div className="mock-dot" /><div className="mock-dot" />
-                <span className="mock-url">app.immoplus.io/tableau-de-bord</span>
+            <div className="bg-white border border-border rounded-[22px] shadow-xl overflow-hidden">
+              <div className="flex items-center gap-[7px] p-[13px] px-4 border-b border-border-soft bg-white">
+                {[0, 1, 2].map(k => <div key={k} className="w-[11px] h-[11px] rounded-full bg-border-strong" />)}
+                <span className="ml-3 font-mono text-[11.5px] text-ink-3 bg-white border border-border rounded-[7px] px-3 py-1">
+                  app.immoplus.io/tableau-de-bord
+                </span>
               </div>
-              <div className="mock-body">
-                <div className="mock-kpis">
-                  {[["Occupation","87%",""],["Recettes / j","1,2","M FCFA"],["Arrivées","8",""],["Départs","5",""]].map(([k,v,s]) => (
-                    <div className="mock-kpi" key={k}>
-                      <div className="k">{k}</div>
-                      <div className="v">{v}<small>{s}</small></div>
+              <div className="p-[22px]">
+                <div className="grid grid-cols-4 gap-3 mb-4 max-[880px]:grid-cols-2">
+                  {([["Occupation","87%",""],["Recettes / j","1,2","M FCFA"],["Arrivées","8",""],["Départs","5",""]] as const).map(([k, v, s]) => (
+                    <div key={k} className="border border-border rounded-xl p-[13px]">
+                      <div className="text-[9.5px] font-semibold tracking-[0.06em] uppercase text-ink-3 mb-[7px]">{k}</div>
+                      <div className="text-[21px] font-semibold tracking-[-0.03em]">{v}<small className="text-[11px] text-ink-3 font-medium">{s}</small></div>
                     </div>
                   ))}
                 </div>
-                <div className="mock-grid">
-                  <div className="mock-panel">
-                    <div className="mock-ph">Recettes · 7 derniers jours <span style={{ color: "var(--success)", fontSize: 10.5, fontFamily: "var(--mono)" }}>+18%</span></div>
-                    <div className="mock-chart">
-                      {[48,62,54,78,70,92,64].map((h, i) => (
-                        <div className="mock-col" key={i}>
-                          <b className={i === 6 ? "soft" : ""} style={{ height: `${h}%` }} />
-                          <span>{"LMMJVSD"[i]}</span>
+                <div className="grid grid-cols-[1.4fr_1fr] gap-3.5 max-[880px]:grid-cols-1">
+                  <div className="border border-border rounded-xl p-[15px]">
+                    <div className="text-[13px] font-semibold mb-3.5 flex items-center justify-between">
+                      Recettes · 7 derniers jours
+                      <span className="text-success text-[10.5px] font-mono">+18%</span>
+                    </div>
+                    <div className="flex items-end gap-[9px] h-[104px]">
+                      {[48, 62, 54, 78, 70, 92, 64].map((h, i) => (
+                        <div key={i} className="flex-1 flex flex-col justify-end gap-[5px]">
+                          <b
+                            className={cn("block rounded-[5px_5px_2px_2px]", i === 6 ? "[background:color-mix(in_srgb,#2744DE_22%,#fff)]" : "bg-primary")}
+                            style={{ height: `${h}%` }}
+                          />
+                          <span className="text-[9.5px] text-ink-4 text-center font-mono">{"LMMJVSD"[i]}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="mock-panel">
-                    <div className="mock-ph">Chambres · étage 2</div>
-                    <div className="mock-rooms">
-                      {[["201","r-occ"],["202","r-occ"],["203","r-free"],["204","r-occ"],["205","r-occ"],["206","r-cln"],["207","r-occ"],["208","r-free"],["209","r-out"],["210","r-occ"]].map(([n,c]) => (
-                        <span className={`rcell ${c}`} key={n}>{n}</span>
+                  <div className="border border-border rounded-xl p-[15px]">
+                    <div className="text-[13px] font-semibold mb-3.5">Chambres · étage 2</div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {([
+                        ["201","bg-primary"],["202","bg-primary"],["203","bg-surface-2 text-ink-3"],
+                        ["204","bg-primary"],["205","bg-primary"],["206","bg-amber"],
+                        ["207","bg-primary"],["208","bg-surface-2 text-ink-3"],["209","bg-coral"],["210","bg-primary"],
+                      ] as const).map(([n, c]) => (
+                        <span key={n} className={cn("w-[30px] h-[30px] rounded-[7px] grid place-items-center text-[9.5px] font-semibold font-mono text-white", c)}>
+                          {n}
+                        </span>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: 14, marginTop: 13, fontSize: 11, color: "var(--ink-3)", flexWrap: "wrap" }}>
-                      <span><i style={{ width: 9, height: 9, borderRadius: 3, display: "inline-block", marginRight: 5, verticalAlign: "middle", background: "var(--p)" }} />Occupée</span>
-                      <span><i style={{ width: 9, height: 9, borderRadius: 3, display: "inline-block", marginRight: 5, verticalAlign: "middle", background: "var(--bg-2)", border: "1px solid var(--border)" }} />Libre</span>
-                      <span><i style={{ width: 9, height: 9, borderRadius: 3, display: "inline-block", marginRight: 5, verticalAlign: "middle", background: "var(--amber)" }} />Ménage</span>
-                      <span><i style={{ width: 9, height: 9, borderRadius: 3, display: "inline-block", marginRight: 5, verticalAlign: "middle", background: "var(--coral)" }} />HS</span>
+                    <div className="flex gap-3.5 mt-3 text-[11px] text-ink-3 flex-wrap">
+                      {([
+                        ["bg-primary",   "Occupée"],
+                        ["bg-surface-2 border border-border", "Libre"],
+                        ["bg-amber",     "Ménage"],
+                        ["bg-coral",     "HS"],
+                      ] as const).map(([c, l]) => (
+                        <span key={l} className="flex items-center gap-1">
+                          <i className={cn("w-[9px] h-[9px] rounded-[3px] inline-block not-italic", c)} />{l}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -399,44 +561,66 @@ function DashboardShowcase() {
             </div>
           </motion.div>
         </div>
-      </div>
+      </Wrap>
     </section>
   );
 }
 
 /* ──────────── PAYMENTS ──────────── */
 const PAYS = [
-  { logo: "Wave", bg: "#1A6DFF", name: "Wave",            ds: "Confirmé · il y a 2 min",  amt: "+114 000" },
-  { logo: "OM",   bg: "#FF7900", name: "Orange Money",    ds: "Confirmé · il y a 18 min", amt: "+38 000"  },
-  { logo: "MTN",  bg: "#FFCC00", textColor: "#1a1a1a", name: "MTN MoMo", ds: "Confirmé · il y a 1 h", amt: "+475 000" },
-  { logo: "CB",   bg: "#0D0D17", name: "Carte & espèces", ds: "Caisse réconciliée",        amt: "+330 000" },
+  { logo: "Wave", bg: "#1A6DFF",                    name: "Wave",            ds: "Confirmé · il y a 2 min",  amt: "+114 000" },
+  { logo: "OM",   bg: "#FF7900",                    name: "Orange Money",    ds: "Confirmé · il y a 18 min", amt: "+38 000"  },
+  { logo: "MTN",  bg: "#FFCC00", textColor:"#1a1a1a", name: "MTN MoMo",    ds: "Confirmé · il y a 1 h",    amt: "+475 000" },
+  { logo: "CB",   bg: "#0D0D17",                    name: "Carte & espèces", ds: "Caisse réconciliée",        amt: "+330 000" },
 ];
 
 function Payments() {
   return (
-    <section className="lp-sec" id="paiements">
-      <div className="lp-wrap">
-        <div className="pay-grid">
+    <section className="py-24 max-[560px]:py-16" id="paiements">
+      <Wrap>
+        <div className="grid grid-cols-[1.1fr_1fr] gap-14 items-center max-[880px]:grid-cols-1 max-[880px]:gap-10">
+
           <motion.div {...reveal(0)}>
-            <div className="kicker">Pensé pour l&apos;Afrique de l&apos;Ouest</div>
-            <h2 style={{ fontSize: "clamp(28px, 3.4vw, 40px)" }}>Le mobile money, nativement.</h2>
-            <p className="lede" style={{ marginTop: 16 }}>Vos clients paient déjà par Wave et Orange Money. Immo Plus encaisse ces paiements directement et les réconcilie avec la bonne facture — sans tableur, sans erreur de caisse.</p>
-            <div style={{ marginTop: 26 }}>
-              <Link href="/inscription" className="btn btn-p">Configurer mes paiements</Link>
+            <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">
+              Pensé pour l&apos;Afrique de l&apos;Ouest
+            </div>
+            <h2 className="text-[clamp(28px,3.4vw,40px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+              Le mobile money, nativement.
+            </h2>
+            <p className="text-[16.5px] leading-[1.55] text-ink-2 mt-4 m-0">
+              Vos clients paient déjà par Wave et Orange Money. Immo Plus encaisse ces paiements directement et les réconcilie avec la bonne facture — sans tableur, sans erreur de caisse.
+            </p>
+            <div className="mt-[26px]">
+              <Link href="/inscription" className={btn({ variant: "primary" })}>
+                Configurer mes paiements
+              </Link>
             </div>
           </motion.div>
 
-          <div className="pay-cards">
+          <div className="flex flex-col gap-3.5">
             {PAYS.map((p, i) => (
-              <motion.div key={p.name} className="pay-card" {...stagger(i)} whileHover={{ borderColor: "var(--border-2)", x: 2 }}>
-                <div className="pay-logo" style={{ background: p.bg, color: p.textColor ?? "#fff" }}>{p.logo}</div>
-                <div><div className="pay-name">{p.name}</div><div className="pay-ds">{p.ds}</div></div>
-                <span className="pay-amt">{p.amt}</span>
+              <motion.div
+                key={p.name}
+                className="flex items-center gap-3.5 bg-white border border-border rounded-2xl px-[18px] py-4 shadow-xs transition-[border-color] duration-150 hover:border-border-strong"
+                {...stagger(i)}
+                whileHover={{ borderColor: "#C8C8E0", x: 2 }}
+              >
+                <div
+                  className="w-[46px] h-[46px] rounded-xl grid place-items-center font-bold text-[13px] shrink-0 font-mono tracking-[-0.02em]"
+                  style={{ background: p.bg, color: p.textColor ?? "#fff" }}
+                >
+                  {p.logo}
+                </div>
+                <div>
+                  <div className="font-semibold text-[15px]">{p.name}</div>
+                  <div className="text-[13px] text-ink-3 mt-0.5">{p.ds}</div>
+                </div>
+                <span className="ml-auto font-semibold font-mono text-sm text-success">{p.amt}</span>
               </motion.div>
             ))}
           </div>
         </div>
-      </div>
+      </Wrap>
     </section>
   );
 }
@@ -451,17 +635,22 @@ const STATS = [
 
 function Stats() {
   return (
-    <section className="lp-sec-sm lp-stats-band">
-      <div className="lp-wrap">
-        <motion.div className="stats-grid" {...reveal(0)}>
+    <section className="py-16 bg-white border-y border-border-soft">
+      <Wrap>
+        <motion.div
+          className="grid grid-cols-4 gap-6 text-center max-[880px]:grid-cols-2 max-[880px]:gap-8"
+          {...reveal(0)}
+        >
           {STATS.map((s, i) => (
-            <motion.div key={s.label} {...stagger(i)} style={{ textAlign: "center" }}>
-              <div className="stat-n"><Counter to={s.to} suffix={s.suffix} /></div>
-              <div className="stat-l">{s.label}</div>
+            <motion.div key={s.label} {...stagger(i)}>
+              <div className="text-[clamp(34px,4.4vw,50px)] font-semibold tracking-[-0.04em] leading-none text-primary">
+                <Counter to={s.to} suffix={s.suffix} />
+              </div>
+              <div className="text-[13.5px] text-ink-2 mt-2.5 leading-[1.4]">{s.label}</div>
             </motion.div>
           ))}
         </motion.div>
-      </div>
+      </Wrap>
     </section>
   );
 }
@@ -475,22 +664,31 @@ const STEPS = [
 
 function Steps() {
   return (
-    <section className="lp-sec">
-      <div className="lp-wrap">
-        <motion.div className="sec-head" {...reveal(0)}>
-          <div className="kicker">Démarrage immédiat</div>
-          <h2>Opérationnel en trois étapes.</h2>
+    <section className="py-24 max-[560px]:py-16">
+      <Wrap>
+        <motion.div className="max-w-[680px] mx-auto mb-14 text-center" {...reveal(0)}>
+          <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">Démarrage immédiat</div>
+          <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+            Opérationnel en trois étapes.
+          </h2>
         </motion.div>
-        <div className="steps-grid">
+        <div className="grid grid-cols-3 gap-6 max-[880px]:grid-cols-1">
           {STEPS.map((s, i) => (
-            <motion.div key={s.n} className="step-card" {...stagger(i)} whileHover={{ borderColor: "var(--border-2)", y: -3 }}>
-              <div className="step-no">{s.n}</div>
-              <h3>{s.title}</h3>
-              <p>{s.desc}</p>
+            <motion.div
+              key={s.n}
+              className="border border-border rounded-[22px] p-[30px] px-[26px] bg-white transition-all duration-[180ms]"
+              {...stagger(i)}
+              whileHover={{ borderColor: "#C8C8E0", y: -3 }}
+            >
+              <div className="font-mono text-[13px] font-semibold text-primary w-[34px] h-[34px] rounded-[9px] bg-primary-50 grid place-items-center mb-[18px]">
+                {s.n}
+              </div>
+              <h3 className="text-[18px] font-semibold tracking-[-0.02em] m-0 mb-2">{s.title}</h3>
+              <p className="text-sm text-ink-2 leading-[1.55] m-0">{s.desc}</p>
             </motion.div>
           ))}
         </div>
-      </div>
+      </Wrap>
     </section>
   );
 }
@@ -499,53 +697,91 @@ function Steps() {
 const PLANS = [
   {
     name: "Découverte", desc: "Pour tester et gérer une petite structure.",
-    price: "0", sub: "jusqu'à 5 chambres",
+    price: "0",         sub: "jusqu'à 5 chambres",
     items: ["Réservations & planning", "Check-in & fiches clients", "1 utilisateur"],
     cta: "Commencer", href: "/inscription", pop: false,
   },
   {
-    name: "Pro", desc: "Pour les hôtels et résidences en activité.",
-    price: "1 500", sub: "FCFA / chambre / mois",
+    name: "Pro",        desc: "Pour les hôtels et résidences en activité.",
+    price: "1 500",     sub: "FCFA / chambre / mois",
     items: ["Tout Découverte, sans limite", "Mobile money & finances", "Rapports & exports", "Utilisateurs illimités"],
     cta: "Démarrer l'essai", href: "/inscription", pop: true,
   },
   {
-    name: "Groupe", desc: "Pour plusieurs établissements.",
+    name: "Groupe",     desc: "Pour plusieurs établissements.",
     price: "Sur devis", sub: "multi-sites & centralisé",
     items: ["Tout Pro", "Vue groupe consolidée", "Accompagnement dédié"],
     cta: "Nous contacter", href: "/inscription", pop: false,
   },
-];
+] as const;
 
 function Pricing() {
   return (
-    <section className="lp-sec lp-showcase" id="tarifs">
-      <div className="lp-wrap">
-        <motion.div className="sec-head" {...reveal(0)}>
-          <div className="kicker">Tarifs simples</div>
-          <h2>Un prix par chambre. Sans surprise.</h2>
-          <p>Commencez gratuitement, passez à la vitesse supérieure quand vous êtes prêt.</p>
+    <section className="py-24 bg-white border-y border-border-soft max-[560px]:py-16" id="tarifs">
+      <Wrap>
+        <motion.div className="max-w-[680px] mx-auto mb-14 text-center" {...reveal(0)}>
+          <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">Tarifs simples</div>
+          <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+            Un prix par chambre. Sans surprise.
+          </h2>
+          <p className="text-[17px] leading-[1.55] text-ink-2 mt-[18px] max-w-[560px] mx-auto m-0">
+            Commencez gratuitement, passez à la vitesse supérieure quand vous êtes prêt.
+          </p>
         </motion.div>
-        <div className="price-grid">
+
+        <div className="grid grid-cols-3 gap-5 items-stretch max-[880px]:grid-cols-1 max-[560px]:grid-cols-1">
           {PLANS.map((p, i) => (
-            <motion.div key={p.name} className={"plan-card" + (p.pop ? " pop" : "")} {...stagger(i)} whileHover={!p.pop ? { y: -4, borderColor: "var(--border-2)" } : { y: -4 }}>
-              {p.pop && <div className="plan-pop-badge">Le plus choisi</div>}
-              <div className="plan-name">{p.name}</div>
-              <div className="plan-desc">{p.desc}</div>
-              <div className="plan-price">{p.price}<small> {p.price !== "Sur devis" ? "FCFA" : ""}</small></div>
-              <div className="plan-sub muted">{p.sub}</div>
-              <ul className="plan-ul">
+            <motion.div
+              key={p.name}
+              className={cn(
+                "flex flex-col bg-white border rounded-[28px] p-[32px] px-[28px] transition-all duration-[180ms]",
+                p.pop
+                  ? "border-primary shadow-[0_0_0_1px_#2744DE,0_14px_44px_rgba(18,19,26,.10)] relative"
+                  : "border-border"
+              )}
+              {...stagger(i)}
+              whileHover={!p.pop ? { y: -4, borderColor: "#C8C8E0" } : { y: -4 }}
+            >
+              {p.pop && (
+                <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-primary text-white text-[11px] font-semibold py-[5px] px-3.5 rounded-full tracking-[0.02em] whitespace-nowrap">
+                  Le plus choisi
+                </div>
+              )}
+              <div className="text-[15px] font-semibold">{p.name}</div>
+              <div className="text-[13px] text-ink-3 mt-[5px] min-h-[38px]">{p.desc}</div>
+              <div className="text-[38px] font-semibold tracking-[-0.04em] my-4 mb-0.5 leading-none">
+                {p.price}<small className="text-sm text-ink-3 font-medium tracking-normal"> {p.price !== "Sur devis" ? "FCFA" : ""}</small>
+              </div>
+              <div className="text-[12.5px] text-ink-3">{p.sub}</div>
+              <ul className="list-none p-0 my-[22px] mb-[26px] flex flex-col gap-[11px] flex-1 m-0">
                 {p.items.map(item => (
-                  <li key={item}><Check />{item}</li>
+                  <li key={item} className="flex gap-2.5 items-start text-sm text-ink-2">
+                    <svg
+                      width="17" height="17"
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round"
+                      className="text-primary shrink-0 mt-px"
+                      aria-hidden="true"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    {item}
+                  </li>
                 ))}
               </ul>
-              <Link href={p.href} className={"btn " + (p.pop ? "btn-p" : "btn-out")} style={{ textAlign: "center", justifyContent: "center" }}>
+              <Link
+                href={p.href}
+                className={cn(
+                  btn({ variant: p.pop ? "primary" : "outline" }),
+                  "justify-center text-center"
+                )}
+              >
                 {p.cta}
               </Link>
             </motion.div>
           ))}
         </div>
-      </div>
+      </Wrap>
     </section>
   );
 }
@@ -553,17 +789,34 @@ function Pricing() {
 /* ──────────── CTA ──────────── */
 function CTA({ onDemo }: { onDemo: () => void }) {
   return (
-    <section className="lp-sec" style={{ paddingTop: 0 }}>
-      <div className="lp-wrap">
-        <motion.div className="cta-band" {...reveal(0)}>
-          <h2>Prêt à tout gérer depuis un seul écran ?</h2>
-          <p>Rejoignez les établissements qui ont arrêté de jongler. Mise en route en quelques minutes.</p>
-          <div className="cta-actions">
-            <button className="btn btn-p btn-lg" onClick={onDemo}>Démarrer gratuitement</button>
-            <button className="btn btn-out-light btn-lg" onClick={onDemo}>Réserver une démo →</button>
+    <section className="py-24 pt-0 max-[560px]:py-16 max-[560px]:pt-0">
+      <Wrap>
+        <motion.div
+          className="bg-ink text-white rounded-[28px] py-16 px-12 text-center relative overflow-hidden max-[560px]:px-6 max-[560px]:py-[46px]"
+          {...reveal(0)}
+        >
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: "radial-gradient(70% 120% at 50% -10%, color-mix(in srgb, #2744DE 55%, transparent), transparent 60%)" }}
+          />
+          <div className="relative">
+            <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0 text-white">
+              Prêt à tout gérer depuis un seul écran ?
+            </h2>
+            <p className="text-white/70 text-[17px] mt-[18px] mx-auto mb-8 max-w-[480px] leading-[1.6] m-0">
+              Rejoignez les établissements qui ont arrêté de jongler. Mise en route en quelques minutes.
+            </p>
+            <div className="flex gap-[13px] justify-center flex-wrap">
+              <button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo}>
+                Démarrer gratuitement
+              </button>
+              <button className={btn({ variant: "outlineLight", size: "lg" })} onClick={onDemo}>
+                Réserver une démo →
+              </button>
+            </div>
           </div>
         </motion.div>
-      </div>
+      </Wrap>
     </section>
   );
 }
@@ -571,53 +824,69 @@ function CTA({ onDemo }: { onDemo: () => void }) {
 /* ──────────── FOOTER ──────────── */
 function Footer() {
   return (
-    <footer className="lp-footer">
-      <div className="lp-wrap">
-        <div className="foot-grid">
-          <div className="foot-brand">
-            <Link href="/" className="lp-brand">
-              <span className="brand-mark">IP</span>
-              <span className="lp-brand-name">Immo Plus <span className="lp-brand-tag">PMS</span></span>
+    <footer className="border-t border-border pt-[60px] pb-10">
+      <Wrap>
+        <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-10 mb-12 max-[880px]:grid-cols-2 max-[880px]:gap-8 max-[560px]:grid-cols-1">
+          <div>
+            <Link href="/" className="flex items-center gap-[11px]">
+              <BrandMark />
+              <BrandName />
             </Link>
-            <p>Le logiciel de gestion tout-en-un pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.</p>
+            <p className="text-[13.5px] text-ink-2 leading-relaxed mt-4 max-w-[280px] m-0">
+              Le logiciel de gestion tout-en-un pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.
+            </p>
           </div>
-          <div className="foot-col">
-            <h4>Produit</h4>
-            <a href="#features">Fonctionnalités</a>
-            <a href="#showcase">Tableau de bord</a>
-            <a href="#paiements">Paiements</a>
-            <a href="#tarifs">Tarifs</a>
-          </div>
-          <div className="foot-col">
-            <h4>Ressources</h4>
-            <Link href="/pms">Démo en ligne</Link>
-            <Link href="/inscription">Créer un compte</Link>
-            <a href="#top">Centre d&apos;aide</a>
-            <a href="#top">Nous contacter</a>
-          </div>
-          <div className="foot-col">
-            <h4>Entreprise</h4>
-            <a href="#top">À propos</a>
-            <a href="#top">Confidentialité</a>
-            <a href="#top">Conditions</a>
-          </div>
+
+          {([
+            { title: "Produit",    links: [["#features","Fonctionnalités"],["#showcase","Tableau de bord"],["#paiements","Paiements"],["#tarifs","Tarifs"]] },
+            { title: "Ressources", links: [["/pms","Démo en ligne"],["/inscription","Créer un compte"],["#top","Centre d'aide"],["#top","Nous contacter"]] },
+            { title: "Entreprise", links: [["#top","À propos"],["#top","Confidentialité"],["#top","Conditions"]] },
+          ] as const).map(col => (
+            <div key={col.title}>
+              <h4 className="text-xs uppercase tracking-[0.08em] text-ink-3 m-0 mb-4 font-semibold">{col.title}</h4>
+              {col.links.map(([href, label]) => (
+                <a
+                  key={label}
+                  href={href}
+                  className="block text-sm text-ink-2 mb-[11px] hover:text-ink transition-colors duration-[120ms]"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          ))}
         </div>
-        <div className="foot-bot">
+
+        <div className="flex items-center justify-between pt-[26px] border-t border-border-soft text-[13px] text-ink-3 flex-wrap gap-3">
           <span>© 2026 Immo Plus. Tous droits réservés.</span>
           <span>Abidjan · Dakar · Lomé</span>
         </div>
-      </div>
+      </Wrap>
     </footer>
   );
 }
 
 /* ──────────── MAIN EXPORT ──────────── */
 export default function LandingPage() {
-  const [demoOpen, setDemoOpen] = useState(false);
-  const openDemo = () => setDemoOpen(true);
+  const [demoOpen,  setDemoOpen]  = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  // Open login modal automatically when redirected from a protected route.
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("login") === "1") {
+      setLoginOpen(true);
+      // Clean the query param without reloading.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("login");
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
+
+  const openDemo  = () => { setLoginOpen(false); setDemoOpen(true);  };
+  const openLogin = () => { setDemoOpen(false);  setLoginOpen(true); };
 
   return (
-    <div className="lp">
+    <>
       <Nav onDemo={openDemo} />
       <Hero onDemo={openDemo} />
       <Strip />
@@ -629,7 +898,13 @@ export default function LandingPage() {
       <Pricing />
       <CTA onDemo={openDemo} />
       <Footer />
-      {demoOpen && <SignUpModal onClose={() => setDemoOpen(false)} />}
-    </div>
+      {demoOpen  && <SignUpModal onClose={() => setDemoOpen(false)} />}
+      {loginOpen && (
+        <LoginModal
+          onClose={() => setLoginOpen(false)}
+          onSwitchToSignUp={() => { setLoginOpen(false); setDemoOpen(true); }}
+        />
+      )}
+    </>
   );
 }
