@@ -8,30 +8,12 @@ import { cn } from "@/lib/utils/cn";
 import { Logo } from "@/components/Logo";
 import SignUpModal from "../signup/SignUpModal";
 import LoginModal from "../signup/LoginModal";
+import SmoothScroll from "./SmoothScroll";
 import type { UserDto } from "@/lib/api/generated/model";
-
-/* ──────────── Motion presets ──────────── */
-const ease = [0.22, 1, 0.36, 1] as const;
-
-const fadeUp = (delay = 0) => ({
-  initial:    { opacity: 0, y: 22 },
-  animate:    { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease, delay },
-});
-
-const reveal = (delay = 0) => ({
-  initial:      { opacity: 0, y: 18 },
-  whileInView:  { opacity: 1, y: 0 },
-  viewport:     { once: true, margin: "-80px" },
-  transition:   { duration: 0.55, ease, delay },
-});
-
-const stagger = (i: number) => reveal(i * 0.08);
-
-const float = (amplitude = 10, duration = 6, delay = 0) => ({
-  animate:    { y: [0, -amplitude, 0] as number[] },
-  transition: { duration, delay, repeat: Infinity, ease: "easeInOut" as const },
-});
+import {
+  ease, fadeUp, reveal, stagger, float,
+  staggerContainer, staggerItem, hoverTapButton,
+} from "@/lib/animations/motion";
 
 /* ──────────── Button variants (cva) ──────────── */
 const btn = cva(
@@ -161,9 +143,9 @@ function Nav({ onDemo, user }: { onDemo: () => void; user: UserDto | null }) {
               <Link href="/login" className={cn(btn({ variant: "outline", size: "nav" }), "hidden min-[560px]:inline-flex")}>
                 Connexion
               </Link>
-              <button className={btn({ variant: "dark", size: "nav" })} onClick={onDemo}>
+              <motion.button className={btn({ variant: "dark", size: "nav" })} onClick={onDemo} {...hoverTapButton}>
                 Réserver une démo
-              </button>
+              </motion.button>
             </>
           )}
         </div>
@@ -358,9 +340,9 @@ function Hero({ onDemo }: { onDemo: () => void }) {
           </motion.p>
 
           <motion.div className="flex gap-[13px] justify-center mt-7 flex-wrap" {...fadeUp(0.18)}>
-            <button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo}>
+            <motion.button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo} {...hoverTapButton}>
               Démarrer gratuitement
-            </button>
+            </motion.button>
           </motion.div>
 
           <motion.div
@@ -784,9 +766,9 @@ function CTA({ onDemo }: { onDemo: () => void }) {
               Rejoignez les établissements qui ont arrêté de jongler. Mise en route en quelques minutes.
             </p>
             <div className="flex gap-[13px] justify-center flex-wrap">
-              <button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo}>
+              <motion.button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo} {...hoverTapButton}>
                 Démarrer gratuitement
-              </button>
+              </motion.button>
             </div>
           </div>
         </motion.div>
@@ -800,8 +782,11 @@ function Footer() {
   return (
     <footer className="border-t border-border pt-[60px] pb-10">
       <Wrap>
-        <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-10 mb-12 max-[880px]:grid-cols-2 max-[880px]:gap-8 max-[560px]:grid-cols-1">
-          <div>
+        <motion.div
+          className="grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-10 mb-12 max-[880px]:grid-cols-2 max-[880px]:gap-8 max-[560px]:grid-cols-1"
+          {...staggerContainer(0.08)}
+        >
+          <motion.div variants={staggerItem}>
             <Link href="/" className="flex items-center gap-[11px]">
               <BrandMark />
               <BrandName />
@@ -809,32 +794,35 @@ function Footer() {
             <p className="text-[13.5px] text-ink-2 leading-relaxed mt-4 max-w-[280px] m-0">
               Le logiciel de gestion tout-en-un pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.
             </p>
-          </div>
+          </motion.div>
 
           {([
             { title: "Produit",    links: [["#features","Fonctionnalités"],["#showcase","Tableau de bord"],["#paiements","Paiements"],["#tarifs","Tarifs"]] },
             { title: "Ressources", links: [["/pms","Démo en ligne"],["/inscription","Créer un compte"],["#top","Centre d'aide"],["#top","Nous contacter"]] },
             { title: "Entreprise", links: [["#top","À propos"],["#top","Confidentialité"],["#top","Conditions"]] },
           ] as const).map(col => (
-            <div key={col.title}>
+            <motion.div key={col.title} variants={staggerItem}>
               <h4 className="text-xs uppercase tracking-[0.08em] text-ink-3 m-0 mb-4 font-semibold">{col.title}</h4>
               {col.links.map(([href, label]) => (
                 <a
                   key={label}
                   href={href}
-                  className="block text-sm text-ink-2 mb-[11px] hover:text-ink transition-colors duration-[120ms]"
+                  className="block text-sm text-ink-2 mb-[11px] hover:text-ink hover:translate-x-[2px] transition-[color,transform] duration-[120ms]"
                 >
                   {label}
                 </a>
               ))}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="flex items-center justify-between pt-[26px] border-t border-border-soft text-[13px] text-ink-3 flex-wrap gap-3">
+        <motion.div
+          className="flex items-center justify-between pt-[26px] border-t border-border-soft text-[13px] text-ink-3 flex-wrap gap-3"
+          {...reveal(0.1)}
+        >
           <span>© 2026 Immo Plus. Tous droits réservés.</span>
           <span>Abidjan · Dakar · Lomé</span>
-        </div>
+        </motion.div>
       </Wrap>
     </footer>
   );
@@ -861,6 +849,7 @@ export default function LandingPage({ user }: { user: UserDto | null }) {
 
   return (
     <>
+      <SmoothScroll />
       <Nav onDemo={openDemo} user={user} />
       <Hero onDemo={openDemo} />
       <Features />
