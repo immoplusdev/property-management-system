@@ -1,7 +1,7 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Logo } from "@/components/Logo";
 import { LoginForm, BrandPane } from "./LoginModal";
 
 const LockIcon = () => (
@@ -29,12 +29,7 @@ export default function LoginPage() {
         {/* Top bar */}
         <div className="flex items-center justify-between shrink-0">
           <Link href="/" className="flex items-center gap-2.5">
-            <div
-              className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-white"
-              style={{ boxShadow: "0 0 0 2.5px rgba(39,68,222,0.18), 0 3px 12px rgba(39,68,222,0.16)" }}
-            >
-              <Image src="/logo-immoplus.png" alt="Immo Plus" width={40} height={40} className="w-full h-full object-contain" />
-            </div>
+            <Logo size="md" showHover={false} />
             <span className="font-semibold text-sm tracking-[-0.02em] flex items-center gap-1.5 text-ink">
               Immo Plus{" "}
               <span className="text-[9px] font-semibold tracking-[0.08em] uppercase text-primary border border-primary/35 px-[5px] py-px rounded-[4px] leading-[1.3]">

@@ -7,7 +7,7 @@ export { StarRating } from "@/components/ui/StarRating";
 export { SectionHead } from "@/components/ui/SectionHead";
 export { Donut } from "@/components/ui/Donut";
 export { StatusPill, BookingStatusPill, PayBadge, AppBadge, SourceBadge } from "@/components/ui/Badge";
-export { ToastProvider, useToast, showToast } from "@/components/ui/Toast";
+export { ToastProvider, useToast, showToast, toastPromise, dismissToast } from "@/components/ui/Toast";
 export { KPICard } from "@/components/ui/KPICard";
 export { Chip, ChipGroup } from "@/components/ui/Chip";
 export { Button } from "@/components/ui/Button";

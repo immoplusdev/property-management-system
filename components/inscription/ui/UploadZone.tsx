@@ -1,14 +1,35 @@
 "use client";
 import { Icon } from "./Icon";
+import { cn } from "@/lib/utils/cn";
 
 interface UploadZoneProps {
   title: string;
   sub?: string;
   icon?: string;
   onClick?: () => void;
+  square?: boolean; // For ID card uploads (1:1 aspect ratio)
 }
 
-export function UploadZone({ title, sub, icon = "upload", onClick }: UploadZoneProps) {
+export function UploadZone({ title, sub, icon = "upload", onClick, square = false }: UploadZoneProps) {
+  if (square) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "w-full aspect-square rounded-[16px] border-[1.5px] border-border bg-white",
+          "flex flex-col items-center justify-center gap-2",
+          "cursor-pointer transition-all duration-220",
+          "hover:border-primary hover:bg-primary-50"
+        )}
+      >
+        <div className="w-14 h-14 rounded-full bg-primary-50 text-primary grid place-items-center shadow-[0_0_0_1px_rgba(39,68,222,0.1)]">
+          <Icon name={icon} size={24} />
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"

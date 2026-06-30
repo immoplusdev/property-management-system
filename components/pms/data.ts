@@ -1,7 +1,7 @@
 export type {
   RoomStatus, Room, RoomType, BookingStatus, Booking,
-  Client, Transaction, AppProfile, AppRequest, RequestType,
-  Review, ReviewStats, PlanningBooking, StatusConfig,
+  GuestType, Guest, GuestStay, Transaction, AppProfile, AppRequest, RequestType,
+  ReviewGuest, ReviewScore, Review, ReviewStats, PlanningBooking, StatusConfig,
 } from "@/lib/types/pms";
 
 export {

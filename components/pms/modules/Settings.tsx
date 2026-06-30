@@ -1,7 +1,9 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Icon, showToast, Button } from "../shared";
+import { SectionHead, Icon, toastPromise, Button } from "../shared";
+import { useHotelSettings, useUpdateHotelSettings, useUpdateNotificationSettings } from "@/lib/hooks/pms/useSettings";
+import type { HotelSettings } from "@/lib/api/pms/settings.actions";
 
 const NAV = [
   { id:"hotel",    label:"Hôtel & identité",     icon:"bed"        },
@@ -26,20 +28,94 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   );
 }
 
+function Field({
+  label, value, onChange, type = "text", disabled,
+}: {
+  label: string; value: string; onChange?: (v: string) => void; type?: string; disabled?: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange?.(e.target.value)}
+        disabled={disabled}
+        className="w-full h-10.5 bg-surface border border-border rounded-[10px] px-3 text-[13.5px] text-ink outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
+      />
+    </div>
+  );
+}
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
+}
+
 export function Settings() {
   const [section, setSection] = useState("hotel");
 
-  const [toggles, setToggles] = useState({
+  // ── Hotel settings (section: hotel) ─────────────────────────────────────────
+  const hotelQ     = useHotelSettings();
+  const updateHotel = useUpdateHotelSettings();
+  // Only the user's edits are stored; the displayed form is derived by merging
+  // them over the fetched data at render time (no setState-in-effect sync).
+  const [edits, setEdits] = useState<Partial<HotelSettings>>({});
+
+  const form: Partial<HotelSettings> = {
+    name:    edits.name    ?? hotelQ.data?.name    ?? "",
+    address: edits.address ?? hotelQ.data?.address ?? "",
+    phone:   edits.phone   ?? hotelQ.data?.phone   ?? "",
+    email:   edits.email   ?? hotelQ.data?.email   ?? "",
+  };
+
+  function setField(key: keyof HotelSettings, value: string) {
+    setEdits(e => ({ ...e, [key]: value }));
+  }
+
+  async function handleSaveHotel() {
+    try {
+      await toastPromise(updateHotel.mutateAsync(form), {
+        loading: "Sauvegarde…",
+        success: "Paramètres sauvegardés",
+        error: (e) => (e as Error)?.message || "Erreur lors de la sauvegarde",
+      });
+      setEdits({}); // re-sync to fresh server data
+    } catch { /* toast déjà affiché */ }
+  }
+
+  // ── Notification settings (saves via dedicated endpoint) ──────────────────
+  const updateNotifs = useUpdateNotificationSettings();
+  const [notifSettings, setNotifSettings] = useState({
+    smsEnabled:              true,
+    emailEnabled:            true,
+    whatsappBusinessNumber:  "",
+  });
+
+  async function handleSaveNotifs() {
+    try {
+      await toastPromise(
+        updateNotifs.mutateAsync({
+          smsEnabled:             notifSettings.smsEnabled,
+          emailEnabled:           notifSettings.emailEnabled,
+          whatsappBusinessNumber: notifSettings.whatsappBusinessNumber || undefined,
+        }),
+        {
+          loading: "Sauvegarde…",
+          success: "Notifications sauvegardées",
+          error: (e) => (e as Error)?.message || "Erreur lors de la sauvegarde",
+        },
+      );
+    } catch { /* toast déjà affiché */ }
+  }
+
+  // ── Local toggles for sections not yet covered by API ───────────────────────
+  const [localToggles, setLocalToggles] = useState({
     instantBook:    true,
     appReservation: true,
     autoConfirm:    false,
     miniBar:        true,
     laundry:        true,
     roomService:    true,
-    reviewReply:    true,
-    pushNotif:      true,
-    smsNotif:       true,
-    emailReport:    false,
     waveActive:     true,
     omActive:       true,
     mtnActive:      true,
@@ -47,19 +123,25 @@ export function Settings() {
     bookingActive:  true,
     airbnbActive:   false,
   });
+  const toggleLocal = (key: keyof typeof localToggles) =>
+    setLocalToggles(t => ({ ...t, [key]: !t[key] }));
 
-  const toggle = (key: keyof typeof toggles) =>
-    setToggles(t => ({ ...t, [key]: !t[key] }));
+  const isSaving = updateHotel.isPending || updateNotifs.isPending;
 
   return (
     <div className="animate-pms-fade-up">
       <PMSHeader
         title="Paramètres"
-        sub="Configuration de Résidence Lagune Bleue · Immo Plus PMS"
+        sub={hotelQ.data?.name ?? "Configuration · Immo Plus PMS"}
         search={false}
         actions={
-          <Button variant="primary" size="sm" onClick={() => showToast("Paramètres sauvegardés", "check")}>
-            <Icon name="check" size={14} /> Sauvegarder
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={isSaving}
+            onClick={section === "notifs" ? handleSaveNotifs : handleSaveHotel}
+          >
+            <Icon name="check" size={14} /> {isSaving ? "Sauvegarde…" : "Sauvegarder"}
           </Button>
         }
       />
@@ -83,21 +165,28 @@ export function Settings() {
 
         {/* Content */}
         <div className="pl-6">
+          {/* ── Hotel identity ── */}
           {section === "hotel" && (
             <div className="grid gap-4">
               <SectionHead icon="bed" title="Identité de l'hôtel" />
-              <div className="grid gap-3">
-                <Field label="Nom de l'établissement"  defaultValue="Résidence Lagune Bleue"          />
-                <Field label="Adresse"                  defaultValue="Plateau, Abidjan, Côte d'Ivoire" />
-                <Field label="Téléphone"                defaultValue="+225 27 22 XX XX XX"             />
-                <Field label="Email"                    defaultValue="contact@lagune-bleue.ci"         />
-                <Field label="Nombre de chambres"       defaultValue="48" type="number"                />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">Description courte (feed Immo Plus)</label>
-                <textarea className="w-full bg-surface border border-border rounded-[10px] px-3 py-2.5 text-[13.5px] outline-none focus:border-primary resize-vertical min-h-20"
-                  defaultValue="Résidence calme et moderne au cœur du Plateau, à deux pas de la mer. Petit-déjeuner inclus sur demande." />
-              </div>
+              {hotelQ.isLoading ? (
+                <div className="grid gap-3">
+                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  <Field label="Nom de l'établissement"  value={form.name    ?? ""} onChange={v => setField("name",    v)} />
+                  <Field label="Adresse"                  value={form.address ?? ""} onChange={v => setField("address", v)} />
+                  <Field label="Téléphone"                value={form.phone   ?? ""} onChange={v => setField("phone",   v)} type="tel" />
+                  <Field label="Email"                    value={form.email   ?? ""} onChange={v => setField("email",   v)} type="email" />
+                  {hotelQ.data && (
+                    <>
+                      <Field label="Heure d'arrivée (check-in)"  value={hotelQ.data.checkInTime}  disabled />
+                      <Field label="Heure de départ (check-out)" value={hotelQ.data.checkOutTime} disabled />
+                    </>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">Photo de couverture</label>
                 <div className="h-40 bg-surface-2 border-2 border-dashed border-border rounded-xl grid place-items-center text-ink-3 cursor-pointer hover:border-primary hover:text-primary transition-colors">
@@ -110,14 +199,15 @@ export function Settings() {
             </div>
           )}
 
+          {/* ── Room types (static, read-only for now) ── */}
           {section === "rooms" && (
             <div>
               <SectionHead icon="list" title="Types de chambre" sub="Configurez les tarifs et services inclus par type" />
               <div className="grid gap-3 mt-3.5">
                 {[
-                  { code:"STD",  name:"Standard",       price:25000,  count:18, amenities:["Wifi","Clim","TV"]                          },
-                  { code:"SUP",  name:"Supérieure",     price:45000,  count:16, amenities:["Wifi","Clim","TV","Minifridge"]              },
-                  { code:"SJR",  name:"Suite Junior",   price:75000,  count:10, amenities:["Wifi","Clim","TV","Minibar","Balcon"]        },
+                  { code:"STD",  name:"Standard",       price:25000,  count:18, amenities:["Wifi","Clim","TV"]                           },
+                  { code:"SUP",  name:"Supérieure",     price:45000,  count:16, amenities:["Wifi","Clim","TV","Minifridge"]               },
+                  { code:"SJR",  name:"Suite Junior",   price:75000,  count:10, amenities:["Wifi","Clim","TV","Minibar","Balcon"]         },
                   { code:"PRES", name:"Présidentielle", price:150000, count:4,  amenities:["Wifi","Clim","TV","Minibar","Balcon","Jacuzzi"]},
                 ].map(t => (
                   <div key={t.code} className="px-5.5 py-4.5 border border-border rounded-[14px] bg-surface flex items-start justify-between gap-4">
@@ -144,6 +234,7 @@ export function Settings() {
             </div>
           )}
 
+          {/* ── Payments ── */}
           {section === "payments" && (
             <div>
               <SectionHead icon="creditCard" title="Méthodes de paiement" sub="Activez ou désactivez les options disponibles pour vos clients" />
@@ -153,68 +244,87 @@ export function Settings() {
                   { key:"omActive",   label:"Orange Money",   color:"#FF7900", note:"Commission 0.6%"  },
                   { key:"mtnActive",  label:"MTN Money",      color:"#FFCC00", note:"Commission 0.6%"  },
                   { key:"cardActive", label:"Carte bancaire", color:"#2744DE", note:"Commission 1.5%"  },
-                ] as { key: keyof typeof toggles; label: string; color: string; note: string }[]).map(p => (
+                ] as { key: keyof typeof localToggles; label: string; color: string; note: string }[]).map(p => (
                   <div key={p.key} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-6 rounded-md inline-grid place-items-center font-bold text-[10px] uppercase" style={{ background: p.color, color: p.key==="mtnActive" ? "#111" : "#fff" }}>{p.label.slice(0,4)}</div>
+                      <div className="w-9 h-6 rounded-md inline-grid place-items-center font-bold text-[10px] uppercase" style={{ background: p.color, color: p.key==="mtnActive" ? "#111" : "#fff" }}>
+                        {p.label.slice(0,4)}
+                      </div>
                       <div>
                         <div className="font-medium text-[13px]">{p.label}</div>
                         <div className="text-[11px] text-ink-3">{p.note}</div>
                       </div>
                     </div>
-                    <Toggle value={toggles[p.key]} onChange={() => toggle(p.key)} />
+                    <Toggle value={localToggles[p.key]} onChange={() => toggleLocal(p.key)} />
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── Notifications ── */}
           {section === "notifs" && (
             <div>
-              <SectionHead icon="bell" title="Notifications" sub="Choisissez quand et comment vous êtes alerté" />
+              <SectionHead icon="bell" title="Notifications" sub="Choisissez comment vous êtes alerté" />
               <div className="grid gap-2.5 mt-3.5">
-                {([
-                  { key:"pushNotif",   label:"Notifications push",       note:"Via l'app Immo Plus manager"  },
-                  { key:"smsNotif",    label:"Alertes SMS",               note:"Pour arrivées et paiements"   },
-                  { key:"emailReport", label:"Rapport journalier email",  note:"Envoyé chaque soir à 20h"     },
-                  { key:"reviewReply", label:"Alerte nouveaux avis",      note:"Dès qu'un avis est publié"    },
-                ] as { key: keyof typeof toggles; label: string; note: string }[]).map(n => (
-                  <div key={n.key} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-xl">
-                    <div>
-                      <div className="font-medium text-[13px]">{n.label}</div>
-                      <div className="text-[11px] text-ink-3">{n.note}</div>
-                    </div>
-                    <Toggle value={toggles[n.key]} onChange={() => toggle(n.key)} />
+                <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-xl">
+                  <div>
+                    <div className="font-medium text-[13px]">Notifications Email</div>
+                    <div className="text-[11px] text-ink-3">Recevez les alertes importantes par email</div>
                   </div>
-                ))}
+                  <Toggle
+                    value={notifSettings.emailEnabled}
+                    onChange={v => setNotifSettings(s => ({ ...s, emailEnabled: v }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-xl">
+                  <div>
+                    <div className="font-medium text-[13px]">Notifications SMS / WhatsApp</div>
+                    <div className="text-[11px] text-ink-3">Recevez les alertes via WhatsApp Business</div>
+                  </div>
+                  <Toggle
+                    value={notifSettings.smsEnabled}
+                    onChange={v => setNotifSettings(s => ({ ...s, smsEnabled: v }))}
+                  />
+                </div>
+                {notifSettings.smsEnabled && (
+                  <Field
+                    label="Numéro WhatsApp Business"
+                    value={notifSettings.whatsappBusinessNumber}
+                    onChange={v => setNotifSettings(s => ({ ...s, whatsappBusinessNumber: v }))}
+                    type="tel"
+                  />
+                )}
               </div>
             </div>
           )}
 
+          {/* ── App features ── */}
           {section === "app" && (
             <div>
               <SectionHead icon="sparkles" title="App Immo Plus — Fonctionnalités clients" sub="Contrôlez l'expérience client dans l'app" />
               <div className="grid gap-2.5 mt-3.5">
                 {([
-                  { key:"instantBook",    label:"Réservation instantanée",    note:"Sans validation manuelle"        },
-                  { key:"appReservation", label:"Réservation via app",         note:"Clients app peuvent réserver"    },
-                  { key:"autoConfirm",    label:"Confirmation automatique",    note:"Dès que le paiement est reçu"    },
-                  { key:"miniBar",        label:"Commande mini-bar",           note:"Via l'app depuis la chambre"     },
-                  { key:"laundry",        label:"Service blanchisserie",       note:"Demande via app"                 },
-                  { key:"roomService",    label:"Room service",                note:"Commandes repas via app"         },
-                ] as { key: keyof typeof toggles; label: string; note: string }[]).map(f => (
+                  { key:"instantBook",    label:"Réservation instantanée",  note:"Sans validation manuelle"     },
+                  { key:"appReservation", label:"Réservation via app",       note:"Clients app peuvent réserver" },
+                  { key:"autoConfirm",    label:"Confirmation automatique",  note:"Dès que le paiement est reçu" },
+                  { key:"miniBar",        label:"Commande mini-bar",         note:"Via l'app depuis la chambre"  },
+                  { key:"laundry",        label:"Service blanchisserie",     note:"Demande via app"              },
+                  { key:"roomService",    label:"Room service",              note:"Commandes repas via app"      },
+                ] as { key: keyof typeof localToggles; label: string; note: string }[]).map(f => (
                   <div key={f.key} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-xl">
                     <div>
                       <div className="font-medium text-[13px]">{f.label}</div>
                       <div className="text-[11px] text-ink-3">{f.note}</div>
                     </div>
-                    <Toggle value={toggles[f.key]} onChange={() => toggle(f.key)} />
+                    <Toggle value={localToggles[f.key]} onChange={() => toggleLocal(f.key)} />
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── Channels ── */}
           {section === "channels" && (
             <div>
               <SectionHead icon="barChart" title="Canaux de distribution" sub="Gérez vos connectivités OTA" />
@@ -222,7 +332,7 @@ export function Settings() {
                 {([
                   { key:"bookingActive", label:"Booking.com", note:"Connexion active · 24h de délai de synchro" },
                   { key:"airbnbActive",  label:"Airbnb",      note:"Non connecté · configurez votre API key"    },
-                ] as { key: keyof typeof toggles; label: string; note: string }[]).map(c => (
+                ] as { key: keyof typeof localToggles; label: string; note: string }[]).map(c => (
                   <div key={c.key} className="flex items-start justify-between px-4 py-4 border border-border rounded-[14px]">
                     <div className="flex items-center gap-3">
                       <div className={`w-9.5 h-9.5 rounded-[10px] grid place-items-center font-bold text-white text-[12px] ${c.key==="bookingActive" ? "bg-[#003580]" : "bg-[#FF5A5F]"}`}>
@@ -233,13 +343,14 @@ export function Settings() {
                         <div className="text-[11.5px] text-ink-3 mt-0.5">{c.note}</div>
                       </div>
                     </div>
-                    <Toggle value={toggles[c.key]} onChange={() => toggle(c.key)} />
+                    <Toggle value={localToggles[c.key]} onChange={() => toggleLocal(c.key)} />
                   </div>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── Fallback for unimplemented sections ── */}
           {!["hotel","rooms","payments","notifs","app","channels"].includes(section) && (
             <div className="py-16 text-center text-ink-3">
               <Icon name="sparkles" size={28} color="var(--color-ink-4)" />
@@ -248,15 +359,6 @@ export function Settings() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, defaultValue, type = "text" }: { label: string; defaultValue: string; type?: string }) {
-  return (
-    <div>
-      <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">{label}</label>
-      <input type={type} defaultValue={defaultValue} className="w-full h-10.5 bg-surface border border-border rounded-[10px] px-3 text-[13.5px] text-ink outline-none focus:border-primary" />
     </div>
   );
 }

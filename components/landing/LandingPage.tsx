@@ -3,9 +3,12 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { cva } from "class-variance-authority";
+import { ArrowRight, Home2, TickCircle, TrendUp, Star, Key, Briefcase, Buildings2, SmartHome } from "iconsax-react";
 import { cn } from "@/lib/utils/cn";
+import { Logo } from "@/components/Logo";
 import SignUpModal from "../signup/SignUpModal";
 import LoginModal from "../signup/LoginModal";
+import type { UserDto } from "@/lib/api/generated/model";
 
 /* ──────────── Motion presets ──────────── */
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -60,9 +63,7 @@ const Wrap = ({ children, className }: { children: React.ReactNode; className?: 
 
 /* ──────────── Brand mark ──────────── */
 const BrandMark = () => (
-  <span className="w-9 h-9 rounded-[10px] bg-ink text-white grid place-items-center font-bold text-base tracking-[-0.04em] shrink-0">
-    IP
-  </span>
+  <Logo size="sm" showHover={false} />
 );
 
 const BrandName = () => (
@@ -106,7 +107,7 @@ const CheckIcon = ({ size = 17 }: { size?: number }) => (
 );
 
 /* ──────────── NAV ──────────── */
-function Nav({ onDemo }: { onDemo: () => void }) {
+function Nav({ onDemo, user }: { onDemo: () => void; user: UserDto | null }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 8);
@@ -144,12 +145,27 @@ function Nav({ onDemo }: { onDemo: () => void }) {
         </nav>
 
         <div className="flex items-center gap-2.5">
-          <Link href="/login" className={cn(btn({ variant: "outline", size: "nav" }), "hidden min-[560px]:inline-flex")}>
-            Connexion
-          </Link>
-          <button className={btn({ variant: "dark", size: "nav" })} onClick={onDemo}>
-            Réserver une démo
-          </button>
+          {user ? (
+            <>
+              <Link href="/pms" className="w-10 h-10 rounded-full grid place-items-center hover:bg-surface-2 transition-colors" title={user.firstName ?? "Profil"}>
+                <div className="w-8 h-8 rounded-full bg-primary text-white grid place-items-center font-semibold text-[12px]">
+                  {user.firstName?.[0]?.toUpperCase() ?? "U"}
+                </div>
+              </Link>
+              <Link href="/logout" className={btn({ variant: "outline", size: "nav" })}>
+                Déconnexion
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className={cn(btn({ variant: "outline", size: "nav" }), "hidden min-[560px]:inline-flex")}>
+                Connexion
+              </Link>
+              <button className={btn({ variant: "dark", size: "nav" })} onClick={onDemo}>
+                Réserver une démo
+              </button>
+            </>
+          )}
         </div>
       </Wrap>
     </header>
@@ -159,22 +175,20 @@ function Nav({ onDemo }: { onDemo: () => void }) {
 /* ──────────── HERO CARDS ──────────── */
 function HeroCards() {
   return (
-    <div className="flex justify-center items-start gap-[26px] max-w-[1040px] mx-auto mt-[58px] flex-wrap max-[760px]:gap-y-[34px]">
+    <div className="relative max-w-[1100px] mx-auto mt-1 min-h-[400px] max-[760px]:min-h-0 max-[760px]:mt-7 max-[760px]:flex max-[760px]:flex-col max-[760px]:items-center max-[760px]:gap-6">
 
-      {/* Occupation card */}
+      {/* Occupation card — left, floating, tilted */}
       <motion.div
-        className="bg-white border border-border rounded-2xl shadow-lg w-[330px] p-[18px] relative"
+        className="absolute left-0 top-[18px] w-[296px] bg-white border border-border rounded-2xl shadow-lg p-[18px] -rotate-[5deg] max-[760px]:static max-[760px]:rotate-0 max-[760px]:w-full max-[760px]:max-w-[330px]"
         {...float(8, 6.5, 0)}
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-[42px] h-[42px] rounded-[10px] bg-gradient-to-br from-[#dfe3f7] to-[#eef0fb] shrink-0 grid place-items-center text-primary">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5" />
-              </svg>
+              <SmartHome size={22} variant="Outline" />
             </div>
             <div>
-              <div className="font-semibold text-[14.5px]">Résidence Lagune Bleue</div>
+              <div className="font-semibold text-[14.5px]">Hotel Lagune Bleue</div>
               <div className="text-xs text-ink-3">42 chambres · Abidjan</div>
             </div>
           </div>
@@ -206,9 +220,9 @@ function HeroCards() {
         </motion.div>
       </motion.div>
 
-      {/* Invoice card */}
+      {/* Invoice card — center, dashboard, overlapping the fold */}
       <motion.div
-        className="bg-white border border-border rounded-2xl shadow-lg w-[330px] p-[18px] mt-[30px] relative max-[760px]:mt-0"
+        className="relative z-10 mx-auto bg-white border border-border rounded-2xl shadow-xl w-[340px] p-[18px] max-[760px]:static max-[760px]:w-full max-[760px]:max-w-[330px]"
         {...float(10, 7, 0.5)}
       >
         <div className="flex items-center justify-between mb-3.5">
@@ -275,9 +289,9 @@ function HeroCards() {
         </motion.div>
       </motion.div>
 
-      {/* Revenue card */}
+      {/* Revenue card — right, floating, tilted */}
       <motion.div
-        className="bg-white border border-border rounded-2xl shadow-lg w-[236px] p-4 mt-2"
+        className="absolute right-0 top-[46px] w-[218px] bg-white border border-border rounded-2xl shadow-lg p-4 rotate-[5deg] max-[760px]:static max-[760px]:rotate-0 max-[760px]:w-full max-[760px]:max-w-[330px]"
         {...float(9, 6, 1)}
       >
         <div className="flex items-center justify-between mb-[9px]">
@@ -290,9 +304,7 @@ function HeroCards() {
           4 250 000<span className="text-[13px] text-ink-3 font-medium ml-[3px]">FCFA</span>
         </div>
         <div className="inline-flex items-center gap-[3px] text-success text-xs font-semibold mt-[5px]">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M7 17 17 7M9 7h8v8" />
-          </svg>
+          <TrendUp size={13} variant="Outline" />
           +18% vs avril
         </div>
         <div className="flex items-end gap-[5px] h-[38px] mt-3.5">
@@ -318,17 +330,15 @@ function Hero({ onDemo }: { onDemo: () => void }) {
   return (
     <section className="relative overflow-hidden pt-[46px]" id="top">
       <div className="absolute inset-0 z-0 pointer-events-none bg-white" />
-      <div className="relative z-[1] max-w-[1220px] mx-auto px-7 pb-[70px] max-[1080px]:pb-[30px]">
+      <div className="relative z-[1] max-w-[1220px] mx-auto px-7 pb-[40px] max-[1080px]:pb-[24px]">
         <div className="relative z-[6] max-w-[760px] mx-auto text-center pt-[18px]">
 
           <motion.div {...fadeUp(0)}>
-            <div className="inline-flex items-center bg-white border border-border rounded-full py-[5px] px-[6px] pl-[5px] text-[13px] shadow-xs mb-[26px]">
-              <span className="bg-primary-50 text-primary font-semibold rounded-full px-[11px] py-[3px] text-xs">Nouveau</span>
+            <div className="inline-flex items-center bg-white border border-border rounded-full py-[5px] px-[6px] pl-[5px] text-[13px] shadow-xs mb-[22px]">
+              <span className="bg-primary-50 text-primary font-semibold rounded-full px-[11px] py-1.5 text-xs">Nouveau</span>
               <span className="px-3 pl-[11px] text-ink-2 flex items-center gap-2 font-medium">
-                Encaissez par Wave &amp; Orange Money
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
+               Pensé pour l'hôtellerie ouest-africaine
+                <ArrowRight size={14} />
               </span>
             </div>
           </motion.div>
@@ -341,30 +351,25 @@ function Hero({ onDemo }: { onDemo: () => void }) {
           </motion.h1>
 
           <motion.p
-            className="text-[clamp(16px,2vw,19px)] leading-[1.55] text-ink-2 max-w-[540px] mx-auto mt-6 m-0"
+            className="text-[clamp(16px,2vw,19px)] leading-[1.5] text-ink-2 max-w-[560px] mx-auto mt-5 m-0 whitespace-nowrap max-[640px]:whitespace-normal"
             {...fadeUp(0.12)}
           >
-            Réservations, planning, check-in, encaissements mobile money et finances  réunis dans Immo Plus. Le PMS tout-en-un pensé pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.
+            Réservations, paiements mobile money, et finances réunis en un seul endroit.
           </motion.p>
 
-          <motion.div className="flex gap-[13px] justify-center mt-8 flex-wrap" {...fadeUp(0.18)}>
+          <motion.div className="flex gap-[13px] justify-center mt-7 flex-wrap" {...fadeUp(0.18)}>
             <button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo}>
               Démarrer gratuitement
-            </button>
-            <button className={btn({ variant: "outline", size: "lg" })} onClick={onDemo}>
-              Réserver une démo →
             </button>
           </motion.div>
 
           <motion.div
-            className="mt-[18px] text-[13px] text-ink-3 flex gap-[18px] justify-center flex-wrap"
+            className="mt-3.5 text-[12px] text-ink-3 flex gap-3.5 justify-center flex-wrap"
             {...fadeUp(0.24)}
           >
-            {["Sans carte bancaire", "Installation en 10 min", "Support en français"].map(t => (
+            {["Gratuit", "Facile à utiliser", "Rentable"].map(t => (
               <span key={t} className="inline-flex items-center gap-1.5">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className="text-success">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
+                <TickCircle size={13} className="text-success" variant="Outline" />
                 {t}
               </span>
             ))}
@@ -376,29 +381,6 @@ function Hero({ onDemo }: { onDemo: () => void }) {
         </motion.div>
       </div>
     </section>
-  );
-}
-
-/* ──────────── STRIP ──────────── */
-function Strip() {
-  const logos = [
-    { name: "Lagune Bleue",     svg: <circle cx="12" cy="12" r="10" /> },
-    { name: "Akwaba Suites",    svg: <rect x="3" y="3" width="18" height="18" rx="5" /> },
-    { name: "Hôtel Téranga",    svg: <path d="M12 2 22 20H2z" /> },
-    { name: "Résidence Cocody", svg: <circle cx="12" cy="12" r="10" /> },
-  ];
-  return (
-    <div className="border-y border-border-soft bg-white">
-      <div className="flex items-center justify-center gap-[46px] py-[26px] px-7 flex-wrap">
-        <span className="text-xs text-ink-3 font-medium">La confiance des hôtels, résidences et maisons d&apos;hôtes</span>
-        {logos.map(l => (
-          <span key={l.name} className="font-semibold text-base text-ink-4 tracking-[-0.02em] flex items-center gap-[7px]">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">{l.svg}</svg>
-            {l.name}
-          </span>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -500,7 +482,7 @@ function DashboardShowcase() {
               <div className="flex items-center gap-[7px] p-[13px] px-4 border-b border-border-soft bg-white">
                 {[0, 1, 2].map(k => <div key={k} className="w-[11px] h-[11px] rounded-full bg-border-strong" />)}
                 <span className="ml-3 font-mono text-[11.5px] text-ink-3 bg-white border border-border rounded-[7px] px-3 py-1">
-                  app.immoplus.io/tableau-de-bord
+                  pms.immoplus.ci/tableau-de-bord
                 </span>
               </div>
               <div className="p-[22px]">
@@ -698,20 +680,14 @@ const PLANS = [
   {
     name: "Découverte", desc: "Pour tester et gérer une petite structure.",
     price: "0",         sub: "jusqu'à 5 chambres",
-    items: ["Réservations & planning", "Check-in & fiches clients", "1 utilisateur"],
+    items: ["Réservations & planning", "Check-in & fiches clients", "1 utilisateur", "Commission 8% par réservation"],
     cta: "Commencer", href: "/inscription", pop: false,
   },
   {
-    name: "Pro",        desc: "Pour les hôtels et résidences en activité.",
-    price: "1 500",     sub: "FCFA / chambre / mois",
-    items: ["Tout Découverte, sans limite", "Mobile money & finances", "Rapports & exports", "Utilisateurs illimités"],
-    cta: "Démarrer l'essai", href: "/inscription", pop: true,
-  },
-  {
-    name: "Groupe",     desc: "Pour plusieurs établissements.",
-    price: "Sur devis", sub: "multi-sites & centralisé",
-    items: ["Tout Pro", "Vue groupe consolidée", "Accompagnement dédié"],
-    cta: "Nous contacter", href: "/inscription", pop: false,
+    name: "Partenaire",  desc: "Pour les établissements d'envergure avec besoins spécifiques.",
+    price: "Sur devis",  sub: "tarif personnalisé",
+    items: ["Tout Découverte, sans limite", "Mobile money & finances", "Rapports & exports", "Utilisateurs illimités", "Accompagnement dédié"],
+    cta: "Nous contacter", href: "#", pop: false, external: true,
   },
 ] as const;
 
@@ -729,24 +705,13 @@ function Pricing() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-3 gap-5 items-stretch max-[880px]:grid-cols-1 max-[560px]:grid-cols-1">
+        <div className="grid grid-cols-2 gap-6 items-stretch max-[880px]:grid-cols-1 max-[560px]:grid-cols-1 max-w-[900px] mx-auto">
           {PLANS.map((p, i) => (
             <motion.div
               key={p.name}
-              className={cn(
-                "flex flex-col bg-white border rounded-[28px] p-[32px] px-[28px] transition-all duration-[180ms]",
-                p.pop
-                  ? "border-primary shadow-[0_0_0_1px_#2744DE,0_14px_44px_rgba(18,19,26,.10)] relative"
-                  : "border-border"
-              )}
+              className="flex flex-col bg-white border border-border rounded-[28px] p-[32px] px-[28px] transition-all duration-[180ms] hover:border-border-strong hover:y-[-4px]"
               {...stagger(i)}
-              whileHover={!p.pop ? { y: -4, borderColor: "#C8C8E0" } : { y: -4 }}
             >
-              {p.pop && (
-                <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-primary text-white text-[11px] font-semibold py-[5px] px-3.5 rounded-full tracking-[0.02em] whitespace-nowrap">
-                  Le plus choisi
-                </div>
-              )}
               <div className="text-[15px] font-semibold">{p.name}</div>
               <div className="text-[13px] text-ink-3 mt-[5px] min-h-[38px]">{p.desc}</div>
               <div className="text-[38px] font-semibold tracking-[-0.04em] my-4 mb-0.5 leading-none">
@@ -769,15 +734,27 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <Link
-                href={p.href}
-                className={cn(
-                  btn({ variant: p.pop ? "primary" : "outline" }),
-                  "justify-center text-center"
-                )}
-              >
-                {p.cta}
-              </Link>
+              {p.external ? (
+                <a
+                  href="mailto:contact@immoplus.io?subject=Demande%20d%27information%20Pack%20Partenaire"
+                  className={cn(
+                    btn({ variant: "outline" }),
+                    "justify-center text-center"
+                  )}
+                >
+                  {p.cta}
+                </a>
+              ) : (
+                <Link
+                  href={p.href}
+                  className={cn(
+                    btn({ variant: "primary" }),
+                    "justify-center text-center"
+                  )}
+                >
+                  {p.cta}
+                </Link>
+              )}
             </motion.div>
           ))}
         </div>
@@ -809,9 +786,6 @@ function CTA({ onDemo }: { onDemo: () => void }) {
             <div className="flex gap-[13px] justify-center flex-wrap">
               <button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo}>
                 Démarrer gratuitement
-              </button>
-              <button className={btn({ variant: "outlineLight", size: "lg" })} onClick={onDemo}>
-                Réserver une démo →
               </button>
             </div>
           </div>
@@ -867,7 +841,7 @@ function Footer() {
 }
 
 /* ──────────── MAIN EXPORT ──────────── */
-export default function LandingPage() {
+export default function LandingPage({ user }: { user: UserDto | null }) {
   const [demoOpen,  setDemoOpen]  = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
@@ -887,9 +861,8 @@ export default function LandingPage() {
 
   return (
     <>
-      <Nav onDemo={openDemo} />
+      <Nav onDemo={openDemo} user={user} />
       <Hero onDemo={openDemo} />
-      <Strip />
       <Features />
       <DashboardShowcase />
       <Payments />

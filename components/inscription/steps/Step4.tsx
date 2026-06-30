@@ -13,6 +13,7 @@ import { Btn } from "../ui/Btn";
 import { InsModal } from "../ui/InsModal";
 import { PhotoGallery } from "../ui/PhotoGallery";
 import { RadioMark } from "../ui/RadioMark";
+import { fileUrl } from "@/lib/utils/fileUrl";
 
 const CARD_COLORS = [
   { bg: "var(--primary-50)", fg: "var(--primary)" },
@@ -31,25 +32,34 @@ function RoomCard({ room, idx, onEdit, onRemove }: {
   room: RoomType; idx: number; onEdit: () => void; onRemove: () => void;
 }) {
   const c = CARD_COLORS[idx % 4];
+  const firstImage = room.imageIds.length > 0 ? fileUrl(room.imageIds[0]) : null;
+
   return (
-    <div className="rounded-[20px] bg-surface overflow-hidden shadow-card transition-[transform,box-shadow] duration-220 hover:shadow-card-hover hover:-translate-y-0.75 flex flex-col">
+    <div className="rounded-[20px] bg-surface overflow-hidden border-[1.5px] border-border transition-colors duration-220 hover:border-border-strong flex flex-col">
       <div
-        className="relative h-36 flex flex-col items-center justify-center gap-1.5 shrink-0"
-        style={{ background: c.bg, color: c.fg }}
+        className="relative h-36 flex flex-col items-center justify-center gap-1.5 shrink-0 bg-cover bg-center"
+        style={firstImage ? { backgroundImage: `url('${firstImage}')` } : { background: c.bg, color: c.fg }}
       >
-        <Icon name="bed" size={38} />
-        {room.bedType && (
-          <div className="text-[10.5px] font-bold tracking-wider uppercase" style={{ opacity: 0.55 }}>
-            {room.bedType}
-          </div>
-        )}
+        {/* Overlay if image exists */}
+        {firstImage && <div className="absolute inset-0 bg-black/20" />}
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center">
+          <Icon name="bed" size={38} style={firstImage ? { color: "white", opacity: 0.9 } : { color: c.fg }} />
+          {room.bedType && (
+            <div className="text-[10.5px] font-bold tracking-wider uppercase text-white" style={!firstImage ? { opacity: 0.55, color: c.fg } : {}}>
+              {room.bedType}
+            </div>
+          )}
+        </div>
+
         <div className="absolute top-2.5 left-2.5">
           <Pill kind={room.complete ? "success" : "warn"} dot>
             {room.complete ? "Complet" : "À compléter"}
           </Pill>
         </div>
         {room.imageIds.length > 0 && (
-          <div className="absolute top-2.5 right-2.5 rounded-lg px-1.5 py-0.75 text-[10px] font-semibold flex items-center gap-1" style={{ background: "rgba(0,0,0,0.15)" }}>
+          <div className="absolute top-2.5 right-2.5 rounded-lg px-1.5 py-0.75 text-[10px] font-semibold flex items-center gap-1 bg-black/30 text-white">
             <Icon name="image" size={11} /> {room.imageIds.length}
           </div>
         )}
@@ -400,7 +410,7 @@ export function Step4({ state, update }: StepProps) {
             </div>
           </div>
         </div>
-        <Tip>Un prix week-end <strong>+15%</strong> est standard pour les hôtels urbains en Côte d&apos;Ivoire — activez-le dans chaque type de chambre.</Tip>
+        <Tip>Un prix week-end <strong>+15%</strong> est standard pour les hôtels urbains en Côte d&apos;Ivoire  activez-le dans chaque type de chambre.</Tip>
       </InsCard>
 
       {editing && (

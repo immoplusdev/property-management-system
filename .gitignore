@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# orval — generated API client (regenerate with `npm run generate:api`)
+/lib/api/generated/

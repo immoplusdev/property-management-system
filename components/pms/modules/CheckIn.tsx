@@ -1,10 +1,13 @@
 "use client";
+import { PaymentMethodIcon } from "../PaymentMethodIcon";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
 import { SectionHead, Icon, showToast, Button } from "../shared";
 import { Pill } from "@/components/ui/Pill";
 import { Modal } from "@/components/ui/Modal";
-import { BOOKINGS, ROOMS_PMS, formatFCFA, formatDate, type Booking } from "../data";
+import { formatFCFA, formatDate, type Booking } from "../data";
+import { useReservations } from "@/lib/hooks/pms/useReservations";
+import { useRooms } from "@/lib/hooks/pms/useRooms";
 
 const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
 
@@ -20,9 +23,13 @@ export function CheckIn() {
 
   const STEPS = mode === "checkout" ? STEPS_OUT : STEPS_IN;
 
-  const arrivals   = BOOKINGS.filter(b => b.status === "confirmed").slice(0, 5);
-  const departures = BOOKINGS.filter(b => b.status === "checking-out").slice(0, 5);
-  const availRooms = ROOMS_PMS.filter(r => r.status === "libre").slice(0, 8);
+  const arrivalsQ   = useReservations({ status: "confirmed",     limit: 10 });
+  const departuresQ = useReservations({ status: "checking_out",  limit: 10 });
+  const roomsQ      = useRooms({ status: "free" });
+
+  const arrivals   = (arrivalsQ.data?.data   ?? []).slice(0, 5);
+  const departures = (departuresQ.data?.data ?? []).slice(0, 5);
+  const availRooms = (roomsQ.data?.rooms     ?? []).slice(0, 8);
 
   return (
     <div className="animate-pms-fade-up">
@@ -151,9 +158,15 @@ export function CheckIn() {
                       <div className="mt-4">
                         <div className="text-[12px] font-semibold mb-2.5 text-ink-2">Mode de paiement du solde</div>
                         <div className="flex gap-2 flex-wrap">
-                          {["Wave","Orange Money","MTN Money","Espèces"].map(m => (
-                            <button key={m} className="px-3 py-2 rounded-[9px] border border-border text-[12.5px] hover:border-primary hover:text-primary">{m}</button>
-                          ))}
+                          {(["wave","om","mtn","cash"] as const).map(method => {
+                            const labels = { wave: "Wave", om: "Orange Money", mtn: "Moov", cash: "Espèces" };
+                            return (
+                              <button key={method} className="flex items-center gap-2 px-3 py-2 rounded-[9px] border border-border hover:border-primary hover:bg-primary-50 transition-all">
+                                <PaymentMethodIcon method={method} size="sm" />
+                                <span className="text-[12.5px]">{labels[method]}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                       <div className="flex justify-between mt-5.5">
@@ -351,9 +364,15 @@ export function CheckIn() {
             <div>
               <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">Paiement</label>
               <div className="flex gap-2 flex-wrap">
-                {["Wave","Orange Money","MTN Money","Espèces","Carte"].map(m => (
-                  <button key={m} className="px-3 py-1.5 rounded-[9px] border border-border text-[12.5px] hover:border-primary hover:text-primary">{m}</button>
-                ))}
+                {(["wave","om","mtn","cash","card"] as const).map(method => {
+                  const labels = { wave: "Wave", om: "Orange Money", mtn: "Moov", cash: "Espèces", card: "Carte" };
+                  return (
+                    <button key={method} className="flex items-center gap-2 px-3 py-1.5 rounded-[9px] border border-border hover:border-primary hover:bg-primary-50 transition-all">
+                      <PaymentMethodIcon method={method} size="sm" />
+                      <span className="text-[12.5px]">{labels[method]}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

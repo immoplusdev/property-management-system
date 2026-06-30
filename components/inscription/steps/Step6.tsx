@@ -12,10 +12,10 @@ import { RadioMark } from "../ui/RadioMark";
 import { cn } from "@/lib/utils/cn";
 
 const PAY_METHODS = [
-  { id: "payWave",  name: "Wave",              color: "#1BA1F2", icon: "📱", desc: "Paiement instantané · sans frais" },
-  { id: "payOM",   name: "Orange Money",       color: "#FF7900", icon: "🟧", desc: "Orange Money Côte d'Ivoire" },
-  { id: "payCard", name: "Carte bancaire",     color: "#2744DE", icon: "💳", desc: "Visa, Mastercard" },
-  { id: "payCash", name: "Espèces à l'arrivée", color: "#16A26B", icon: "💵", desc: "Paiement au check-in" },
+  { id: "payWave",  name: "Wave",              image: "/wave.png", desc: "Paiement instantané · sans frais" },
+  { id: "payOM",   name: "Orange Money",       image: "/om.png", desc: "Orange Money Côte d'Ivoire" },
+  { id: "payCard", name: "Carte bancaire",     image: "💳", desc: "Visa, Mastercard" },
+  { id: "payCash", name: "Espèces à l'arrivée", image: "💵", desc: "Paiement au check-in" },
 ] as const;
 
 const CANCEL_OPTS = [
@@ -62,7 +62,14 @@ export function Step6({ state, update }: StepProps) {
                   )}
                 >
                   <div className="flex items-start justify-between mb-2.5">
-                    <div className="w-8.5 h-8.5 rounded-[9px] grid place-items-center text-[16px] shrink-0" style={{ background: m.color }}>{m.icon}</div>
+                    <div className="w-10 h-10 rounded-[10px] grid place-items-center shrink-0 bg-white">
+                      {m.image.startsWith("/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.image} alt={m.name} className="w-6 h-6 object-contain" />
+                      ) : (
+                        <span className="text-[18px]">{m.image}</span>
+                      )}
+                    </div>
                     <div className={cn("w-5 h-5 rounded-md border-[1.5px] grid place-items-center transition-all duration-120", checked ? "border-primary bg-primary text-white" : "border-border-strong text-transparent")}>
                       {checked && <Icon name="check" size={12} stroke={3} />}
                     </div>
@@ -194,7 +201,7 @@ export function Step6({ state, update }: StepProps) {
                   <Icon name={i === 0 ? "arrowRight" : "arrowLeft"} size={14} />
                   {i === 0 ? "Check-in anticipé" : "Check-out tardif"}
                 </div>
-                <div className="flex gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   {(["Gratuit", "Sur disponibilité", "+ frais"] as const).map((o) => {
                     const active = p[key] === o;
                     return (
@@ -202,8 +209,8 @@ export function Step6({ state, update }: StepProps) {
                         key={o}
                         onClick={() => set(key, o)}
                         className={cn(
-                          "flex-1 h-8.5 px-3 text-[12.5px] font-semibold rounded-xl border-[1.5px] transition-colors",
-                          active ? "bg-ink text-white border-ink" : "bg-surface text-ink border-border hover:border-border-strong"
+                          "px-2 py-2 text-[11.5px] font-semibold rounded-xl border-[1.5px] transition-colors text-center leading-snug",
+                          active ? "bg-primary text-white border-primary" : "bg-surface text-ink border-border hover:border-border-strong"
                         )}
                       >
                         {o}

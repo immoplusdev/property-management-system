@@ -143,7 +143,7 @@ function IdCardSlot({
       <UploadZone
         icon="camera"
         title={label}
-        sub="JPG, PNG ou PDF · max 5 Mo"
+        square
         onClick={() => inputRef.current?.click()}
       />
       {slot.status === "error" && (
@@ -229,10 +229,11 @@ export function Step1({ state, update }: StepProps) {
         desc="Ce compte est distinct du compte agence immobilière. Vos informations restent en attente de vérification jusqu'à validation de votre pièce d'identité (24–48h)."
       />
 
-      <div className="grid grid-cols-12 gap-4.5">
+      <div className="grid grid-cols-12 gap-4.5 items-stretch">
 
+        {/* LIGNE 1 - Bi-colonne (Identité 60% + Vérification 40%) */}
         {/* 1. Identité du gérant */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat className="col-span-12 lg:col-span-7 flex flex-col">
           <SectionHead
             icon="user"
             title="Identité du gérant"
@@ -264,7 +265,7 @@ export function Step1({ state, update }: StepProps) {
         </InsCard>
 
         {/* 2. Vérification d'identité */}
-        <InsCard flat className="col-span-12 md:col-span-7">
+        <InsCard flat className="col-span-12 lg:col-span-5 flex flex-col">
           <SectionHead
             icon="shield"
             title="Vérification d'identité"
@@ -282,28 +283,38 @@ export function Step1({ state, update }: StepProps) {
                 Pièce d&apos;identité du propriétaire{" "}
                 <span className="text-danger">*</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <div className="text-[12px] text-ink-3 font-semibold mb-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <div className="text-[12px] text-ink-3 font-semibold mb-2.5">
                     Recto (face avant)
                   </div>
-                  <IdCardSlot
-                    label="Face avant"
-                    slot={frontSlot}
-                    onPick={(f) => handlePick(f, "front")}
-                    onRemove={() => handleRemove("front")}
-                  />
+                  <div className="aspect-square shrink-0">
+                    <IdCardSlot
+                      label="Face avant"
+                      slot={frontSlot}
+                      onPick={(f) => handlePick(f, "front")}
+                      onRemove={() => handleRemove("front")}
+                    />
+                  </div>
+                  <div className="text-[10px] text-ink-4 mt-2.5 leading-[1.4]">
+                    JPG, PNG ou PDF · max 5 Mo
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[12px] text-ink-3 font-semibold mb-1.5">
+                <div className="flex flex-col">
+                  <div className="text-[12px] text-ink-3 font-semibold mb-2.5">
                     Verso (face arrière)
                   </div>
-                  <IdCardSlot
-                    label="Face arrière"
-                    slot={backSlot}
-                    onPick={(f) => handlePick(f, "back")}
-                    onRemove={() => handleRemove("back")}
-                  />
+                  <div className="aspect-square shrink-0">
+                    <IdCardSlot
+                      label="Face arrière"
+                      slot={backSlot}
+                      onPick={(f) => handlePick(f, "back")}
+                      onRemove={() => handleRemove("back")}
+                    />
+                  </div>
+                  <div className="text-[10px] text-ink-4 mt-2.5 leading-[1.4]">
+                    JPG, PNG ou PDF · max 5 Mo
+                  </div>
                 </div>
               </div>
               <div className="text-[11.5px] text-ink-3 mt-1.5 leading-[1.4]">
@@ -325,38 +336,46 @@ export function Step1({ state, update }: StepProps) {
           </Tip>
         </InsCard>
 
+        {/* LIGNE 2 - Pleine largeur */}
         {/* 3. Conditions d'utilisation */}
-        <InsCard flat className="col-span-12 md:col-span-5">
+        <InsCard flat className="col-span-12">
           <SectionHead icon="fileText" title="Conditions d'utilisation" />
 
-          <div className="flex items-center gap-4 px-4 py-3.5 border border-border rounded-2xl mb-4 bg-primary-50">
-            <div className="text-[32px] font-black tracking-tighter text-primary shrink-0 leading-none">
-              8%
-            </div>
-            <div>
-              <div className="font-bold text-[13.5px] text-ink">
-                Commission par réservation
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Commission bloc */}
+            <div className="lg:col-span-1 flex items-center gap-4 px-5 py-4.5 border-[1.5px] border-border rounded-[16px] bg-primary-50">
+              <div className="text-[36px] font-black tracking-tighter text-primary shrink-0 leading-none">
+                8%
               </div>
-              <div className="text-[11.5px] text-ink-3 mt-0.75 leading-[1.4]">
-                Prélevée automatiquement — aucune avance requise
+              <div>
+                <div className="font-bold text-[13px] text-ink">
+                  Commission
+                </div>
+                <div className="text-[11px] text-ink-3 mt-0.5 leading-[1.3]">
+                  Par réservation<br />
+                  Automatique
+                </div>
               </div>
             </div>
-          </div>
 
-          <Checkbox
-            checked={s.acceptedTerms}
-            onChange={(v) => set("acceptedTerms", v)}
-            label="J'accepte les CGU hôteliers d'Immo Plus Pro et la commission de 8% par réservation."
-            sub="Vous pouvez consulter le contrat hôtelier complet et la grille tarifaire avant de signer."
-          />
+            {/* CGU & Checkbox */}
+            <div className="lg:col-span-2 flex flex-col gap-4">
+              <Checkbox
+                checked={s.acceptedTerms}
+                onChange={(v) => set("acceptedTerms", v)}
+                label="J'accepte les CGU hôteliers d'Immo Plus Pro et la commission de 8% par réservation."
+                sub="Vous pouvez consulter le contrat hôtelier complet et la grille tarifaire avant de signer."
+              />
 
-          <div className="flex flex-col gap-2 mt-3.5 pt-3.5 border-t border-border">
-            <a className="flex items-center gap-1.75 text-primary text-[12.5px] font-medium cursor-pointer no-underline transition-opacity duration-120 hover:opacity-70">
-              <Icon name="fileText" size={13} /> Voir les CGU
-            </a>
-            <a className="flex items-center gap-1.75 text-primary text-[12.5px] font-medium cursor-pointer no-underline transition-opacity duration-120 hover:opacity-70">
-              <Icon name="fileText" size={13} /> Grille des commissions
-            </a>
+              <div className="flex gap-4">
+                <a className="flex items-center gap-1.75 text-primary text-[12px] font-medium cursor-pointer no-underline transition-opacity duration-120 hover:opacity-70">
+                  <Icon name="fileText" size={13} /> Voir les CGU
+                </a>
+                <a className="flex items-center gap-1.75 text-primary text-[12px] font-medium cursor-pointer no-underline transition-opacity duration-120 hover:opacity-70">
+                  <Icon name="fileText" size={13} /> Grille des commissions
+                </a>
+              </div>
+            </div>
           </div>
         </InsCard>
 

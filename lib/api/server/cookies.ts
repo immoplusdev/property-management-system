@@ -13,6 +13,7 @@ import { cookies } from "next/headers";
 export const ACCESS_TOKEN_COOKIE = "ip_access_token";
 export const REFRESH_TOKEN_COOKIE = "ip_refresh_token";
 export const EXPIRES_COOKIE = "ip_expires";
+export const HOTEL_ID_COOKIE = "ip_hotel_id";
 
 // Refresh token lifespan (the access token's own lifespan comes from `expires`).
 const REFRESH_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -59,6 +60,34 @@ export async function clearSessionCookies(): Promise<void> {
   store.delete(ACCESS_TOKEN_COOKIE);
   store.delete(REFRESH_TOKEN_COOKIE);
   store.delete(EXPIRES_COOKIE);
+  store.delete(HOTEL_ID_COOKIE);
+}
+
+/**
+ * Active PMS hotel id, cached as a cookie so we don't refetch
+ * `/pms/onboarding/progress` on every request that needs the `x-hotel-id`
+ * (WebSocket handshake, etc.). Best-effort write: `cookies().set` throws in a
+ * Server Component, so callers in that context still work (read-through only).
+ */
+export async function setHotelId(hotelId: string): Promise<void> {
+  try {
+    const store = await cookies();
+    store.set(HOTEL_ID_COOKIE, hotelId, { ...baseCookie, maxAge: REFRESH_MAX_AGE });
+  } catch {
+    /* called from a Server Component — can't set cookies here; ignore */
+  }
+}
+
+export async function getHotelId(): Promise<string | undefined> {
+  return (await cookies()).get(HOTEL_ID_COOKIE)?.value;
+}
+
+export async function clearHotelId(): Promise<void> {
+  try {
+    (await cookies()).delete(HOTEL_ID_COOKIE);
+  } catch {
+    /* Server Component context — ignore */
+  }
 }
 
 export async function getAccessToken(): Promise<string | undefined> {

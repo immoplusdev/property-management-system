@@ -1,52 +1,86 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { StatusPill, Icon, Button } from "../shared";
+import { StatusPill, Icon, Button, toastPromise } from "../shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils/cn";
-import { ROOMS_PMS, ROOM_TYPES_PMS, STATUS_CONFIG, formatFCFA, formatDate, type Room } from "../data";
+import { ROOM_TYPES_PMS, STATUS_CONFIG, formatFCFA, formatDate } from "../data";
+import type { Room, RoomStatus } from "@/lib/types/pms";
+import { useRooms, useUpdateRoomStatus } from "@/lib/hooks/pms/useRooms";
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
+}
 
 function RoomTile({ room, onClick }: { room: Room; onClick: () => void }) {
   const type = ROOM_TYPES_PMS.find(t => t.code === room.type);
-  const sc = STATUS_CONFIG[room.status];
+  const sc   = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.free;
   return (
     <div
       className="rounded-xl px-3.5 pt-3.5 pb-3 bg-surface border border-border cursor-pointer transition-all duration-120 relative min-h-29 flex flex-col hover:border-ink-3"
       onClick={onClick}
     >
-      <span
-        className="absolute top-3.5 left-3.5 w-1.5 h-1.5 rounded-full"
-        style={{ background: sc.color }}
-      />
+      <span className="absolute top-3.5 left-3.5 w-1.5 h-1.5 rounded-full" style={{ background: sc.color }} />
       <div className="text-[26px] font-semibold tracking-[-0.04em] leading-none text-ink pl-3.5">{room.num}</div>
       <div className="text-[11px] text-ink-3 mt-1 font-medium pl-3.5">{type?.name ?? room.type}</div>
-      {room.guest && <div className="text-[12px] mt-auto pt-2.5 font-medium text-ink overflow-hidden text-ellipsis whitespace-nowrap">{room.guest}</div>}
+      {room.guest && (
+        <div className="text-[12px] mt-auto pt-2.5 font-medium text-ink overflow-hidden text-ellipsis whitespace-nowrap">{room.guest}</div>
+      )}
       {room.checkout && <div className="text-[11px] text-ink-3 mt-0.5">↩ {formatDate(room.checkout)}</div>}
     </div>
   );
 }
 
-export function Rooms() {
-  const [view, setView] = useState<"grid"|"list">("grid");
-  const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState<Room|null>(null);
+const EDITABLE_STATUSES: { value: RoomStatus; label: string }[] = [
+  { value: "free",           label: "Libre"           },
+  { value: "cleaning",       label: "Ménage"          },
+  { value: "out_of_service", label: "Hors service"    },
+];
 
-  const filtered = filter === "all" ? ROOMS_PMS : ROOMS_PMS.filter(r => r.status === filter);
-  const counts: Record<string, number> = Object.fromEntries(
-    ["all", ...Object.keys(STATUS_CONFIG)].map(k => [k, k === "all" ? ROOMS_PMS.length : ROOMS_PMS.filter(r => r.status === k).length])
-  );
+export function Rooms() {
+  const [view,     setView]     = useState<"grid"|"list">("grid");
+  const [filter,   setFilter]   = useState("all");
+  const [selected, setSelected] = useState<Room|null>(null);
+  const [newStatus, setNewStatus] = useState<RoomStatus | "">("");
+
+  const { data, isLoading, error } = useRooms();
+  const rooms: Room[] = data?.floors?.flatMap(f => f.rooms) ?? [];
+  const updateStatus  = useUpdateRoomStatus();
+
+  const filtered = filter === "all" ? rooms : rooms.filter(r => r.status === filter);
+  const counts: Record<string, number> = {
+    all: rooms.length,
+    ...Object.fromEntries(Object.keys(STATUS_CONFIG).map(k => [k, rooms.filter(r => r.status === k).length]))
+  };
 
   const byFloor = filtered.reduce<Record<number, Room[]>>((acc, r) => {
     (acc[r.floor] = acc[r.floor] || []).push(r);
     return acc;
   }, {});
 
+  async function handleUpdateStatus() {
+    if (!selected?.id || !newStatus) return;
+    try {
+      await toastPromise(updateStatus.mutateAsync({ id: selected.id, status: newStatus }), {
+        loading: "Mise à jour de la chambre…",
+        success: `Chambre ${selected.num} → ${STATUS_CONFIG[newStatus]?.label ?? newStatus}`,
+        error: (e) => (e as Error)?.message || "Erreur lors de la mise à jour",
+      });
+      setSelected(null);
+      setNewStatus("");
+    } catch { /* toast déjà affiché */ }
+  }
+
   return (
     <div className="animate-pms-fade-up">
       <PMSHeader
         title="Chambres"
-        sub={`${ROOMS_PMS.length} chambres réparties sur 5 étages · Vue temps réel`}
+        sub={
+          isLoading
+            ? "Chargement…"
+            : `${rooms.length} chambres · ${counts["occupied"] ?? 0} occupées · ${counts["cleaning"] ?? 0} en ménage`
+        }
         actions={
           <>
             <div className="flex gap-0.5 bg-surface-2 p-0.75 rounded-[9px]">
@@ -63,7 +97,6 @@ export function Rooms() {
                 <Icon name="list" size={13} /> Liste
               </button>
             </div>
-            <Button variant="primary" size="sm"><Icon name="plus" size={14} /> Bloquer chambre</Button>
           </>
         }
       />
@@ -75,7 +108,7 @@ export function Rooms() {
             <Chip
               key={k}
               label={c.label}
-              count={counts[k]}
+              count={counts[k] ?? 0}
               active={filter === k}
               onClick={() => setFilter(k)}
               before={<span className="w-1.75 h-1.75 rounded-full shrink-0" style={{ background: c.color }} />}
@@ -84,8 +117,17 @@ export function Rooms() {
         </ChipGroup>
       </div>
 
-      {view === "grid" ? (
-        Object.keys(byFloor).sort().map(floor => (
+      {isLoading ? (
+        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))" }}>
+          {Array.from({ length: 20 }).map((_, i) => <Skeleton key={i} className="h-29" />)}
+        </div>
+      ) : error ? (
+        <div className="py-12 text-center text-ink-3 text-[13px]">
+          <Icon name="x" size={20} color="var(--color-warn)" />
+          <div className="mt-2">Impossible de charger les chambres</div>
+        </div>
+      ) : view === "grid" ? (
+        Object.keys(byFloor).sort((a,b) => Number(a)-Number(b)).map(floor => (
           <div key={floor} className="bg-surface border border-border rounded-[18px] p-5.5 mb-3.5">
             <div className="flex items-center justify-between mb-3.5">
               <div className="flex items-center gap-2.5">
@@ -93,14 +135,14 @@ export function Rooms() {
                 <div>
                   <div className="font-semibold text-[14px]">Étage {floor}</div>
                   <div className="text-[11.5px] text-ink-3">
-                    {byFloor[Number(floor)].length} chambres · {byFloor[Number(floor)].filter(r => r.status === "occupee" || r.status === "depart").length} occupées
+                    {byFloor[Number(floor)].length} chambres · {byFloor[Number(floor)].filter(r => r.status === "occupied" || r.status === "departure").length} occupées
                   </div>
                 </div>
               </div>
             </div>
             <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))" }}>
               {byFloor[Number(floor)].map(r => (
-                <RoomTile key={r.num} room={r} onClick={() => setSelected(r)} />
+                <RoomTile key={r.id} room={r} onClick={() => { setSelected(r); setNewStatus(""); }} />
               ))}
             </div>
           </div>
@@ -119,7 +161,11 @@ export function Rooms() {
               {filtered.map(r => {
                 const type = ROOM_TYPES_PMS.find(t => t.code === r.type);
                 return (
-                  <tr key={r.num} className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2 cursor-pointer" onClick={() => setSelected(r)}>
+                  <tr
+                    key={r.num}
+                    className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2 cursor-pointer"
+                    onClick={() => { setSelected(r); setNewStatus(""); }}
+                  >
                     <td className="px-3.5 py-3.5 align-middle"><strong className="text-[15px]">{r.num}</strong></td>
                     <td className="px-3.5 py-3.5 align-middle">{type?.name}</td>
                     <td className="px-3.5 py-3.5 align-middle">{r.floor}</td>
@@ -150,11 +196,17 @@ export function Rooms() {
           footer={
             <>
               <Button variant="ghost" onClick={() => setSelected(null)}>Fermer</Button>
-              <Button variant="primary">Modifier le statut</Button>
+              <Button
+                variant="primary"
+                onClick={handleUpdateStatus}
+                disabled={!newStatus || newStatus === selected.status || updateStatus.isPending}
+              >
+                {updateStatus.isPending ? "Mise à jour…" : "Confirmer"}
+              </Button>
             </>
           }
         >
-          <div className="mb-2"><StatusPill status={selected.status} /></div>
+          <div className="mb-3"><StatusPill status={selected.status} /></div>
           {selected.guest && (
             <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px] mb-2">
               <span className="text-ink-3 text-[13px]">Occupant</span>
@@ -167,10 +219,31 @@ export function Rooms() {
               <strong>{formatDate(selected.checkout)}</strong>
             </div>
           )}
-          <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px]">
+          <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px] mb-4">
             <span className="text-ink-3 text-[13px]">Type</span>
-            <strong>{ROOM_TYPES_PMS.find(t => t.code === selected.type)?.name}</strong>
+            <strong>{ROOM_TYPES_PMS.find(t => t.code === selected.type)?.name ?? selected.type}</strong>
           </div>
+          {selected.id && (
+            <div>
+              <div className="text-[11.5px] text-ink-3 font-medium mb-1.5">Changer le statut</div>
+              <div className="flex gap-2 flex-wrap">
+                {EDITABLE_STATUSES.map(s => (
+                  <button
+                    key={s.value}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[12.5px] font-medium border transition-all",
+                      newStatus === s.value
+                        ? "bg-primary text-white border-primary"
+                        : "bg-surface border-border text-ink-2 hover:border-ink-3"
+                    )}
+                    onClick={() => setNewStatus(s.value)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </Modal>
       )}
     </div>

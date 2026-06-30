@@ -23,6 +23,11 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
   const [coords, setCoords] = useState({ lat, lng });
   const [locationName, setLocationName] = useState(label || "");
   const [locationSub, setLocationSub] = useState(subLabel || "");
+  const [searchInput, setSearchInput] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState<Array<{ lat: string; lon: string; display_name: string }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Always hold the latest callback — avoids stale closure in the Leaflet dragend listener
   const onPositionChangeRef = useRef(onPositionChange);
@@ -46,6 +51,68 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
       /* silent fail — coordinates still work */
     }
   }, []);
+
+  /* Forward geocode using Nominatim (search address → coordinates) */
+  const forwardGeocode = useCallback(async (query: string) => {
+    if (!query.trim()) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&accept-language=fr&limit=1`
+      );
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const first = data[0];
+        const newLat = +parseFloat(first.lat).toFixed(5);
+        const newLng = +parseFloat(first.lon).toFixed(5);
+        setCoords({ lat: newLat, lng: newLng });
+        onPositionChangeRef.current?.(newLat, newLng);
+        if (mapRef.current && markerRef.current) {
+          mapRef.current.setView([newLat, newLng], 16);
+          markerRef.current.setLatLng([newLat, newLng]);
+        }
+        reverseGeocode(newLat, newLng);
+        setSearchInput("");
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch {
+      /* silent fail */
+    } finally {
+      setIsSearching(false);
+    }
+  }, [reverseGeocode]);
+
+  /* Autocomplete: debounced search with suggestions */
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&accept-language=fr&limit=8`
+      );
+      const data = await res.json();
+      setSuggestions(data || []);
+      setShowSuggestions(true);
+    } catch {
+      setSuggestions([]);
+    }
+  }, []);
+
+  const handleSearchInputChange = (value: string) => {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!value.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(() => {
+      fetchSuggestions(value);
+    }, 300); // Débounce 300ms
+  };
 
   useEffect(() => {
     if (mapRef.current) return;
@@ -200,8 +267,63 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
         </button>
       </div>
 
+      {/* Search bar with autocomplete */}
+      <div className="absolute top-3.5 left-3.5 z-1000 flex gap-2 w-full max-w-sm flex-col">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Chercher une adresse…"
+            value={searchInput}
+            onChange={(e) => handleSearchInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                forwardGeocode(searchInput);
+              }
+            }}
+            onFocus={() => searchInput.length >= 2 && setShowSuggestions(true)}
+            className="flex-1 px-3.5 py-2 rounded-lg bg-white/96 backdrop-blur-md border border-[rgba(0,0,0,0.1)] text-[12px] font-medium placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary shadow-[0_2px_12px_rgba(0,0,0,0.1)]"
+          />
+          <button
+            type="button"
+            onClick={() => forwardGeocode(searchInput)}
+            disabled={!searchInput.trim() || isSearching}
+            className="px-3.5 py-2 rounded-lg bg-primary text-white text-[12px] font-semibold hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_2px_12px_rgba(0,0,0,0.1)]"
+            title="Chercher l'adresse"
+          >
+            {isSearching ? (
+              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle className="opacity-25" cx="12" cy="12" r="10" />
+                <path className="opacity-75" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Suggestions dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="bg-white/96 backdrop-blur-md rounded-lg border border-[rgba(0,0,0,0.1)] shadow-[0_4px_20px_rgba(0,0,0,0.15)] overflow-hidden max-h-48 overflow-y-auto">
+            {suggestions.map((suggestion, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => forwardGeocode(suggestion.display_name)}
+                className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-primary-50 border-b border-[rgba(0,0,0,0.05)] last:border-b-0 transition-colors"
+              >
+                <div className="font-semibold text-ink truncate">{suggestion.display_name.split(",")[0]}</div>
+                <div className="text-ink-3 text-[10px] truncate">{suggestion.display_name.split(",").slice(1, 3).join(",")}</div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Hint */}
-      <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-1000 bg-black/65 backdrop-blur-[8px] text-white text-[11px] font-semibold px-4 py-1.5 rounded-full pointer-events-none opacity-85">
+      <div className="absolute top-3.5 right-3.5 z-1000 bg-black/65 backdrop-blur-[8px] text-white text-[11px] font-semibold px-4 py-1.5 rounded-full pointer-events-none opacity-85">
         Glissez le pin pour repositionner
       </div>
     </div>

@@ -1,8 +1,11 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Calendar, CardPos, Star1 } from "iconsax-react";
 import { cn } from "@/lib/utils/cn";
+import { useHydrated } from "@/lib/hooks/useHydrated";
+import { Logo } from "@/components/Logo";
 import {
   sendOtp,
   verifyOtp,
@@ -105,47 +108,67 @@ function BrandPane() {
   ];
 
   return (
-    <section className="border-l border-border bg-surface-2 px-10 pt-8 pb-8 flex flex-col h-full overflow-y-auto scrollbar-none hidden min-[1080px]:flex">
-      <div className="text-[10.5px] font-semibold tracking-[0.1em] uppercase text-primary shrink-0">
-        Plateforme hôtelière
+    <section
+      className="relative px-10 flex flex-col h-full overflow-y-auto scrollbar-none hidden min-[1080px]:flex"
+      style={{
+        background: "linear-gradient(145deg, #1535c4 0%, #2744DE 52%, #4161f6 100%)"
+      }}
+    >
+      {/* Décor cercles en arrière-plan */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div className="absolute top-1/3 -left-40 w-80 h-80 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
       </div>
 
-      <h2 className="text-[clamp(26px,2.8vw,34px)] font-semibold tracking-[-0.03em] leading-[1.12] mt-5 m-0 text-ink max-w-[400px]">
-        Gérez tout votre établissement depuis une seule plateforme.
-      </h2>
-      <p className="text-sm text-ink-2 leading-[1.6] mt-3.5 max-w-[380px] m-0">
-        Réservations, planning des chambres, encaissements et avis clients  réunis dans un outil pensé pour les hôteliers.
-      </p>
+      {/* Contenu */}
+      <div className="relative z-10 flex flex-col h-full justify-between py-8">
 
-      <div className="mt-6 flex flex-col border-t border-border flex-1">
-        {VALUES.map(v => (
-          <div key={v.title} className="flex items-start gap-3.5 py-4 border-b border-border">
-            <div className="w-9 h-9 rounded-[9px] border border-border-strong grid place-items-center shrink-0 bg-white text-ink-2">
-              {v.icon}
-            </div>
-            <div>
-              <div className="text-[13.5px] font-semibold tracking-[-0.01em] text-ink">{v.title}</div>
-              <div className="text-xs text-ink-3 mt-[3px] leading-[1.5]">{v.desc}</div>
-            </div>
+        {/* Haut : eyebrow, titre, description */}
+        <div>
+          <div className="text-[10.5px] font-semibold tracking-[0.1em] uppercase text-white/60 shrink-0">
+            Plateforme hôtelière
           </div>
-        ))}
-      </div>
 
-      <div className="flex items-center gap-3.5 px-[18px] py-4 border border-border rounded-[13px] bg-white mt-5 shrink-0">
-        <div className="flex">
-          {["KB", "NF", "AD", "ST"].map((init, i) => (
-            <div
-              key={init}
-              className="w-[34px] h-[34px] rounded-full border-[1.5px] border-border-strong bg-surface-2 grid place-items-center text-ink-2 font-semibold text-[11px]"
-              style={{ marginLeft: i === 0 ? 0 : -10 }}
-            >
-              {init}
+          <h2 className="text-[clamp(26px,2.8vw,34px)] font-semibold tracking-[-0.03em] leading-[1.12] mt-4 m-0 text-white max-w-[420px]">
+            Gérez tout votre établissement depuis une seule plateforme.
+          </h2>
+          <p className="text-[15px] text-white/70 leading-[1.6] mt-4 max-w-[420px] m-0">
+            Réservations, planning des chambres, encaissements et avis clients réunis dans un outil pensé pour les hôteliers.
+          </p>
+        </div>
+
+        {/* Milieu : feature cards */}
+        <div className="flex flex-col gap-5 py-4">
+          {VALUES.map(v => (
+            <div key={v.title} className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-[13px] border border-white/20 grid place-items-center shrink-0 bg-white/10 text-white">
+                {v.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13.5px] font-semibold tracking-[-0.01em] text-white">{v.title}</div>
+                <div className="text-[13px] text-white/70 mt-1 leading-[1.5]">{v.desc}</div>
+              </div>
             </div>
           ))}
         </div>
-        <div>
-          <div className="text-base font-bold tracking-[-0.02em] text-ink">500+ établissements</div>
-          <div className="text-xs text-ink-3 mt-px">nous font déjà confiance en Côte d&apos;Ivoire.</div>
+
+        {/* Bas : social proof */}
+        <div className="flex items-center gap-3.5 px-4 py-4 border border-white/15 rounded-2xl bg-white/10 shrink-0">
+          <div className="flex gap-2">
+            {["KB", "NF", "AD", "ST"].map((init) => (
+              <div
+                key={init}
+                className="w-9 h-9 rounded-full border border-white/20 bg-white/15 grid place-items-center text-white font-semibold text-[10px]"
+              >
+                {init}
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="text-[14px] font-bold tracking-[-0.02em] text-white">500+ établissements</div>
+            <div className="text-[12px] text-white/70 mt-px">nous font déjà confiance en Côte d&apos;Ivoire.</div>
+          </div>
         </div>
       </div>
     </section>
@@ -605,13 +628,13 @@ function SuccessOverlay({ onDone }: { onDone: () => void }) {
         {/* Logo / check */}
         <div className="relative mb-7">
           <div className={cn(
-            "w-[76px] h-[76px] rounded-full bg-primary text-white grid place-items-center transition-all duration-500",
+            "w-[76px] h-[76px] rounded-full bg-primary text-white grid place-items-center transition-all duration-500 overflow-hidden",
             stage === "enter" ? "scale-90 opacity-70" : "scale-100 opacity-100"
           )}>
-            {stage === "enter"
-              ? <span className="font-black text-[22px] tracking-[-0.05em]">i+</span>
-              : <CheckBig />
-            }
+            {stage === "enter" && (
+              <Logo size="lg" showHover={false} />
+            )}
+            {stage !== "enter" && <CheckBig />}
           </div>
           {stage !== "enter" && (
             <div className="absolute inset-0 rounded-full border-[3px] border-primary/30 animate-ping" />
@@ -656,6 +679,7 @@ export default function SignUpModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("signup");
   const [pending, setPending] = useState<PendingForm | null>(null);
+  const mounted = useHydrated();
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -683,9 +707,11 @@ export default function SignUpModal({ onClose }: { onClose: () => void }) {
     router.push("/inscription");
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[9000] bg-[rgba(10,10,16,0.52)] backdrop-blur-[8px] flex animate-fade-in"
+      className="fixed inset-0 z-modal-fullscreen bg-[rgba(10,10,16,0.52)] backdrop-blur-[8px] flex animate-fade-in overscroll-contain"
       style={{ fontFeatureSettings: "'ss01', 'cv11'" }}
       role="dialog"
       aria-modal="true"
@@ -701,9 +727,7 @@ export default function SignUpModal({ onClose }: { onClose: () => void }) {
             {/* Top bar */}
             <div className="flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-[8px] bg-primary text-white grid place-items-center font-bold text-sm tracking-[-0.04em]">
-                  i+
-                </div>
+                <Logo size="md" showHover={false} />
                 <div className="font-semibold text-sm tracking-[-0.02em] flex items-center gap-1.5 text-ink">
                   Immo Plus{" "}
                   <span className="text-[9px] font-semibold tracking-[0.08em] uppercase text-primary border border-primary-200 px-[5px] py-px rounded-[4px] leading-[1.3]">
@@ -736,6 +760,7 @@ export default function SignUpModal({ onClose }: { onClose: () => void }) {
           <BrandPane />
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

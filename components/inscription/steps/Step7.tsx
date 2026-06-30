@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { StepProps } from "../types";
 import { submitOnboarding } from "@/lib/api/onboarding/onboarding.actions";
 import { SectionHead } from "../ui/SectionHead";
@@ -7,7 +8,6 @@ import { Pill } from "../ui/Pill";
 import { Fcfa } from "../ui/Fcfa";
 import { Icon } from "../ui/Icon";
 import { InsCard } from "../ui/InsCard";
-import { Btn } from "../ui/Btn";
 import { cn } from "@/lib/utils/cn";
 
 const STATUS_ICON: Record<string, string> = {
@@ -16,54 +16,9 @@ const STATUS_ICON: Record<string, string> = {
   info: "border-[rgba(39,68,222,0.18)] bg-primary-50 text-primary",
 };
 
-function SubmittedView({ hotelName }: { hotelName: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[70dvh] text-center p-10 animate-insc-fade">
-      <div className="relative w-27.5 h-27.5 rounded-full bg-success text-white grid place-items-center shadow-[0_20px_60px_rgba(22,162,107,0.35)] mb-7">
-        <Icon name="check" size={48} stroke={3} />
-        <div className="absolute -inset-2.5 rounded-full border-[3px] border-[rgba(22,162,107,0.2)]" />
-        <div className="absolute -inset-5 rounded-full border-2 border-[rgba(22,162,107,0.1)]" />
-      </div>
-
-      <div className="text-[12px] font-semibold text-success tracking-[0.06em] uppercase">Dossier soumis</div>
-      <h1 className="text-[36px] font-bold tracking-[-0.02em] mt-2 mb-3 max-w-[600px]">
-        Bienvenue dans Immo Plus Pro,<br />
-        <span className="text-primary">{hotelName}</span>
-      </h1>
-      <p className="text-[15px] text-ink-2 max-w-[540px] leading-[1.55]">
-        Votre fiche est en cours de vérification. Notre équipe revient vers vous sous <strong>24 à 48h</strong>.
-        Vous recevrez une notification WhatsApp et un SMS dès qu&apos;elle sera mise en ligne.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-8 w-full max-w-[720px]">
-        {[
-          { i: "fileText", t: "Référence du dossier", v: "IPP-2026-0518-AJ47" },
-          { i: "clock", t: "Délai de validation", v: "24–48h ouvrées" },
-          { i: "bell", t: "Notification", v: "WhatsApp + SMS" },
-        ].map((c) => (
-          <div key={c.t} className="bg-surface rounded-[20px] shadow-card p-4 text-left">
-            <div className="w-8 h-8 rounded-[9px] bg-primary-50 text-primary grid place-items-center mb-2.5">
-              <Icon name={c.i} size={16} />
-            </div>
-            <div className="text-[11.5px] text-ink-3 font-medium">{c.t}</div>
-            <div className="font-bold text-[15px] mt-0.5">{c.v}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-3 mt-8">
-        <Btn variant="accent" onClick={() => { window.location.href = process.env.NEXT_PUBLIC_PMS_URL || "http://localhost:3001"; }}>
-          <Icon name="home" size={15} /> Accéder au PMS
-        </Btn>
-        <Btn variant="ghost"><Icon name="download" size={15} /> Télécharger le dossier</Btn>
-      </div>
-    </div>
-  );
-}
-
 export function Step7({ state, completion = 89, goTo }: StepProps) {
+  const router = useRouter();
   const { account, hotel, equip, roomTypes, valueAdds, pricing } = state;
-  const [submitted,    setSubmitted]    = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
 
@@ -101,13 +56,12 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
     const result = await submitOnboarding();
     setIsSubmitting(false);
     if (result.ok) {
-      setSubmitted(true);
+      // Redirect to PMS with success notification
+      router.push(process.env.NEXT_PUBLIC_PMS_URL || "http://localhost:3001");
     } else {
       setSubmitError(result.error.message);
     }
   };
-
-  if (submitted) return <SubmittedView hotelName={hotel.name} />;
 
   const sections = [
     {
@@ -358,7 +312,7 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full inline-flex items-center justify-center gap-2 min-h-13.5 px-5.5 rounded-lg bg-primary text-white border-[1.5px] border-primary text-[14.5px] font-semibold hover:bg-primary-600 hover:border-primary-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="w-full inline-flex items-center justify-center gap-2 min-h-13.5 px-5.5 rounded-2xl bg-primary text-white border-[1.5px] border-primary text-[14.5px] font-semibold hover:bg-primary-600 hover:border-primary-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? (
                 <>

@@ -1,5 +1,7 @@
 "use client";
 import React, { useEffect, useId } from "react";
+import { createPortal } from "react-dom";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 import { Icon } from "./Icon";
 import { Btn } from "./Btn";
 
@@ -17,6 +19,7 @@ interface InsModalProps {
 /** Inscription modal (.modal): rounded-[26px] panel, eyebrow + title head, scrollable body, footer. */
 export function InsModal({ eyebrow, title, head, onClose, footer, maxWidth = 680, children }: InsModalProps) {
   const titleId = useId();
+  const mounted = useHydrated();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -24,9 +27,22 @@ export function InsModal({ eyebrow, title, head, onClose, footer, maxWidth = 680
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  useEffect(() => {
+    const { overflow, paddingRight } = document.body.style;
+    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
+    return () => {
+      document.body.style.overflow = overflow;
+      document.body.style.paddingRight = paddingRight;
+    };
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-9995 bg-black/40 flex items-center justify-center p-6 backdrop-blur-[3px] animate-insc-fade"
+      className="fixed inset-0 z-modal bg-black/40 flex items-center justify-center p-6 backdrop-blur-[3px] animate-insc-fade overscroll-contain"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -53,7 +69,8 @@ export function InsModal({ eyebrow, title, head, onClose, footer, maxWidth = 680
           <div className="px-6.5 py-4.5 border-t border-border flex justify-end gap-2.5 shrink-0">{footer}</div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

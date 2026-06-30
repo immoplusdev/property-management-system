@@ -2,6 +2,7 @@ import "server-only";
 import { env } from "@/lib/config/env";
 import { apiErrorFromResponse, apiErrorFromThrown } from "@/lib/api/errors";
 import { logRequest } from "@/lib/logger";
+import { getHotelId } from "@/lib/api/server/cookies";
 
 export interface BackendFetchInit extends Omit<RequestInit, "body"> {
   accessToken?: string;
@@ -19,17 +20,21 @@ export async function backendFetch<T = unknown>(
   const url  = `${env.API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   const done = logRequest({ source: "SRV", method, path, body: json });
 
+  const hotelId = await getHotelId();
+  const requestHeaders: Record<string, string> = {
+    Accept: "application/json",
+  };
+  if (json !== undefined) requestHeaders["Content-Type"] = "application/json";
+  if (accessToken) requestHeaders.Authorization = `Bearer ${accessToken}`;
+  if (hotelId) requestHeaders["x-hotel-id"] = hotelId;
+  Object.assign(requestHeaders, headers);
+
   let res: Response;
   try {
     res = await fetch(url, {
       ...rest,
       cache,
-      headers: {
-        Accept: "application/json",
-        ...(json !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        ...headers,
-      },
+      headers: requestHeaders,
       ...(json !== undefined ? { body: JSON.stringify(json) } : {}),
     });
   } catch (err) {

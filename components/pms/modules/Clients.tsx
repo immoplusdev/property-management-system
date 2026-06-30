@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { PMSHeader } from "../PMSHeader";
 import { SectionHead, StarRating, Icon, Button } from "../shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
@@ -7,31 +7,51 @@ import { Modal } from "@/components/ui/Modal";
 import { Tabs } from "@/components/ui/Tabs";
 import { Pill } from "@/components/ui/Pill";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CLIENTS, BOOKINGS, REVIEWS, formatFCFA, formatDate, type Client, type Review } from "../data";
+import { formatFCFA, formatDate, type Guest, type Review } from "../data";
+import { useGuests } from "@/lib/hooks/pms/useGuests";
+import { useReservations } from "@/lib/hooks/pms/useReservations";
 
 const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
-const avatarColor = (n: number) => AV_COLORS[(n - 1) % AV_COLORS.length];
-const initials = (name: string) => name.split(" ").map(x => x[0]).join("").slice(0, 2);
+const avatarColor = (g: Guest) => AV_COLORS[(g.firstName.charCodeAt(0) ?? 0) % AV_COLORS.length];
+const fullName = (g: Guest) => `${g.firstName} ${g.lastName}`;
+const initials = (g: Guest) => `${g.firstName[0] ?? ""}${g.lastName[0] ?? ""}`.toUpperCase();
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
+}
 
 export function Clients() {
   const [filter,   setFilter]   = useState("all");
   const [search,   setSearch]   = useState("");
-  const [selected, setSelected] = useState<Client | null>(null);
+  const [selected, setSelected] = useState<Guest | null>(null);
 
-  let list = CLIENTS;
-  if (filter === "vip")  list = list.filter(c => c.vip);
-  if (filter === "corp") list = list.filter(c => !!c.corporate);
-  if (filter === "new")  list = list.filter(c => c.stays <= 1);
-  if (search) list = list.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const { data, isLoading } = useGuests({ limit: 100 });
+  const allGuests: Guest[] = data?.data ?? [];
+
+  const list = useMemo(() => {
+    let res = allGuests;
+    if (filter === "vip")  res = res.filter(c => c.type === "vip");
+    if (filter === "corp") res = res.filter(c => c.type === "corporate" || !!c.corporateName);
+    if (filter === "new")  res = res.filter(c => c.totalStays <= 1);
+    if (search) res = res.filter(c =>
+      fullName(c).toLowerCase().includes(search.toLowerCase()) ||
+      c.email.toLowerCase().includes(search.toLowerCase())
+    );
+    return res;
+  }, [allGuests, filter, search]);
+
+  const vipCount  = allGuests.filter(c => c.type === "vip").length;
+  const corpCount = allGuests.filter(c => !!c.corporateName).length;
 
   return (
     <div className="animate-pms-fade-up">
       <PMSHeader
         title="Clients"
-        sub={`${CLIENTS.length} fiches clients · ${CLIENTS.filter(c => c.vip).length} VIP · ${CLIENTS.filter(c => c.corporate).length} comptes corporate`}
+        sub={
+          isLoading
+            ? "Chargement…"
+            : `${allGuests.length} fiches clients · ${vipCount} VIP · ${corpCount} comptes corporate`
+        }
         actions={
           <>
             <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export CRM</Button>
@@ -54,10 +74,10 @@ export function Clients() {
           </div>
           <ChipGroup>
             {([
-              ["all",  "Tous",      CLIENTS.length],
-              ["vip",  "VIP",       CLIENTS.filter(c => c.vip).length],
-              ["corp", "Corporate", CLIENTS.filter(c => c.corporate).length],
-              ["new",  "Nouveaux",  CLIENTS.filter(c => c.stays <= 1).length],
+              ["all",  "Tous",      allGuests.length],
+              ["vip",  "VIP",       vipCount],
+              ["corp", "Corporate", corpCount],
+              ["new",  "Nouveaux",  allGuests.filter(c => c.totalStays <= 1).length],
             ] as [string, string, number][]).map(([id, label, count]) => (
               <Chip key={id} label={label} count={count} active={filter === id} onClick={() => setFilter(id)} />
             ))}
@@ -66,18 +86,24 @@ export function Clients() {
       </div>
 
       {/* Card grid */}
-      <div className="grid grid-cols-3 gap-3">
-        {list.map(c => (
-          <ClientCard key={c.id} client={c} onClick={() => setSelected(c)} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-36" />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {list.map(c => (
+            <ClientCard key={c.id} client={c} onClick={() => setSelected(c)} />
+          ))}
+        </div>
+      )}
 
       {selected && <ClientDetail client={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
-function ClientCard({ client, onClick }: { client: Client; onClick: () => void }) {
+function ClientCard({ client, onClick }: { client: Guest; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -87,23 +113,28 @@ function ClientCard({ client, onClick }: { client: Client; onClick: () => void }
       <div className="flex items-start gap-3">
         <div
           className="w-12 h-12 rounded-full inline-grid place-items-center text-white font-semibold text-[16px] shrink-0"
-          style={{ background: avatarColor(client.avatar) }}
+          style={{ background: avatarColor(client) }}
         >
-          {initials(client.name)}
+          {initials(client)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="font-bold text-[14px]">{client.name}</div>
-            {client.vip && (
+            <div className="font-bold text-[14px]">{fullName(client)}</div>
+            {client.type === "vip" && (
               <span className="inline-flex items-center gap-0.75 text-white text-[10px] font-bold px-1.75 py-0.5 rounded-full bg-amber">
                 <Icon name="star" size={10} /> VIP
               </span>
             )}
+            {client.isBlacklisted && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">
+                Blacklist
+              </span>
+            )}
           </div>
           <div className="text-[11.5px] text-ink-3 mt-0.5">
-            {client.corporate
-              ? <span className="inline-flex items-center gap-1"><Icon name="briefcase" size={10} /> {client.corporate}</span>
-              : <>{client.country} · {client.idType}</>}
+            {client.corporateName
+              ? <span className="inline-flex items-center gap-1"><Icon name="briefcase" size={10} /> {client.corporateName}</span>
+              : <>{client.nationality}</>}
           </div>
         </div>
         <Icon name="chevronRight" size={16} color="var(--color-ink-3)" />
@@ -112,7 +143,7 @@ function ClientCard({ client, onClick }: { client: Client; onClick: () => void }
       <div className="grid grid-cols-3 gap-2.5 mt-3.5 pt-3.5 border-t border-border">
         <div>
           <div className="text-[11px] text-ink-3">Séjours</div>
-          <div className="font-bold text-[15px]">{client.stays}</div>
+          <div className="font-bold text-[15px]">{client.totalStays}</div>
         </div>
         <div>
           <div className="text-[11px] text-ink-3">Total dépensé</div>
@@ -136,10 +167,15 @@ const PREFERENCES: [boolean, string][] = [
   [false, "Chambre fumeur"],
 ];
 
-function ClientDetail({ client, onClose }: { client: Client; onClose: () => void }) {
+function ClientDetail({ client, onClose }: { client: Guest; onClose: () => void }) {
   const [tab, setTab] = useState("info");
-  const clientBookings = BOOKINGS.filter(b => b.guestId === client.id);
-  const clientReviews: Review[] = REVIEWS.filter(r => r.guest === client.name);
+  const name = fullName(client);
+
+  const bookingsQ = useReservations({ guestId: client.id, limit: 20 });
+  const clientBookings = bookingsQ.data?.data ?? [];
+  // Le backend n'expose pas (encore) d'endpoint d'avis par client
+  // (cf. PMS_CONCORDANCE.md). On affiche un état vide honnête plutôt que des mocks.
+  const clientReviews: Review[] = [];
 
   return (
     <Modal
@@ -159,7 +195,7 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
       {/* Bleed header */}
       <div
         className="-m-5.5 mb-5 px-6 pt-6 pb-4.5 text-white relative"
-        style={{ background: client.vip ? "var(--color-amber)" : "var(--color-ink)" }}
+        style={{ background: client.type === "vip" ? "var(--color-amber)" : "var(--color-ink)" }}
       >
         <button
           className="absolute top-4 right-4 w-8.5 h-8.5 grid place-items-center rounded-[9px] bg-white/20 border border-white/20 text-white hover:bg-white/30"
@@ -171,16 +207,16 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
         <div className="flex items-center gap-3.5">
           <div
             className="w-16 h-16 rounded-full inline-grid place-items-center text-white font-bold text-[22px] shrink-0 shadow-[0_0_0_4px_rgba(255,255,255,0.3)]"
-            style={{ background: avatarColor(client.avatar) }}
+            style={{ background: avatarColor(client) }}
           >
-            {initials(client.name)}
+            {initials(client)}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[22px] font-bold tracking-[-0.02em]">{client.name}</div>
+            <div className="text-[22px] font-bold tracking-[-0.02em]">{name}</div>
             <div className="text-[12px] opacity-90 mt-1 flex gap-3 flex-wrap">
-              {client.vip       && <span className="inline-flex items-center gap-1"><Icon name="star" size={11} /> Client VIP</span>}
-              {client.corporate && <span className="inline-flex items-center gap-1"><Icon name="briefcase" size={11} /> {client.corporate}</span>}
-              <span className="inline-flex items-center gap-1"><Icon name="mapPin" size={11} /> {client.country}</span>
+              {client.type === "vip"       && <span className="inline-flex items-center gap-1"><Icon name="star" size={11} /> Client VIP</span>}
+              {client.corporateName        && <span className="inline-flex items-center gap-1"><Icon name="briefcase" size={11} /> {client.corporateName}</span>}
+              <span className="inline-flex items-center gap-1"><Icon name="mapPin" size={11} /> {client.nationality}</span>
             </div>
           </div>
           <div className="text-right shrink-0">
@@ -188,7 +224,7 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
             <div className="text-[24px] font-extrabold tracking-[-0.02em]">
               {(client.totalSpent / 1000).toFixed(0)}k <span className="text-[11px] opacity-85">FCFA</span>
             </div>
-            <div className="text-[11px] opacity-85 mt-0.5">sur {client.stays} séjours</div>
+            <div className="text-[11px] opacity-85 mt-0.5">sur {client.totalStays} séjours</div>
           </div>
         </div>
       </div>
@@ -200,7 +236,7 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
         onChange={setTab}
         tabs={[
           { id: "info",    label: "Informations" },
-          { id: "history", label: `Historique · ${client.stays} séjours` },
+          { id: "history", label: `Historique · ${client.totalStays} séjours` },
           { id: "reviews", label: "Avis postés" },
           { id: "prefs",   label: "Préférences & notes" },
         ]}
@@ -211,16 +247,20 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
         <div className="grid grid-cols-2 gap-2">
           <DetailRow label="Téléphone (WhatsApp)" value={client.phone} action={<Button variant="soft" size="sm"><Icon name="send" size={13} /> Message</Button>} />
           <DetailRow label="Email" value={client.email} valueClass="text-[13px]" action={<Button variant="icon" size="md"><Icon name="mail" size={14} /></Button>} />
-          <DetailRow label="Pièce d&apos;identité" value={`${client.idType} · ${client.idNumber}`} action={<Button variant="icon" size="md"><Icon name="eye" size={14} /></Button>} />
-          <DetailRow label="Pays / Nationalité" value={client.country} />
-          {client.corporate && (
+          <DetailRow label="Pays / Nationalité" value={client.nationality} />
+          {client.isBlacklisted && client.blacklistReason && (
+            <div className="col-span-2 p-4 bg-red-50 border border-red-200 rounded-[14px] text-[13px] text-red-700">
+              <strong>Client blacklisté :</strong> {client.blacklistReason}
+            </div>
+          )}
+          {client.corporateName && (
             <div className="col-span-2 p-4 bg-surface-2 border border-primary-100 rounded-[14px]">
               <div className="flex items-center gap-2.5">
                 <div className="w-9.5 h-9.5 rounded-[10px] bg-primary text-white grid place-items-center shrink-0">
                   <Icon name="briefcase" size={18} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-[14px]">{client.corporate}</div>
+                  <div className="font-bold text-[14px]">{client.corporateName}</div>
                   <div className="text-[11px] text-ink-3">Compte corporate · facturation centralisée</div>
                 </div>
                 <Pill kind="primary" dot>Contrat actif</Pill>
@@ -234,8 +274,8 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
       {tab === "history" && (
         <div>
           <div className="grid grid-cols-3 gap-3 mb-3.5">
-            <StatBox label="Séjours total" value={`${client.stays}`} />
-            <StatBox label="Panier moyen" value={`${client.stays > 0 ? Math.round(client.totalSpent / client.stays / 1000) : 0}k`} unit="FCFA" />
+            <StatBox label="Séjours total" value={`${client.totalStays}`} />
+            <StatBox label="Panier moyen" value={`${client.totalStays > 0 ? Math.round(client.totalSpent / client.totalStays / 1000) : 0}k`} unit="FCFA" />
             <StatBox label="Total dépensé" value={`${(client.totalSpent / 1000).toFixed(0)}k`} unit="FCFA" valueClass="text-primary" />
           </div>
           {clientBookings.length > 0 ? (
@@ -262,7 +302,7 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
       {tab === "reviews" && (
         <div>
           {clientReviews.length === 0 ? (
-            <EmptyState icon="star" title="Pas encore d'avis posté" sub="Ce client n'a pas encore évalué de séjour via l'app Immo Plus" />
+            <EmptyState icon="star" title="Pas encore d&apos;avis posté" sub="Ce client n&apos;a pas encore évalué de séjour via l&apos;app Immo Plus" />
           ) : (
             <>
               <div className="flex items-center justify-between mb-3.5">
@@ -270,7 +310,7 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
                 <div className="text-[12px] text-ink-3">
                   Note moyenne :{" "}
                   <strong className="text-amber text-[14px]">
-                    {(clientReviews.reduce((s, r) => s + r.overall, 0) / clientReviews.length).toFixed(1)}★
+                    {(clientReviews.reduce((s, r) => s + r.rating, 0) / clientReviews.length).toFixed(1)}★
                   </strong>
                 </div>
               </div>
@@ -278,17 +318,17 @@ function ClientDetail({ client, onClose }: { client: Client; onClose: () => void
                 <div key={r.id} className="p-4 border border-border rounded-xl mb-2.5">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <StarRating value={r.overall} size={13} />
-                      <span className="font-bold">{r.overall}/5</span>
+                      <StarRating value={r.rating} size={13} />
+                      <span className="font-bold">{r.rating}/5</span>
                     </div>
                     <span className="text-[11px] text-ink-3">{r.date} · {r.roomType}</span>
                   </div>
                   <div className="font-bold text-[14px] mb-1">{r.title}</div>
-                  <div className="text-[13px] text-ink-2 leading-normal">{r.text}</div>
-                  {r.reply && (
+                  <div className="text-[13px] text-ink-2 leading-normal">{r.comment}</div>
+                  {r.response && (
                     <div className="mt-2.5 p-2.5 bg-primary-50 rounded-lg text-[12px] border-l-[3px] border-primary">
                       <div className="text-[10px] font-bold text-primary uppercase tracking-[0.04em] mb-0.75">Votre réponse</div>
-                      {r.reply}
+                      {r.response}
                     </div>
                   )}
                 </div>

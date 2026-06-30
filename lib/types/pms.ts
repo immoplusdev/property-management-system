@@ -1,6 +1,15 @@
-export type RoomStatus = "libre" | "occupee" | "depart" | "menage" | "reservee" | "hs";
+// ─── Room ─────────────────────────────────────────────────────────────────────
+
+export type RoomStatus =
+  | "free"
+  | "occupied"
+  | "departure"
+  | "cleaning"
+  | "arriving"
+  | "out_of_service";
 
 export interface Room {
+  id?: string;
   num: string;
   type: string;
   floor: number;
@@ -8,21 +17,33 @@ export interface Room {
   guest?: string;
   checkout?: string;
   checkin?: string;
+  housekeepingStatus?: "clean" | "dirty";
+  currentReservation?: {
+    id: string;
+    guestName: string;
+    checkInDate: string;
+    checkOutDate: string;
+    balance?: number;
+    status?: string;
+  } | null;
 }
 
 export interface RoomType {
+  id?: string;
   code: string;
   name: string;
   price: number;
   color: string;
 }
 
+// ─── Reservation ──────────────────────────────────────────────────────────────
+
 export type BookingStatus =
   | "pending"
   | "confirmed"
-  | "checked-in"
-  | "checking-out"
-  | "completed"
+  | "checked_in"
+  | "checking_out"
+  | "checked_out"
   | "cancelled";
 
 export interface Booking {
@@ -40,24 +61,48 @@ export interface Booking {
   paid: number;
   payment: string;
   source: string;
+  adults?: number;
+  children?: number;
+  balance?: number;
+  breakfastIncluded?: boolean;
+  specialRequests?: string;
 }
 
-export interface Client {
+// ─── Guest (CRM) ──────────────────────────────────────────────────────────────
+
+export type GuestType = "standard" | "vip" | "corporate";
+
+export interface GuestStay {
+  reservationId: string;
+  checkInDate: string;
+  checkOutDate: string;
+  roomTypeName: string;
+  totalAmount: number;
+  status: string;
+}
+
+export interface Guest {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   email: string;
-  country: string;
-  idType: string;
-  idNumber: string;
-  stays: number;
+  nationality: string;
+  type: GuestType;
+  totalStays: number;
   totalSpent: number;
-  vip: boolean;
-  corporate: string | null;
   lastStay?: string;
-  avatar: number;
+  isBlacklisted: boolean;
+  blacklistReason?: string | null;
+  corporateName?: string | null;
   notes?: string;
+  averageSpendPerStay?: number;
+  stayHistory?: GuestStay[];
+  // legacy optional fields kept for mock compat
+  avatar?: number;
 }
+
+// ─── Finance ──────────────────────────────────────────────────────────────────
 
 export interface Transaction {
   id: string;
@@ -67,7 +112,14 @@ export interface Transaction {
   amount: number;
   method: string;
   status: string;
+  reference?: string;
+  reservationId?: string;
+  guestName?: string;
+  roomNumber?: string;
+  recordedBy?: string;
 }
+
+// ─── App interactions ─────────────────────────────────────────────────────────
 
 export interface AppProfile {
   complete: number;
@@ -87,10 +139,13 @@ export interface AppRequest {
   guest: string;
   type: string;
   title: string;
-  details: string;
+  details?: string;
   price: number;
   status: string;
-  priority: string;
+  priority?: string;
+  reservationId?: string;
+  paymentMethod?: string;
+  assignedTo?: string | null;
 }
 
 export interface RequestType {
@@ -98,6 +153,8 @@ export interface RequestType {
   icon: string;
   color: string;
 }
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
 
 export interface ReviewScore {
   cleanliness: number;
@@ -107,24 +164,30 @@ export interface ReviewScore {
   valueForMoney: number;
 }
 
+export interface ReviewGuest {
+  firstName: string;
+  lastName: string;
+  nationality: string;
+}
+
 export interface Review {
   id: string;
   date: string;
-  guest: string;
-  avatar: number;
-  country: string;
-  roomType: string;
-  stays: number;
-  overall: number;
-  scores: ReviewScore;
-  title: string;
-  text: string;
-  photos: number;
-  reply: string | null;
-  replyDate: string | null;
-  helpful: number;
-  verified: boolean;
+  guest: ReviewGuest;
+  roomType?: string;
+  stays?: number;
+  rating: number;
+  scores?: ReviewScore;
+  title?: string;
+  comment: string;
+  photos?: number;
+  response: string | null;
+  responseDate?: string | null;
+  helpful?: number;
+  verified?: boolean;
   needsReply?: boolean;
+  source?: string;
+  avatar?: number;
 }
 
 export interface ReviewStats {
@@ -139,6 +202,8 @@ export interface ReviewStats {
   avgResponseTime: string;
 }
 
+// ─── Planning ─────────────────────────────────────────────────────────────────
+
 export interface PlanningBooking {
   room: string;
   guest: string;
@@ -146,6 +211,8 @@ export interface PlanningBooking {
   end: number;
   status: string;
 }
+
+// ─── UI config ────────────────────────────────────────────────────────────────
 
 export interface StatusConfig {
   label: string;

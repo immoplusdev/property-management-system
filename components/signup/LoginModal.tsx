@@ -1,9 +1,11 @@
 "use client";
-import Image from "next/image";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Calendar, CardPos, Star1 } from "iconsax-react";
 import { cn } from "@/lib/utils/cn";
+import { useHydrated } from "@/lib/hooks/useHydrated";
+import { Logo } from "@/components/Logo";
 import { login } from "@/lib/api/auth/auth.actions";
 
 /* ── Icons ── */
@@ -254,6 +256,8 @@ export default function LoginModal({
   onClose: () => void;
   onSwitchToSignUp: () => void;
 }) {
+  const mounted = useHydrated();
+
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -266,9 +270,11 @@ export default function LoginModal({
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[9000] bg-[rgba(10,10,16,0.52)] backdrop-blur-[8px] flex animate-fade-in"
+      className="fixed inset-0 z-modal-fullscreen bg-[rgba(10,10,16,0.52)] backdrop-blur-[8px] flex animate-fade-in overscroll-contain"
       style={{ fontFeatureSettings: "'ss01', 'cv11'" }}
       role="dialog"
       aria-modal="true"
@@ -280,12 +286,7 @@ export default function LoginModal({
           {/* Top bar */}
           <div className="flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
-              <div
-                className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-white"
-                style={{ boxShadow: "0 0 0 2.5px rgba(39,68,222,0.18), 0 3px 12px rgba(39,68,222,0.16)" }}
-              >
-                <Image src="/logo-immoplus.png" alt="Immo Plus" width={40} height={40} className="w-full h-full object-contain" />
-              </div>
+              <Logo size="md" showHover={false} />
               <div className="font-semibold text-sm tracking-[-0.02em] flex items-center gap-1.5 text-ink">
                 Immo Plus{" "}
                 <span className="text-[9px] font-semibold tracking-[0.08em] uppercase text-primary border border-primary-200 px-[5px] py-px rounded-[4px] leading-[1.3]">PRO</span>
@@ -312,6 +313,7 @@ export default function LoginModal({
         {/* Right · brand pane */}
         <BrandPane />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -5,12 +5,12 @@ import type { RoomStatus } from "@/lib/types/pms";
 
 /* ─── StatusPill ─── */
 const STATUS_MAP: Record<RoomStatus, { label: string; cls: string }> = {
-  libre:    { label: "Libre",        cls: "bg-success-bg text-success" },
-  occupee:  { label: "Occupée",      cls: "bg-primary-50 text-primary" },
-  depart:   { label: "Départ",       cls: "bg-warn-bg text-warn" },
-  menage:   { label: "Ménage",       cls: "bg-violet-bg text-violet" },
-  reservee: { label: "Arrivée",      cls: "bg-teal-bg text-teal" },
-  hs:       { label: "Hors-service", cls: "bg-surface-2 text-ink-3" },
+  free:          { label: "Libre",        cls: "bg-success-bg text-success" },
+  occupied:      { label: "Occupée",      cls: "bg-primary-50 text-primary" },
+  departure:     { label: "Départ",       cls: "bg-warn-bg text-warn" },
+  cleaning:      { label: "Ménage",       cls: "bg-violet-bg text-violet" },
+  arriving:      { label: "Arrivée",      cls: "bg-teal-bg text-teal" },
+  out_of_service:{ label: "Hors-service", cls: "bg-surface-2 text-ink-3" },
 };
 
 const PILL_BASE =
@@ -35,12 +35,12 @@ export function StatusPill({ status }: { status: RoomStatus }) {
 
 /* ─── BookingStatusPill ─── */
 const BOOKING_MAP: Record<string, { label: string; cls: string }> = {
-  pending:        { label: "En attente", cls: "bg-warn-bg text-warn" },
-  confirmed:      { label: "Confirmée",  cls: "bg-primary-50 text-primary" },
-  "checked-in":   { label: "Sur place",  cls: "bg-success-bg text-success" },
-  "checking-out": { label: "Départ",     cls: "bg-amber-bg text-amber" },
-  completed:      { label: "Terminée",   cls: "bg-surface-2 text-ink-2" },
-  cancelled:      { label: "Annulée",    cls: "bg-danger-bg text-danger" },
+  pending:      { label: "En attente", cls: "bg-warn-bg text-warn" },
+  confirmed:    { label: "Confirmée",  cls: "bg-primary-50 text-primary" },
+  checked_in:   { label: "Sur place",  cls: "bg-success-bg text-success" },
+  checking_out: { label: "Départ",     cls: "bg-amber-bg text-amber" },
+  checked_out:  { label: "Terminée",   cls: "bg-surface-2 text-ink-2" },
+  cancelled:    { label: "Annulée",    cls: "bg-danger-bg text-danger" },
 };
 
 export function BookingStatusPill({ status }: { status: string }) {

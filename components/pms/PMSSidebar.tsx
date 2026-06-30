@@ -1,11 +1,11 @@
 "use client";
 import React, { useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
+import { Logo } from "@/components/Logo";
 import { Icon } from "./shared";
-import { ROOMS_PMS } from "./data";
 import { logout } from "@/lib/api/auth/auth.actions";
+import { useRooms } from "@/lib/hooks/pms/useRooms";
 import type { UserDto } from "@/lib/api/generated/model";
 import { usePmsStatus } from "@/lib/pms/PmsStatusContext";
 
@@ -13,12 +13,14 @@ export const NAV = [
   { id: "dashboard",    icon: "home",      label: "Tableau de bord",      badge: null,  section: "main",   fromApp: false },
   { id: "rooms",        icon: "bed",       label: "Chambres",              badge: "35",  section: "main",   fromApp: false },
   { id: "reservations", icon: "calendar",  label: "Réservations",          badge: "14",  section: "main",   fromApp: false },
-  { id: "checkin",      icon: "fileText",  label: "Check-in / Check-out",  badge: "8",   section: "main",   fromApp: false },
+  { id: "checkin",      icon: "fileText",  label: "Check-in",               badge: "5",   section: "main",   fromApp: false },
+  { id: "checkout",     icon: "arrowRight",label: "Check-out",              badge: "3",   section: "main",   fromApp: false },
   { id: "requests",     icon: "bell",      label: "Demandes clients",       badge: "3",   section: "main",   fromApp: true  },
   { id: "planning",     icon: "grid",      label: "Planning",               badge: null,  section: "main",   fromApp: false },
   { id: "finances",     icon: "moneyBill", label: "Finances",               badge: null,  section: "manage", fromApp: false },
   { id: "clients",      icon: "users",     label: "Clients",                badge: null,  section: "manage", fromApp: false },
   { id: "reviews",      icon: "star",      label: "Avis clients",           badge: "2",   section: "manage", fromApp: true  },
+  { id: "staff",        icon: "users",     label: "Personnel",              badge: null,  section: "manage", fromApp: false },
   { id: "settings",     icon: "settings",  label: "Paramètres",             badge: null,  section: "manage", fromApp: false },
 ] as const;
 
@@ -28,13 +30,20 @@ interface Props {
   active: NavId;
   setActive: (id: NavId) => void;
   user: UserDto | null;
+  hotelName: string;
 }
 
-export function PMSSidebar({ active, setActive, user }: Props) {
+export function PMSSidebar({ active, setActive, user, hotelName }: Props) {
   const router = useRouter();
   const { hasBanner } = usePmsStatus();
   const [collapsed, setCollapsed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const { data: roomsData } = useRooms();
+  const rooms    = roomsData?.rooms ?? [];
+  const occupied = rooms.filter(r => r.status === "occupied" || r.status === "departure").length;
+  const total    = rooms.length || 1;
+  const occupancy = Math.round((occupied / total) * 100);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -42,9 +51,6 @@ export function PMSSidebar({ active, setActive, user }: Props) {
     router.push("/");
     router.refresh();
   }
-
-  const occupied  = ROOMS_PMS.filter(r => r.status === "occupee" || r.status === "depart").length;
-  const occupancy = Math.round((occupied / ROOMS_PMS.length) * 100);
 
   const renderNav = (section: "main" | "manage") =>
     NAV.filter(n => n.section === section).map(n => {
@@ -125,13 +131,9 @@ export function PMSSidebar({ active, setActive, user }: Props) {
           "flex items-center pb-4.5 border-b border-border mb-3.5",
           collapsed ? "justify-center gap-0 px-0" : "gap-3 px-2.5"
         )}>
-          <Image
-            src="/logo-immoplus.png"
-            alt="Immo Plus"
-            width={36}
-            height={36}
-            style={{ borderRadius: 10, objectFit: "contain", display: "block", flexShrink: 0 }}
-          />
+          <div className="shrink-0">
+            <Logo size="sm" showHover={false} />
+          </div>
           {!collapsed && (
             <div style={{ minWidth: 0, flex: 1 }}>
               <div className="font-semibold tracking-[-0.02em] text-[14.5px] text-ink flex items-center gap-1.5 whitespace-nowrap">
@@ -140,7 +142,7 @@ export function PMSSidebar({ active, setActive, user }: Props) {
                   PMS
                 </span>
               </div>
-              <div className="text-[11.5px] text-ink-3 mt-0.5">Résidence Lagune Bleue</div>
+              <div className="text-[11.5px] text-ink-3 mt-0.5">{hotelName}</div>
             </div>
           )}
         </div>
@@ -160,11 +162,11 @@ export function PMSSidebar({ active, setActive, user }: Props) {
             <div className="mt-3 h-[3px] bg-border rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full" style={{ width: occupancy + "%" }} />
             </div>
-            <div className="text-[11px] text-ink-3 mt-[9px]">{occupied} / {ROOMS_PMS.length} chambres · objectif 75%</div>
+            <div className="text-[11px] text-ink-3 mt-[9px]">{occupied} / {total} chambres · objectif 75%</div>
           </div>
         ) : (
           <div
-            title={`Occupation : ${occupancy}% (${occupied}/${ROOMS_PMS.length} chambres)`}
+            title={`Occupation : ${occupancy}% (${occupied}/${total} chambres)`}
             className="my-1.5 py-2 text-center text-[11px] font-extrabold text-primary bg-primary-50 rounded-[10px] cursor-default tracking-[-0.01em]"
           >
             {occupancy}%

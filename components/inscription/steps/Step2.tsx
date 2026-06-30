@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import type { StepProps } from "../types";
 import { SectionHead } from "../ui/SectionHead";
@@ -16,32 +17,208 @@ import { Btn } from "../ui/Btn";
 import { Thumb, ThumbAdd } from "../ui/Thumb";
 import { uploadFile } from "@/lib/api/files/files.client";
 import { fileUrl } from "@/lib/utils/fileUrl";
+import { cn } from "@/lib/utils/cn";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 import type { VilleDto, CommuneDto } from "@/lib/api/generated/model";
 
-// ─── BFF hooks ──────────────────────────────────────────────────────────────
+// ─── BFF hooks - Load all data once, search locally ──────────────────────────
 
 function useVilles() {
   return useQuery<VilleDto[]>({
-    queryKey: ["villes"],
+    queryKey: ["villes-all"],
     queryFn: async () => {
-      const res = await fetch("/bff/villes", { credentials: "include" });
+      const params = new URLSearchParams();
+      params.set("_per_page", "1000"); // Load all at once
+      const res = await fetch(`/bff/villes?${params}`, { credentials: "include" });
       const json = await res.json();
       return (json.data ?? []) as VilleDto[];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // Cache 10 minutes
   });
 }
 
 function useCommunes() {
   return useQuery<CommuneDto[]>({
-    queryKey: ["communes"],
+    queryKey: ["communes-all"],
     queryFn: async () => {
-      const res = await fetch("/bff/communes", { credentials: "include" });
+      const params = new URLSearchParams();
+      params.set("_per_page", "1000"); // Load all at once
+      const res = await fetch(`/bff/communes?${params}`, { credentials: "include" });
       const json = await res.json();
       return (json.data ?? []) as CommuneDto[];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // Cache 10 minutes
   });
+}
+
+// ─── Modal Component with createPortal ────────────────────────────────────────
+
+interface SelectModalProps {
+  isOpen: boolean;
+  title: string;
+  isLoading: boolean;
+  items: Array<{ id: string; name: string }>;
+  totalPages: number;
+  currentPage: number;
+  selectedId: string | null;
+  onSearchChange: (search: string) => void;
+  onPageChange: (page: number) => void;
+  onSelect: (id: string, item: { id: string; name: string }) => void;
+  onClose: () => void;
+}
+
+function SelectModal({
+  isOpen,
+  title,
+  isLoading,
+  items,
+  totalPages,
+  currentPage,
+  selectedId,
+  onSearchChange,
+  onPageChange,
+  onSelect,
+  onClose,
+}: SelectModalProps) {
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const mounted = useHydrated();
+
+  const handleSearchChange = (text: string) => {
+    setSearch(text);
+    onSearchChange(text);
+  };
+
+  // Body scroll lock
+  useEffect(() => {
+    if (!isOpen) return;
+    const { overflow, paddingRight } = document.body.style;
+    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
+    return () => {
+      document.body.style.overflow = overflow;
+      document.body.style.paddingRight = paddingRight;
+    };
+  }, [isOpen]);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen, onClose]);
+
+  if (!mounted || !isOpen) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-modal bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4 animate-insc-fade"
+      onClick={onClose}
+    >
+      {/* Modal Panel - Small & Square */}
+      <div
+        className="bg-white rounded-[20px] w-full max-w-[420px] max-h-[600px] flex flex-col shadow-[0_0_0_1px_rgba(10,10,15,0.06),0_8px_40px_rgba(10,10,15,0.12)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+          <h2 className="text-[16px] font-bold tracking-[-0.015em]">{title}</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg text-ink-3 grid place-items-center hover:bg-surface-2 transition-colors flex-shrink-0"
+            aria-label="Fermer"
+          >
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-5 py-3 border-b border-border flex-shrink-0">
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Rechercher…"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-white text-[13px] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            autoFocus
+          />
+        </div>
+
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          {isLoading && (
+            <div className="flex items-center justify-center h-32">
+              <svg className="animate-spin w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            </div>
+          )}
+
+          {!isLoading && items.length > 0 && (
+            <div className="divide-y divide-border">
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(item.id, item);
+                    onClose();
+                    setSearch("");
+                  }}
+                  className={cn(
+                    "w-full text-left px-5 py-3 text-[13px] transition-colors hover:bg-primary-50 flex items-center justify-between",
+                    selectedId === item.id && "bg-primary-50 font-semibold text-primary"
+                  )}
+                >
+                  <span>{item.name}</span>
+                  {selectedId === item.id && <Icon name="check" size={16} />}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!isLoading && items.length === 0 && (
+            <div className="flex items-center justify-center h-32 text-ink-3">
+              <div className="text-center">
+                <Icon name="search" size={24} className="mx-auto mb-1.5 opacity-40" />
+                <div className="text-[12px]">Aucun résultat</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {!isLoading && items.length > 0 && totalPages > 1 && (
+          <div className="border-t border-border px-5 py-3 flex items-center justify-between flex-shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-semibold hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Préc
+            </button>
+            <span className="text-[11px] text-ink-3 font-medium whitespace-nowrap">{currentPage} / {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-2.5 py-1.5 rounded-lg border border-border text-[11px] font-semibold hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Suiv →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 // ─── Local upload state ──────────────────────────────────────────────────────
@@ -175,14 +352,41 @@ export function Step2({ state, update }: StepProps) {
   const set = <K extends keyof typeof h>(k: K, v: typeof h[K]) =>
     update("hotel", (prev) => ({ ...prev, [k]: v }));
 
-  // API data
-  const { data: villes = [], isLoading: villesLoading } = useVilles();
+  // Modal states
+  const [villeModalOpen, setVilleModalOpen] = useState(false);
+  const [communeModalOpen, setCommuneModalOpen] = useState(false);
+
+  // Load all data once
+  const { data: allVilles = [], isLoading: villesLoading } = useVilles();
   const { data: allCommunes = [], isLoading: communesLoading } = useCommunes();
 
-  // Filter communes by selected ville — CommuneDto.ville may be villeId or villeName
-  const communes = h.villeId
-    ? allCommunes.filter((c) => c.ville === h.villeId || c.ville === h.villeName)
-    : allCommunes;
+  // Search & local pagination
+  const [villeSearch, setVilleSearch] = useState("");
+  const [villesPage, setVillesPage] = useState(1);
+  const [communeSearch, setCommuneSearch] = useState("");
+  const [communesPage, setCommunesPage] = useState(1);
+
+  // Filter locally
+  const filteredVilles = allVilles.filter((v) =>
+    v.name.toLowerCase().includes(villeSearch.toLowerCase())
+  );
+  const filteredCommunes = allCommunes.filter((c) =>
+    c.name.toLowerCase().includes(communeSearch.toLowerCase())
+  );
+
+  // Paginate filtered results (10 per page)
+  const itemsPerPage = 10;
+  const villesPageCount = Math.ceil(filteredVilles.length / itemsPerPage);
+  const communesPageCount = Math.ceil(filteredCommunes.length / itemsPerPage);
+
+  const villes = filteredVilles.slice(
+    (villesPage - 1) * itemsPerPage,
+    villesPage * itemsPerPage
+  );
+  const communes = filteredCommunes.slice(
+    (communesPage - 1) * itemsPerPage,
+    communesPage * itemsPerPage
+  );
 
   // Local upload state — initialized from restored state when fileIds already exist.
   const [coverSlot, setCoverSlot] = useState<MediaSlot>(() =>
@@ -361,7 +565,7 @@ export function Step2({ state, update }: StepProps) {
         </InsCard>
 
         {/* 2. Adresse & géolocalisation */}
-        <InsCard flat className="col-span-12 md:col-span-6">
+        <InsCard flat className="col-span-12">
           <SectionHead
             icon="mapPin"
             title="Adresse & géolocalisation"
@@ -376,39 +580,58 @@ export function Step2({ state, update }: StepProps) {
             />
 
             {/* Ville */}
-            <SelectField
-              label="Ville"
-              value={h.villeId ?? ""}
-              onChange={(e) => {
-                const id = e.target.value;
-                const found = villes.find((v) => v.id === id);
-                set("villeId", id || null);
-                set("villeName", found?.name ?? "");
-                // reset commune when ville changes
-                set("communeId", null);
-                set("communeName", "");
-              }}
-              options={[
-                { value: "", label: villesLoading ? "Chargement…" : "Sélectionner une ville…" },
-                ...villes.map((v) => ({ value: v.id, label: v.name })),
-              ]}
-            />
+            <div>
+              <label className="text-[11px] font-bold tracking-wider uppercase text-ink-2 block mb-2">
+                Ville <span className="text-danger">*</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  disabled
+                  value={h.villeName || ""}
+                  className="flex-1 px-3.5 py-2.75 rounded-lg border border-border bg-surface text-[14px] text-ink-3 cursor-not-allowed"
+                  placeholder="Sélectionner une ville…"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVilleSearch("");
+                    setVillesPage(1);
+                    setVilleModalOpen(true);
+                  }}
+                  className="w-11 h-11 flex-shrink-0 rounded-lg border border-border bg-white text-primary grid place-items-center hover:bg-primary-50 transition-colors"
+                >
+                  <Icon name="plus" size={18} />
+                </button>
+              </div>
+            </div>
 
             {/* Commune */}
-            <SelectField
-              label="Commune"
-              value={h.communeId ?? ""}
-              onChange={(e) => {
-                const id = e.target.value;
-                const found = communes.find((c) => c.id === id);
-                set("communeId", id || null);
-                set("communeName", found?.name ?? "");
-              }}
-              options={[
-                { value: "", label: communesLoading ? "Chargement…" : "Sélectionner une commune…" },
-                ...communes.map((c) => ({ value: c.id, label: c.name })),
-              ]}
-            />
+            <div>
+              <label className="text-[11px] font-bold tracking-wider uppercase text-ink-2 block mb-2">
+                Commune <span className="text-danger">*</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  disabled
+                  value={h.communeName || ""}
+                  className="flex-1 px-3.5 py-2.75 rounded-lg border border-border bg-surface text-[14px] text-ink-3 cursor-not-allowed"
+                  placeholder="Sélectionner une commune…"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCommuneSearch("");
+                    setCommunesPage(1);
+                    setCommuneModalOpen(true);
+                  }}
+                  className="w-11 h-11 flex-shrink-0 rounded-lg border border-border bg-white text-primary grid place-items-center hover:bg-primary-50 transition-colors"
+                >
+                  <Icon name="plus" size={18} />
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4">
@@ -426,7 +649,7 @@ export function Step2({ state, update }: StepProps) {
         </InsCard>
 
         {/* 3. Description & positionnement */}
-        <InsCard flat className="col-span-12 md:col-span-6">
+        <InsCard flat className="col-span-12">
           <SectionHead icon="edit" title="Description & positionnement" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TextArea
@@ -568,6 +791,47 @@ export function Step2({ state, update }: StepProps) {
         </InsCard>
 
       </div>
+
+      {/* Ville Modal */}
+      <SelectModal
+        isOpen={villeModalOpen}
+        title="Sélectionner une ville"
+        isLoading={villesLoading}
+        items={villes}
+        totalPages={villesPageCount}
+        currentPage={villesPage}
+        selectedId={h.villeId}
+        onSearchChange={setVilleSearch}
+        onPageChange={setVillesPage}
+        onSelect={(id, item) => {
+          set("villeId", id);
+          set("villeName", item.name);
+          // reset commune when ville changes
+          set("communeId", null);
+          set("communeName", "");
+          setCommunesPage(1);
+          setCommuneSearch("");
+        }}
+        onClose={() => setVilleModalOpen(false)}
+      />
+
+      {/* Commune Modal */}
+      <SelectModal
+        isOpen={communeModalOpen}
+        title="Sélectionner une commune"
+        isLoading={communesLoading}
+        items={communes}
+        totalPages={communesPageCount}
+        currentPage={communesPage}
+        selectedId={h.communeId}
+        onSearchChange={setCommuneSearch}
+        onPageChange={setCommunesPage}
+        onSelect={(id, item) => {
+          set("communeId", id);
+          set("communeName", item.name);
+        }}
+        onClose={() => setCommuneModalOpen(false)}
+      />
     </div>
   );
 }

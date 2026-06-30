@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { backendFetch } from "@/lib/api/server/http";
-import { getAccessToken } from "@/lib/api/server/cookies";
+import { getAccessToken, setHotelId } from "@/lib/api/server/cookies";
 import { toFormError, type FormError } from "@/lib/api/errors";
 
 export type ActionResult<T = void> =
@@ -100,6 +100,9 @@ export async function getOnboardingProgress(): Promise<ActionResult<OnboardingPr
       method: "GET",
       accessToken,
     });
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
@@ -128,6 +131,9 @@ export async function getOnboardingStatus(): Promise<ActionResult<OnboardingStat
       "/pms/onboarding/progress",
       { method: "GET", accessToken },
     );
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
@@ -173,6 +179,9 @@ export async function submitStep6(input: Step6Input): Promise<ActionResult<StepS
       accessToken,
       json: payload,
     });
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
@@ -253,6 +262,9 @@ export async function submitStep5(input: Step5Input): Promise<ActionResult<StepS
       accessToken,
       json: { spaces },
     });
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
@@ -316,6 +328,9 @@ export async function submitStep4(rooms: Step4RoomInput[]): Promise<ActionResult
       accessToken,
       json: { roomTypes },
     });
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
@@ -392,6 +407,9 @@ export async function submitStep3(input: Step3Input): Promise<ActionResult<StepS
       accessToken,
       json: { amenities },
     });
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
@@ -475,6 +493,9 @@ export async function submitStep2(input: Step2Input): Promise<ActionResult<StepS
       accessToken,
       json: payload,
     });
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
@@ -531,6 +552,9 @@ export async function submitStep1(input: Step1Input): Promise<ActionResult<StepS
         acceptedTerms:     true,
       },
     });
+    if (data.hotelId) {
+      await setHotelId(data.hotelId);
+    }
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };

@@ -1,6 +1,6 @@
 "use client";
-import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
+import { Logo } from "@/components/Logo";
 import {
   Profile,
   Buildings,
@@ -68,18 +68,7 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
     <aside className="sticky top-0 h-dvh flex flex-col items-center py-5 z-50 gap-0" aria-label="Étapes d'inscription">
       {/* Brand mark */}
       <div className="mb-7 shrink-0">
-        <div
-          className="w-13.5 h-13.5 rounded-full overflow-hidden grid place-items-center bg-primary shadow-[0_4px_14px_rgba(39,68,222,0.32),inset_0_1px_0_rgba(255,255,255,0.20)] transition-transform duration-200 hover:scale-105"
-          title="Immo Plus App"
-        >
-          <Image
-            src="/logo-immoplus.png"
-            alt="Logo Immo Plus"
-            width={54}
-            height={54}
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <Logo size="lg" />
       </div>
 
       {/* Step icons nav */}
@@ -96,7 +85,7 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
             <button
               key={step}
               className={cn(
-                "relative w-11 h-11 rounded-[14px] grid place-items-center cursor-pointer border-0 bg-transparent text-[#9496A8] shrink-0 transition-[background,color,transform] duration-180",
+                "relative w-11 h-11 rounded-[24px] grid place-items-center cursor-pointer border-0 bg-transparent text-[#9496A8] shrink-0 transition-[background,color,transform] duration-180",
                 "hover:bg-[rgba(39,68,222,0.06)] hover:text-primary hover:scale-105",
                 isActive && "bg-primary text-white shadow-[0_4px_14px_rgba(39,68,222,0.35),0_1px_4px_rgba(39,68,222,0.20)] hover:bg-primary-600 hover:scale-104",
                 isDone && "bg-[rgba(39,68,222,0.07)] text-primary hover:bg-[rgba(39,68,222,0.12)]"
@@ -112,12 +101,12 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
                 variant={isActive ? "Bold" : "Linear"}
                 color={isActive ? "#ffffff" : isDone ? "#2744DE" : "#9496A8"}
               />
-              {isActive && (
+            {isActive && (
                 <span
-                  className="absolute inset-[-3px] rounded-[17px] border-[1.5px] border-[rgba(39,68,222,0.20)] pointer-events-none animate-[insc-pulse_2.5s_ease_infinite]"
+                  className="absolute inset-[-3px] rounded-[24px] border-[1.5px] border-[rgba(39,68,222,0.20)] pointer-events-none animate-[insc-pulse_2.5s_ease_infinite]"
                   aria-hidden="true"
                 />
-              )}
+              )} 
             </button>
           );
         })}
