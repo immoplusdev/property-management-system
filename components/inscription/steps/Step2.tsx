@@ -484,10 +484,10 @@ export function Step2({ state, update }: StepProps) {
         desc="Ces informations alimentent votre fiche publique dans le feed. La photo de couverture est ce que les voyageurs verront en premier."
       />
 
-      <div className="grid grid-cols-12 gap-4.5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4.5 w-full">
 
         {/* 1. Informations de base */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat>
           <SectionHead
             icon="building"
             title="Informations de base"
@@ -565,7 +565,7 @@ export function Step2({ state, update }: StepProps) {
         </InsCard>
 
         {/* 2. Adresse & géolocalisation */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat>
           <SectionHead
             icon="mapPin"
             title="Adresse & géolocalisation"
@@ -649,7 +649,7 @@ export function Step2({ state, update }: StepProps) {
         </InsCard>
 
         {/* 3. Description & positionnement */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat>
           <SectionHead icon="edit" title="Description & positionnement" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <TextArea
@@ -688,7 +688,7 @@ export function Step2({ state, update }: StepProps) {
         </InsCard>
 
         {/* 4. Médias */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat className="lg:col-span-2">
           <SectionHead
             icon="image"
             title="Médias de l'établissement"

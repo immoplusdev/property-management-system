@@ -295,6 +295,7 @@ export function InscriptionPage({ initialUser }: Props) {
 
   const StepComponent = STEP_COMPONENTS[currentStep - 1];
   const isWide = currentStep === 7;
+  const isMultiCol = currentStep === 1 || currentStep === 2 || currentStep === 3 || currentStep === 4 || currentStep === 5 || currentStep === 6;
 
   return (
     <div className="insc-root">
@@ -316,6 +317,8 @@ export function InscriptionPage({ initialUser }: Props) {
             className={cn(
               isWide
                 ? "w-full max-w-[1560px] mx-auto px-[clamp(24px,3vw,48px)] pt-8 pb-27"
+                : isMultiCol
+                ? "flex-1 w-full px-13 pt-10 pb-25"
                 : "flex-1 max-w-230 px-13 pt-10 pb-25"
             )}
           >

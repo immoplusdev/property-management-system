@@ -222,18 +222,18 @@ export function Step1({ state, update }: StepProps) {
   const anyUploaded  = frontSlot.status === "done" || backSlot.status === "done";
 
   return (
-    <div className="flex flex-col gap-5 animate-insc-fade">
+    <div className="flex flex-col gap-5 animate-insc-fade w-full">
       <PageHead
         eyebrow="Étape 1 sur 7"
         title="Créons votre compte hôtelier"
         desc="Ce compte est distinct du compte agence immobilière. Vos informations restent en attente de vérification jusqu'à validation de votre pièce d'identité (24–48h)."
       />
 
-      <div className="grid grid-cols-12 gap-4.5 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4.5 items-stretch w-full">
 
-        {/* LIGNE 1 - Bi-colonne (Identité 60% + Vérification 40%) */}
+        {/* LIGNE 1 - Bi-colonne */}
         {/* 1. Identité du gérant */}
-        <InsCard flat className="col-span-12 lg:col-span-7 flex flex-col">
+        <InsCard flat className="flex flex-col">
           <SectionHead
             icon="user"
             title="Identité du gérant"
@@ -265,7 +265,7 @@ export function Step1({ state, update }: StepProps) {
         </InsCard>
 
         {/* 2. Vérification d'identité */}
-        <InsCard flat className="col-span-12 lg:col-span-5 flex flex-col">
+        <InsCard flat className="flex flex-col">
           <SectionHead
             icon="shield"
             title="Vérification d'identité"
@@ -331,14 +331,14 @@ export function Step1({ state, update }: StepProps) {
             />
           </div>
           <Tip>
-            La vérification est traitée en <strong>24–48h</strong> — vous recevrez un SMS
+            La vérification est traitée en <strong>24–48h</strong>  vous recevrez un SMS
             de confirmation dès validation de votre dossier.
           </Tip>
         </InsCard>
 
         {/* LIGNE 2 - Pleine largeur */}
         {/* 3. Conditions d'utilisation */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat className="lg:col-span-2">
           <SectionHead icon="fileText" title="Conditions d'utilisation" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

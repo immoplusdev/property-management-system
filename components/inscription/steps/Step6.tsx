@@ -43,10 +43,10 @@ export function Step6({ state, update }: StepProps) {
         desc="Définissez les modes de paiement acceptés, l'acompte requis et vos conditions d'accueil. Ces règles s'appliquent à toutes vos chambres."
       />
 
-      <div className="grid grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 gap-5 w-full">
 
         {/* 1. Modes de paiement */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat className="">
           <SectionHead icon="creditCard" title="Modes de paiement acceptés" />
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 mt-4">
             {PAY_METHODS.map((m) => {
@@ -83,8 +83,9 @@ export function Step6({ state, update }: StepProps) {
           <Tip>Au moins un mode <strong>mobile money</strong> est obligatoire en Côte d&apos;Ivoire — Wave et Orange Money représentent 87% des paiements.</Tip>
         </InsCard>
 
-        {/* 2. Acompte */}
-        <InsCard flat className="col-span-12 md:col-span-6">
+        {/* 2. Acompte & 3. Politique d'annulation */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <InsCard flat>
           <SectionHead
             icon="moneyBill"
             title="Acompte à la réservation"
@@ -123,10 +124,10 @@ export function Step6({ state, update }: StepProps) {
           </div>
 
           <Tip>Un acompte de <strong>30–50%</strong> réduit les no-shows de 42% selon les données Immo Plus.</Tip>
-        </InsCard>
+          </InsCard>
 
-        {/* 3. Politique d'annulation */}
-        <InsCard flat className="col-span-12 md:col-span-6">
+          {/* 3. Politique d'annulation */}
+          <InsCard flat>
           <SectionHead icon="shield" title="Politique d'annulation globale" />
           <div className="flex flex-col gap-2 mt-4">
             {CANCEL_OPTS.map((opt) => (
@@ -151,10 +152,11 @@ export function Step6({ state, update }: StepProps) {
             ))}
           </div>
           <Tip>La politique <strong>Flexible</strong> augmente le taux de conversion de +18% sur les fiches Immo Plus.</Tip>
-        </InsCard>
+          </InsCard>
+        </div>
 
         {/* 4. Politiques d'accueil */}
-        <InsCard flat className="col-span-12 md:col-span-7 flex flex-col">
+        <InsCard flat className="flex flex-col">
           <SectionHead icon="users" title="Politiques d'accueil" />
 
           <PolicyRow icon="baby" iconBg="var(--violet-bg)" iconColor="var(--violet)" title="Enfants"
@@ -192,7 +194,7 @@ export function Step6({ state, update }: StepProps) {
         </InsCard>
 
         {/* 5. Check-in / Check-out */}
-        <InsCard flat className="col-span-12 md:col-span-5 flex flex-col">
+        <InsCard flat className="flex flex-col">
           <SectionHead icon="clock" title="Check-in / Check-out flexibles" />
           <div className="flex flex-col flex-1">
             {(["earlyCheckin", "lateCheckout"] as const).map((key, i) => (

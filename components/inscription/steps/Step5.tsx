@@ -13,6 +13,7 @@ import { Tip } from "../ui/Tip";
 import { Btn } from "../ui/Btn";
 import { InsModal } from "../ui/InsModal";
 import { PhotoGallery } from "../ui/PhotoGallery";
+import { uploadFile } from "@/lib/api/files/files.client";
 
 // ─── Définitions des espaces fixes ──────────────────────────────────────────
 
@@ -303,6 +304,25 @@ function CustomSpaceModal({ initial, onSave, onClose }: {
           </div>
         </Field>
 
+        <hr className="border-0 border-t border-border" />
+
+        {/* Photos */}
+        <div>
+          <div className="text-[11px] font-bold tracking-wider uppercase text-ink-2 mb-2.5">
+            Photos de l&apos;espace
+          </div>
+          <PhotoGallery
+            fileIds={d.imageIds as string[]}
+            onAdd={async (file) => {
+              const uploaded = await uploadFile(file);
+              set("imageIds", [...(d.imageIds as string[]), uploaded.id]);
+            }}
+            onRemove={(fileId) => {
+              set("imageIds", (d.imageIds as string[]).filter((id) => id !== fileId));
+            }}
+          />
+        </div>
+
       </div>
     </InsModal>
   );
@@ -380,7 +400,7 @@ export function Step5({ state, update }: StepProps) {
               ? <Pill kind="success" dot>{configuredTotal} sélectionné{configuredTotal > 1 ? "s" : ""}</Pill>
               : undefined}
           />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4.5">
             {VA_DEFS.map((d) => {
               const conf = va[d.id].configured;
               return (

@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useInView } from "framer-motion";
 import { cva } from "class-variance-authority";
-import { ArrowRight, Home2, TickCircle, TrendUp, Star, Key, Briefcase, Buildings2, SmartHome } from "iconsax-react";
+import { ArrowRight, Home2, TickCircle, TrendUp, Star, Key, Briefcase, Buildings2, SmartHome, Wallet } from "iconsax-react";
 import { cn } from "@/lib/utils/cn";
 import { Logo } from "@/components/Logo";
 import SignUpModal from "../signup/SignUpModal";
@@ -228,8 +229,14 @@ function HeroCards() {
           </div>
           <div className="text-right">
             <div className="text-[10.5px] font-semibold tracking-[0.06em] uppercase text-ink-3">Méthode</div>
-            <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full bg-[#e8f0ff] text-[#1a6dff] mt-[5px]">
-              Wave
+            <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full bg-white border border-border mt-[5px]">
+              <Image
+                src="/wave.png"
+                alt="Wave"
+                width={20}
+                height={20}
+                className="w-5 h-5 object-contain"
+              />
             </span>
           </div>
         </div>
@@ -532,11 +539,11 @@ function DashboardShowcase() {
 
 /* ──────────── PAYMENTS ──────────── */
 const PAYS = [
-  { logo: "Wave", bg: "#1A6DFF",                    name: "Wave",            ds: "Confirmé · il y a 2 min",  amt: "+114 000" },
-  { logo: "OM",   bg: "#FF7900",                    name: "Orange Money",    ds: "Confirmé · il y a 18 min", amt: "+38 000"  },
-  { logo: "MTN",  bg: "#FFCC00", textColor:"#1a1a1a", name: "MTN MoMo",    ds: "Confirmé · il y a 1 h",    amt: "+475 000" },
-  { logo: "CB",   bg: "#0D0D17",                    name: "Carte & espèces", ds: "Caisse réconciliée",        amt: "+330 000" },
-];
+  { type: "image", image: "/wave.png", name: "Wave",            ds: "Confirmé · il y a 2 min",  amt: "+114 000" },
+  { type: "image", image: "/om.png",   name: "Orange Money",    ds: "Confirmé · il y a 18 min", amt: "+38 000"  },
+  { type: "image", image: "/mtn.jpeg", name: "MTN MoMo",       ds: "Confirmé · il y a 1 h",    amt: "+475 000" },
+  { type: "icon",  icon: "Wallet",      name: "Carte & espèces", ds: "Caisse réconciliée",        amt: "+330 000" },
+] as const;
 
 function Payments() {
   return (
@@ -569,11 +576,18 @@ function Payments() {
                 {...stagger(i)}
                 whileHover={{ borderColor: "#C8C8E0", x: 2 }}
               >
-                <div
-                  className="w-[46px] h-[46px] rounded-xl grid place-items-center font-bold text-[13px] shrink-0 font-mono tracking-[-0.02em]"
-                  style={{ background: p.bg, color: p.textColor ?? "#fff" }}
-                >
-                  {p.logo}
+                <div className="w-[46px] h-[46px] rounded-xl grid place-items-center shrink-0 overflow-hidden bg-surface-2">
+                  {p.type === "image" ? (
+                    <Image
+                      src={p.image}
+                      alt={p.name}
+                      width={46}
+                      height={46}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Wallet size={24} className="text-ink" variant="Outline" />
+                  )}
                 </div>
                 <div>
                   <div className="font-semibold text-[15px]">{p.name}</div>

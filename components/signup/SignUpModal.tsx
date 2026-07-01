@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Calendar, CardPos, Star1 } from "iconsax-react";
+import { Calendar, CardPos, Star1, Buildings2 } from "iconsax-react";
 import { cn } from "@/lib/utils/cn";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { Logo } from "@/components/Logo";
@@ -600,13 +600,6 @@ function OtpScreen({
   );
 }
 
-/* ── Check icon (big) ── */
-const CheckBig = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
 /* ── Success overlay ── */
 type SuccessStage = "enter" | "check" | "text";
 
@@ -625,20 +618,19 @@ function SuccessOverlay({ onDone }: { onDone: () => void }) {
     <div className="w-full h-full flex items-center justify-center px-5">
       <div className="bg-white rounded-[28px] px-10 py-10 w-full max-w-[400px] flex flex-col items-center text-center shadow-[0_24px_72px_rgba(0,0,0,0.22)]">
 
-        {/* Logo / check */}
-        <div className="relative mb-7">
+        {/* Logo / hotel icon */}
+        <div className="mb-7">
           <div className={cn(
-            "w-[76px] h-[76px] rounded-full bg-primary text-white grid place-items-center transition-all duration-500 overflow-hidden",
+            "w-[76px] h-[76px] rounded-full bg-primary text-white grid place-items-center transition-all duration-500",
             stage === "enter" ? "scale-90 opacity-70" : "scale-100 opacity-100"
           )}>
             {stage === "enter" && (
               <Logo size="lg" showHover={false} />
             )}
-            {stage !== "enter" && <CheckBig />}
+            {stage !== "enter" && (
+              <Buildings2 size={32} variant="Outline" />
+            )}
           </div>
-          {stage !== "enter" && (
-            <div className="absolute inset-0 rounded-full border-[3px] border-primary/30 animate-ping" />
-          )}
         </div>
 
         {/* Texts */}

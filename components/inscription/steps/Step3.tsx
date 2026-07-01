@@ -66,7 +66,7 @@ export function Step3({ state, update }: StepProps) {
       <PageHead
         eyebrow="Étape 3 sur 7"
         title="Équipements & services de l'établissement"
-        desc="Ces équipements s'appliquent à tout l'hôtel (pas par chambre). Cochez ce qui est disponible — les options non cochées seront marquées comme indisponibles."
+        desc="Ces équipements s'appliquent à tout l'hôtel (pas par chambre). Cochez ce qui est disponible les options non cochées seront marquées comme indisponibles."
       />
 
       {/* Stats */}
@@ -93,14 +93,14 @@ export function Step3({ state, update }: StepProps) {
       <Tip>Un établissement avec <strong>15+ équipements cochés</strong> reçoit 40% de demandes de réservation en plus dans le feed Immo Plus.</Tip>
 
       {/* Bento */}
-      <div className="grid grid-cols-12 gap-4">
-        <EquipCard group={EQUIP_GROUPS[0]} span="col-span-12 md:col-span-5" cols={2} e={e} update={update} />
-        <EquipCard group={EQUIP_GROUPS[1]} span="col-span-12 md:col-span-7" cols={3} e={e} update={update} />
-        <EquipCard group={EQUIP_GROUPS[2]} span="col-span-12" cols={4} e={e} update={update}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+        <EquipCard group={EQUIP_GROUPS[0]} span="" cols={2} e={e} update={update} />
+        <EquipCard group={EQUIP_GROUPS[1]} span="" cols={3} e={e} update={update} />
+        <EquipCard group={EQUIP_GROUPS[2]} span="lg:col-span-2" cols={4} e={e} update={update}>
           <Tip>La <strong>réception 24h/24</strong> et le <strong>room service</strong> sont les 2 critères les plus filtrés par les voyageurs d&apos;affaires.</Tip>
         </EquipCard>
-        <EquipCard group={EQUIP_GROUPS[3]} span="col-span-12 md:col-span-7" cols={3} e={e} update={update} />
-        <EquipCard group={EQUIP_GROUPS[4]} span="col-span-12 md:col-span-5" cols={2} e={e} update={update} />
+        <EquipCard group={EQUIP_GROUPS[3]} span="" cols={3} e={e} update={update} />
+        <EquipCard group={EQUIP_GROUPS[4]} span="" cols={2} e={e} update={update} />
       </div>
 
       {/* Badge Confort 4 étoiles */}

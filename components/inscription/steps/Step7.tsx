@@ -9,6 +9,7 @@ import { Fcfa } from "../ui/Fcfa";
 import { Icon } from "../ui/Icon";
 import { InsCard } from "../ui/InsCard";
 import { cn } from "@/lib/utils/cn";
+import { fileUrl } from "@/lib/utils/fileUrl";
 
 const STATUS_ICON: Record<string, string> = {
   ok:   "border-[rgba(31,138,91,0.18)] bg-success-bg text-success",
@@ -57,7 +58,7 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
     setIsSubmitting(false);
     if (result.ok) {
       // Redirect to PMS with success notification
-      router.push(process.env.NEXT_PUBLIC_PMS_URL || "http://localhost:3001");
+      router.push("/pms");
     } else {
       setSubmitError(result.error.message);
     }
@@ -223,8 +224,15 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
           <SectionHead icon="eye" title="Prévisualisation dans le feed" sub="Voici comment votre hôtel apparaîtra aux voyageurs" />
           <div className="flex flex-1 mt-3">
             <div className="w-full flex-1 flex flex-col border border-border rounded-[20px] overflow-hidden">
-              <div className="relative min-h-[clamp(250px,24vw,340px)] p-3 bg-[#DCE8EE] flex flex-col justify-between">
-                <div className="flex justify-between items-start">
+              <div
+                className="relative min-h-[clamp(250px,24vw,340px)] p-3 bg-[#DCE8EE] flex flex-col justify-between bg-cover bg-center overflow-hidden"
+                style={hotel.coverFileId ? { backgroundImage: `url('${fileUrl(hotel.coverFileId)}')` } : undefined}
+              >
+                {/* Gradient overlay for text readability */}
+                {hotel.coverFileId && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+                )}
+                <div className="relative flex justify-between items-start">
                   <div className="flex gap-1.5">
                     <span className="bg-white/95 text-ink text-[10px] font-bold px-2 py-0.75 rounded-md inline-flex items-center gap-1 border border-[rgba(10,10,15,0.08)]"><Icon name="building" size={11} /> HÔTEL</span>
                     <span className="bg-amber-bg text-amber text-[10px] font-bold px-2 py-0.75 rounded-md inline-flex items-center gap-1 border border-[rgba(10,10,15,0.08)]">
@@ -233,7 +241,7 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
                   </div>
                   <div className="w-7.5 h-7.5 rounded-lg bg-white/90 grid place-items-center text-ink-3 border border-[rgba(10,10,15,0.08)]"><Icon name="star" size={16} /></div>
                 </div>
-                <div className="text-[rgba(10,10,15,0.64)] text-[11px] font-medium flex items-center gap-1"><Icon name="mapPin" size={12} /> {hotel.communeName}{hotel.villeName ? `, ${hotel.villeName}` : ""}</div>
+                <div className="relative text-white text-[11px] font-medium flex items-center gap-1 drop-shadow-sm"><Icon name="mapPin" size={12} /> {hotel.communeName}{hotel.villeName ? `, ${hotel.villeName}` : ""}</div>
               </div>
               <div className="p-3.5">
                 <div className="text-[15px] font-bold tracking-[-0.015em]">{hotel.name}</div>
