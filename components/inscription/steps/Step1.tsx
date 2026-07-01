@@ -44,8 +44,8 @@ function fmtSize(bytes: number): string {
 
 function UploadLoading() {
   return (
-    <div className="w-full flex flex-col items-center gap-2 text-center px-5 py-8 rounded-2xl border-2 border-dashed border-primary/40 bg-primary-50">
-      <div className="w-13 h-13 rounded-[14px] bg-white/70 grid place-items-center shadow-[0_0_0_1px_rgba(var(--color-primary-rgb),0.12)]">
+    <div className="w-full flex flex-col items-center gap-2 text-center px-5 py-8 rounded-2xl border-2 border-dashed border-border bg-white">
+      <div className="w-13 h-13 rounded-[14px] bg-white grid place-items-center border border-border">
         <svg
           className="animate-spin w-6 h-6 text-primary"
           viewBox="0 0 24 24"
@@ -64,7 +64,7 @@ function UploadLoading() {
           />
         </svg>
       </div>
-      <div className="text-[13px] font-semibold text-primary">Envoi en cours…</div>
+      <div className="text-[13px] font-semibold text-ink-2">Envoi en cours…</div>
     </div>
   );
 }
@@ -78,8 +78,8 @@ function UploadDone({
 }) {
   const isImage = slot.mimeType.startsWith("image/");
   return (
-    <div className="flex items-center gap-3 px-3.5 py-3 border-[1.5px] border-success bg-success-bg rounded-2xl">
-      <div className="shrink-0 w-10 h-10 rounded-[10px] overflow-hidden bg-white border border-success/20 grid place-items-center text-success">
+    <div className="flex items-center gap-3 px-3.5 py-3 border-[1.5px] border-border bg-white rounded-2xl">
+      <div className="shrink-0 w-10 h-10 rounded-[10px] overflow-hidden bg-white border border-border grid place-items-center text-ink-3">
         {isImage && slot.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -97,14 +97,13 @@ function UploadDone({
         </div>
         <div className="text-[11px] text-ink-3 mt-0.5">{fmtSize(slot.fileSize)}</div>
       </div>
-      <Pill kind="success" dot>Reçu</Pill>
       <Btn
         variant="icon"
         size="sm"
         onClick={onRemove}
         aria-label="Retirer le fichier"
       >
-        <Icon name="x" size={14} />
+        <Icon name="x" size={14} className="text-danger" />
       </Btn>
     </div>
   );
@@ -260,7 +259,7 @@ export function Step1({ state, update }: StepProps) {
           <Tip>
             Ce numéro doit être lié à un compte{" "}
             <strong>Wave</strong>, <strong>Orange Money</strong> ou <strong>MTN Money</strong>{" "}
-            — il sert à recevoir vos paiements de réservations.
+             il sert à recevoir vos paiements de réservations.
           </Tip>
         </InsCard>
 
@@ -283,7 +282,8 @@ export function Step1({ state, update }: StepProps) {
                 Pièce d&apos;identité du propriétaire{" "}
                 <span className="text-danger">*</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="flex flex-col">
                   <div className="text-[12px] text-ink-3 font-semibold mb-2.5">
                     Recto (face avant)
@@ -317,6 +317,7 @@ export function Step1({ state, update }: StepProps) {
                   </div>
                 </div>
               </div>
+
               <div className="text-[11.5px] text-ink-3 mt-1.5 leading-[1.4]">
                 Acceptés : CNI ivoirienne, passeport, attestation d&apos;identité
               </div>

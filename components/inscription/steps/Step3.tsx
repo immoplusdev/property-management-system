@@ -122,7 +122,7 @@ export function Step3({ state, update }: StepProps) {
             {badgeReached ? "Validé ✓" : `+${towardsBadge}`}
           </Pill>
         </div>
-        <Tip>Le badge <strong>«&nbsp;Confort 4 étoiles&nbsp;»</strong> s&apos;affiche en avant sur votre fiche publique — il augmente le taux de clic de <strong>+23%</strong>.</Tip>
+        <Tip>Le badge <strong>«&nbsp;Confort 4 étoiles&nbsp;»</strong> s&apos;affiche en avant sur votre fiche publique  il augmente le taux de clic de <strong>+23%</strong>.</Tip>
       </InsCard>
 
     </div>

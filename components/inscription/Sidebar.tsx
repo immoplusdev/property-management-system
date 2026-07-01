@@ -67,13 +67,13 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
   return (
     <aside className="sticky top-0 h-dvh flex flex-col items-center py-5 z-50 gap-0" aria-label="Étapes d'inscription">
       {/* Brand mark */}
-      <div className="mb-7 shrink-0">
+      <div className="mb-12 shrink-0">
         <Logo size="lg" />
       </div>
 
       {/* Step icons nav */}
       <nav
-        className="flex flex-col items-center gap-1 bg-white rounded-[24px] px-2 py-2.5 flex-1 max-h-[430px] justify-center shadow-[0_0_0_1px_rgba(10,10,15,0.06),0_4px_16px_rgba(10,10,15,0.07),0_12px_40px_rgba(10,10,15,0.05),inset_0_1px_0_rgba(255,255,255,0.90)]"
+        className="flex flex-col items-center gap-4 bg-white rounded-[24px] px-2 py-4 flex-1 max-h-[430px] justify-center my-auto"
         role="navigation"
         aria-label="Navigation par étape"
       >
@@ -85,9 +85,9 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
             <button
               key={step}
               className={cn(
-                "relative w-11 h-11 rounded-[24px] grid place-items-center cursor-pointer border-0 bg-transparent text-[#9496A8] shrink-0 transition-[background,color,transform] duration-180",
-                "hover:bg-[rgba(39,68,222,0.06)] hover:text-primary hover:scale-105",
-                isActive && "bg-primary text-white shadow-[0_4px_14px_rgba(39,68,222,0.35),0_1px_4px_rgba(39,68,222,0.20)] hover:bg-primary-600 hover:scale-104",
+                "relative w-11 h-11 rounded-[24px] grid place-items-center cursor-pointer border-0 bg-transparent text-[#9496A8] shrink-0 transition-[background-color,color] duration-180",
+                "hover:bg-[rgba(39,68,222,0.06)] hover:text-primary",
+                isActive && "bg-primary text-white hover:bg-primary-600",
                 isDone && "bg-[rgba(39,68,222,0.07)] text-primary hover:bg-[rgba(39,68,222,0.12)]"
               )}
               aria-label={`Étape ${step} — ${label}`}
@@ -101,12 +101,6 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
                 variant={isActive ? "Bold" : "Linear"}
                 color={isActive ? "#ffffff" : isDone ? "#2744DE" : "#9496A8"}
               />
-            {isActive && (
-                <span
-                  className="absolute inset-[-3px] rounded-[24px] border-[1.5px] border-[rgba(39,68,222,0.20)] pointer-events-none animate-[insc-pulse_2.5s_ease_infinite]"
-                  aria-hidden="true"
-                />
-              )} 
             </button>
           );
         })}

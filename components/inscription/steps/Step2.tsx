@@ -684,11 +684,11 @@ export function Step2({ state, update }: StepProps) {
               </div>
             </Field>
           </div>
-          <Tip>La description courte est votre accroche dans le feed — commencez par <strong>l&apos;émotion</strong>, pas par les équipements.</Tip>
+          <Tip>La description courte est votre accroche dans le feed commencez par <strong>l&apos;émotion</strong>, pas par les équipements.</Tip>
         </InsCard>
 
         {/* 4. Médias */}
-        <InsCard flat className="lg:col-span-2">
+        <InsCard flat>
           <SectionHead
             icon="image"
             title="Médias de l'établissement"

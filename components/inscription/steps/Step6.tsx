@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils/cn";
 const PAY_METHODS = [
   { id: "payWave",  name: "Wave",              image: "/wave.png", desc: "Paiement instantané · sans frais" },
   { id: "payOM",   name: "Orange Money",       image: "/om.png", desc: "Orange Money Côte d'Ivoire" },
-  { id: "payCard", name: "Carte bancaire",     image: "💳", desc: "Visa, Mastercard" },
-  { id: "payCash", name: "Espèces à l'arrivée", image: "💵", desc: "Paiement au check-in" },
+  { id: "payCard", name: "Carte bancaire",     image: "creditCard", desc: "Visa, Mastercard" },
+  { id: "payCash", name: "Espèces à l'arrivée", image: "banknote", desc: "Paiement au check-in" },
 ] as const;
 
 const CANCEL_OPTS = [
@@ -56,22 +56,19 @@ export function Step6({ state, update }: StepProps) {
                   key={m.id}
                   type="button"
                   onClick={() => set(m.id as keyof PricingState, !checked as PricingState[keyof PricingState])}
-                  className={cn(
-                    "text-left border rounded-2xl p-3.5 cursor-pointer transition-[border-color,background] duration-120",
-                    checked ? "border-primary-200 bg-primary-50" : "border-border bg-surface hover:border-border-strong hover:bg-surface-2"
-                  )}
+                  className="text-left border border-border rounded-2xl p-3.5 cursor-pointer bg-white"
                 >
                   <div className="flex items-start justify-between mb-2.5">
-                    <div className="w-10 h-10 rounded-[10px] grid place-items-center shrink-0 bg-white">
+                    <div className="w-10 h-10 rounded-[10px] grid place-items-center shrink-0 bg-white text-primary">
                       {m.image.startsWith("/") ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={m.image} alt={m.name} className="w-6 h-6 object-contain" />
                       ) : (
-                        <span className="text-[18px]">{m.image}</span>
+                        <Icon name={m.image as any} size={20} />
                       )}
                     </div>
-                    <div className={cn("w-5 h-5 rounded-md border-[1.5px] grid place-items-center transition-all duration-120", checked ? "border-primary bg-primary text-white" : "border-border-strong text-transparent")}>
-                      {checked && <Icon name="check" size={12} stroke={3} />}
+                    <div className={cn("w-5 h-5 rounded-sm border-2 grid place-items-center transition-all duration-150", checked ? "border-success bg-success" : "border-border-strong bg-transparent")}>
+                      {checked && <Icon name="check" size={12} stroke={3} className="text-white" />}
                     </div>
                   </div>
                   <div className="text-[13px] font-bold tracking-[-0.015em]">{m.name}</div>
@@ -80,7 +77,7 @@ export function Step6({ state, update }: StepProps) {
               );
             })}
           </div>
-          <Tip>Au moins un mode <strong>mobile money</strong> est obligatoire en Côte d&apos;Ivoire — Wave et Orange Money représentent 87% des paiements.</Tip>
+          <Tip>Au moins un mode <strong>mobile money</strong> est obligatoire en Côte d&apos;Ivoire  Wave et Orange Money représentent 87% des paiements.</Tip>
         </InsCard>
 
         {/* 2. Acompte & 3. Politique d'annulation */}
@@ -155,75 +152,76 @@ export function Step6({ state, update }: StepProps) {
           </InsCard>
         </div>
 
-        {/* 4. Politiques d'accueil */}
-        <InsCard flat className="flex flex-col">
-          <SectionHead icon="users" title="Politiques d'accueil" />
+        {/* 4. Politiques d'accueil & 5. Check-in / Check-out */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <InsCard flat className="flex flex-col">
+            <SectionHead icon="users" title="Politiques d'accueil" />
 
-          <PolicyRow icon="baby" iconBg="var(--violet-bg)" iconColor="var(--violet)" title="Enfants"
-            sub={<>Gratuits jusqu&apos;à <strong>{p.kidsFree} ans</strong> partageant la chambre</>}>
-            <TextField type="number" value={String(p.kidsFree)} onChange={(e) => set("kidsFree", e.target.value)} style={{ width: 72 }} />
-            <Toggle on={p.cribAvailable} onChange={(v) => set("cribAvailable", v)} />
-            <span className="text-[13px]">Lit bébé</span>
-          </PolicyRow>
+            <PolicyRow icon="baby" iconBg="var(--violet-bg)" iconColor="var(--violet)" title="Enfants"
+              sub={<>Gratuits jusqu&apos;à <strong>{p.kidsFree} ans</strong> partageant la chambre</>}>
+              <TextField type="number" value={String(p.kidsFree)} onChange={(e) => set("kidsFree", e.target.value)} style={{ width: 72 }} />
+              <Toggle on={p.cribAvailable} onChange={(v) => set("cribAvailable", v)} />
+              <span className="text-[13px]">Lit bébé</span>
+            </PolicyRow>
 
-          <PolicyRow icon="paw" iconBg="var(--amber-bg)" iconColor="var(--amber)" title="Animaux de compagnie"
-            sub="Acceptés sous conditions ou refusés">
-            <Toggle on={p.pets} onChange={(v) => set("pets", v)} />
-            <span className="text-[13px]">{p.pets ? "Acceptés (10 000 FCFA / séjour)" : "Non acceptés"}</span>
-          </PolicyRow>
+            <PolicyRow icon="paw" iconBg="var(--amber-bg)" iconColor="var(--amber)" title="Animaux de compagnie"
+              sub="Acceptés sous conditions ou refusés">
+              <Toggle on={p.pets} onChange={(v) => set("pets", v)} />
+              <span className="text-[13px]">{p.pets ? "Acceptés (10 000 FCFA / séjour)" : "Non acceptés"}</span>
+            </PolicyRow>
 
-          <PolicyRow icon="smoke" iconBg="var(--surface-2)" iconColor="var(--color-ink-3)" title="Politique fumeurs" sub={p.smoking}>
-            <select
-              className={`${CONTROL} appearance-none bg-no-repeat bg-position-[right_14px_center] pr-9 w-55`}
-              style={{ backgroundImage: `url("${SELECT_CHEVRON}")` }}
-              value={p.smoking}
-              onChange={(e) => set("smoking", e.target.value)}
-            >
-              <option>Interdit dans tout l&apos;établissement</option>
-              <option>Zone extérieure uniquement</option>
-              <option>Chambres fumeurs disponibles</option>
-            </select>
-          </PolicyRow>
+            <PolicyRow icon="smoke" iconBg="var(--surface-2)" iconColor="var(--color-ink-3)" title="Politique fumeurs" sub={p.smoking}>
+              <select
+                className={`${CONTROL} appearance-none bg-no-repeat bg-position-[right_14px_center] pr-9 w-55`}
+                style={{ backgroundImage: `url("${SELECT_CHEVRON}")` }}
+                value={p.smoking}
+                onChange={(e) => set("smoking", e.target.value)}
+              >
+                <option>Interdit dans tout l&apos;établissement</option>
+                <option>Zone extérieure uniquement</option>
+                <option>Chambres fumeurs disponibles</option>
+              </select>
+            </PolicyRow>
 
-          <PolicyRow icon="moneyBill" iconBg="var(--teal-bg)" iconColor="var(--teal)" title="Taxe de séjour"
-            sub="Frais additionnels collectés au check-in">
-            <span className="text-[13px] text-ink-3">Par nuit :</span>
-            <TextField type="number" value={String(p.cityTax)} onChange={(e) => set("cityTax", e.target.value)} style={{ width: 100 }} />
-            <span className="text-[13px]">FCFA</span>
-          </PolicyRow>
-        </InsCard>
+            <PolicyRow icon="moneyBill" iconBg="var(--teal-bg)" iconColor="var(--teal)" title="Taxe de séjour"
+              sub="Frais additionnels collectés au check-in">
+              <span className="text-[13px] text-ink-3">Par nuit :</span>
+              <TextField type="number" value={String(p.cityTax)} onChange={(e) => set("cityTax", e.target.value)} style={{ width: 100 }} />
+              <span className="text-[13px]">FCFA</span>
+            </PolicyRow>
+          </InsCard>
 
-        {/* 5. Check-in / Check-out */}
-        <InsCard flat className="flex flex-col">
-          <SectionHead icon="clock" title="Check-in / Check-out flexibles" />
-          <div className="flex flex-col flex-1">
-            {(["earlyCheckin", "lateCheckout"] as const).map((key, i) => (
-              <div key={key} className="py-4.5 border-b border-border first:pt-2 last:border-b-0 last:pb-0">
-                <div className="flex items-center gap-1.75 text-[13px] font-bold text-ink-2 mb-2.5">
-                  <Icon name={i === 0 ? "arrowRight" : "arrowLeft"} size={14} />
-                  {i === 0 ? "Check-in anticipé" : "Check-out tardif"}
+          <InsCard flat className="flex flex-col">
+            <SectionHead icon="clock" title="Check-in / Check-out flexibles" />
+            <div className="flex flex-col flex-1">
+              {(["earlyCheckin", "lateCheckout"] as const).map((key, i) => (
+                <div key={key} className="py-4.5 border-b border-border first:pt-2 last:border-b-0 last:pb-0">
+                  <div className="flex items-center gap-1.75 text-[13px] font-bold text-ink-2 mb-2.5">
+                    <Icon name={i === 0 ? "arrowRight" : "arrowLeft"} size={14} />
+                    {i === 0 ? "Check-in anticipé" : "Check-out tardif"}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["Gratuit", "Sur disponibilité", "+ frais"] as const).map((o) => {
+                      const active = p[key] === o;
+                      return (
+                        <button
+                          key={o}
+                          onClick={() => set(key, o)}
+                          className={cn(
+                            "px-2 py-2 text-[11.5px] font-semibold rounded-xl border-[1.5px] transition-colors text-center leading-snug",
+                            active ? "bg-primary text-white border-primary" : "bg-surface text-ink border-border hover:border-border-strong"
+                          )}
+                        >
+                          {o}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(["Gratuit", "Sur disponibilité", "+ frais"] as const).map((o) => {
-                    const active = p[key] === o;
-                    return (
-                      <button
-                        key={o}
-                        onClick={() => set(key, o)}
-                        className={cn(
-                          "px-2 py-2 text-[11.5px] font-semibold rounded-xl border-[1.5px] transition-colors text-center leading-snug",
-                          active ? "bg-primary text-white border-primary" : "bg-surface text-ink border-border hover:border-border-strong"
-                        )}
-                      >
-                        {o}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </InsCard>
+              ))}
+            </div>
+          </InsCard>
+        </div>
 
       </div>
     </div>

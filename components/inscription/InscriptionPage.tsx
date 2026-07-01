@@ -299,7 +299,7 @@ export function InscriptionPage({ initialUser }: Props) {
 
   return (
     <div className="insc-root">
-      <div className="grid grid-cols-[88px_1fr] min-h-dvh bg-[#F4F5F9] text-ink font-sans antialiased tracking-[-0.008em] font-features-['ss01','cv11','kern']">
+      <div className="grid grid-cols-[88px_1fr] min-h-dvh bg-white text-ink font-sans antialiased tracking-[-0.008em] font-features-['ss01','cv11','kern']">
         <Sidebar
           currentStep={currentStep}
           goTo={goTo}

@@ -408,17 +408,15 @@ export function Step5({ state, update }: StepProps) {
                   key={d.id}
                   type="button"
                   onClick={() => toggleSpace(d.id)}
-                  className={`relative text-left rounded-2xl p-4.5 cursor-pointer transition-[border-color,background] duration-150 border ${
-                    conf
-                      ? "border-[rgba(22,162,107,0.28)] bg-success-bg"
-                      : "border-border bg-surface hover:border-border-strong hover:bg-surface-2"
-                  }`}
+                  className="relative text-left rounded-2xl p-4.5 cursor-pointer border border-border bg-white"
                 >
-                  {conf && (
-                    <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-success text-white grid place-items-center">
-                      <Icon name="check" size={11} stroke={2.5} />
-                    </div>
-                  )}
+                  <div className={`absolute top-3 right-3 w-5 h-5 rounded-sm border-2 grid place-items-center transition-all duration-150 ${
+                    conf
+                      ? "border-success bg-success"
+                      : "border-border-strong bg-transparent"
+                  }`}>
+                    {conf && <Icon name="check" size={12} stroke={3} className="text-white" />}
+                  </div>
                   <div className="w-11 h-11 rounded-xl grid place-items-center mb-3 shrink-0"
                     style={{ background: vaBg(d.color), color: vaFg(d.color) }}>
                     <Icon name={d.icon} size={20} />
@@ -449,16 +447,16 @@ export function Step5({ state, update }: StepProps) {
             {/* Espaces personnalisés déjà ajoutés */}
             {va.customSpaces.map((cs) => (
               <div key={cs.id}
-                className="relative text-left rounded-2xl p-4.5 border border-[rgba(22,162,107,0.28)] bg-success-bg">
+                className="relative text-left rounded-2xl p-4.5 border border-border bg-white">
                 <button
                   type="button"
                   onClick={() => removeCustomSpace(cs.id)}
-                  className="absolute top-3 right-3 w-6 h-6 rounded-full bg-black/10 hover:bg-danger hover:text-white text-ink-3 grid place-items-center transition-colors duration-150 cursor-pointer"
+                  className="absolute top-3 right-3 w-5 h-5 rounded-sm border-2 border-border-strong bg-danger text-white grid place-items-center cursor-pointer transition-all duration-150"
                   aria-label="Supprimer"
                 >
-                  <Icon name="x" size={12} />
+                  <Icon name="x" size={12} stroke={2.5} />
                 </button>
-                <div className="w-11 h-11 rounded-xl grid place-items-center mb-3 bg-white/60 text-ink-2">
+                <div className="w-11 h-11 rounded-xl grid place-items-center mb-3 bg-primary-50 text-primary">
                   <Icon name={cs.icon} size={20} />
                 </div>
                 <div className="text-[14px] font-bold tracking-[-0.015em] pr-6">{cs.title}</div>
@@ -473,7 +471,7 @@ export function Step5({ state, update }: StepProps) {
 
         {/* ── Espaces à configurer ────────────────────────────────────────── */}
         {(configuredFixed > 0 || va.customSpaces.length > 0) && (
-          <InsCard flat className="col-span-12">
+          <InsCard flat className="col-span-12 lg:col-span-6">
             <SectionHead
               icon="check"
               title="Espaces à configurer"
@@ -551,13 +549,13 @@ export function Step5({ state, update }: StepProps) {
         )}
 
         {/* ── Services additionnels ────────────────────────────────────────── */}
-        <InsCard flat className="col-span-12">
+        <InsCard flat className="col-span-12 lg:col-span-6">
           <SectionHead
             icon="grid"
             title="Services additionnels"
             sub="Visibles sur la fiche hôtel, sans fiche dédiée"
           />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-2 mt-1.5">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mt-1.5">
             {SERVICES.map((it) => (
               <Checkbox
                 key={it.id}
