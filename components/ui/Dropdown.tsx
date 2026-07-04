@@ -72,7 +72,7 @@ export function Dropdown({ trigger, items, align = "right" }: DropdownProps) {
             background: "var(--surface)",
             border: "1px solid var(--border)",
             borderRadius: 10,
-            boxShadow: "var(--shadow-lg, 0 16px 48px rgba(17,17,15,.10))",
+            boxShadow: "var(--shadow-lg, 0 16px 48px rgba(18,19,26,.10))",
             minWidth: 180,
             zIndex: 300,
             padding: 4,

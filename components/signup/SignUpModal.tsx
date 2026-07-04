@@ -17,13 +17,15 @@ import { startOnboarding } from "@/lib/api/onboarding/onboarding.actions";
 type Phase = "signup" | "otp" | "success";
 
 interface Form {
-  firstName: string; lastName: string; phoneNumber: string;
+  fullName: string; phoneNumber: string;
+  hotelName: string;
   email: string; pwd: string; pwd2: string; cgv: boolean;
 }
 
 /** Données du formulaire passées à l'écran OTP pour finaliser l'inscription. */
 interface PendingForm {
-  firstName: string; lastName: string; phoneNumber: string;
+  fullName: string; phoneNumber: string;
+  hotelName: string;
   email: string; password: string;
 }
 
@@ -111,7 +113,7 @@ function BrandPane() {
     <section
       className="relative px-10 flex flex-col h-full overflow-y-auto scrollbar-none hidden min-[1080px]:flex"
       style={{
-        background: "linear-gradient(145deg, #1535c4 0%, #2744DE 52%, #4161f6 100%)"
+        background: "var(--gradient-auth-hero)"
       }}
     >
       {/* Décor cercles en arrière-plan */}
@@ -178,7 +180,7 @@ function BrandPane() {
 /* ── Sign-up form ── */
 function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) {
   const [form, setForm] = useState<Form>({
-    firstName: "", lastName: "", phoneNumber: "", email: "", pwd: "", pwd2: "", cgv: false,
+    fullName: "", phoneNumber: "", hotelName: "", email: "", pwd: "", pwd2: "", cgv: false,
   });
   const [showPwd,  setShowPwd]  = useState(false);
   const [showPwd2, setShowPwd2] = useState(false);
@@ -196,7 +198,8 @@ function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) 
   const phoneError = form.phoneNumber.length > 0 && !/^\d{10,15}$/.test(form.phoneNumber.trim());
 
   const canSubmit =
-    form.firstName.trim() && form.lastName.trim() &&
+    form.fullName.trim().length >= 2 &&
+    form.hotelName.trim().length >= 5 &&
     /^\d{10,15}$/.test(form.phoneNumber.trim()) &&
     emailOk(form.email) &&
     pwdOk(form.pwd) && form.pwd === form.pwd2 && form.pwd2.length > 0 &&
@@ -212,9 +215,9 @@ function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) 
     setLoading(false);
     if (res.ok) {
       onSubmit({
-        firstName:   form.firstName.trim(),
-        lastName:    form.lastName.trim(),
+        fullName:    form.fullName.trim(),
         phoneNumber: form.phoneNumber.trim(),
+        hotelName:   form.hotelName.trim(),
         email:       form.email.trim(),
         password:    form.pwd,
       });
@@ -245,25 +248,35 @@ function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) 
 
       <form className="mt-5 flex flex-col gap-3" onSubmit={handleSubmit} noValidate>
 
-        {/* Prénom + Nom */}
-        <div className="grid grid-cols-2 gap-2.5">
-          {([
-            ["firstName", "given-name",  "Prénom", "Aïcha"],
-            ["lastName",  "family-name", "Nom",    "Diabaté"],
-          ] as const).map(([field, ac, label, ph]) => (
-            <div key={field} className="flex flex-col gap-[5px]">
-              <label className="text-xs font-medium text-ink flex items-center gap-1">
-                {label} <span className="text-primary">*</span>
-              </label>
-              <input
-                className={inputBase}
-                type="text" autoComplete={ac}
-                placeholder={ph}
-                value={form[field as keyof Form] as string}
-                onChange={set(field as keyof Form)}
-              />
-            </div>
-          ))}
+        {/* Nom complet */}
+        <div className="flex flex-col gap-[5px]">
+          <label className="text-xs font-medium text-ink flex items-center gap-1">
+            Nom complet <span className="text-primary">*</span>
+          </label>
+          <input
+            className={inputBase}
+            type="text" autoComplete="name"
+            placeholder="Aïcha Diabaté"
+            value={form.fullName}
+            onChange={set("fullName")}
+          />
+        </div>
+
+        {/* Nom de l'hôtel */}
+        <div className="flex flex-col gap-[5px]">
+          <label className="text-xs font-medium text-ink flex items-center gap-1">
+            Nom de l'établissement <span className="text-primary">*</span>
+          </label>
+          <input
+            className={inputBase}
+            type="text"
+            placeholder="Hôtel des Palmiers"
+            value={form.hotelName}
+            onChange={set("hotelName")}
+          />
+          {form.hotelName.length > 0 && form.hotelName.length < 5 && (
+            <div className="text-[11px] text-danger min-h-[1em]">Minimum 5 caractères requis</div>
+          )}
         </div>
 
         {/* Téléphone */}
@@ -400,7 +413,7 @@ function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) 
         {submitError && (
           <div
             role="alert"
-            className="text-[12px] text-danger bg-[#FEF2F2] border border-danger/30 rounded-lg px-3 py-2 leading-[1.45]"
+            className="text-[12px] text-danger bg-danger-bg border border-danger/30 rounded-lg px-3 py-2 leading-[1.45]"
           >
             {submitError}
           </div>
@@ -496,8 +509,7 @@ function OtpScreen({
 
     // Étape 3 — inscription finale avec le token OTP.
     const registerRes = await registerCustomer({
-      firstName:   pending.firstName,
-      lastName:    pending.lastName,
+      fullName:    pending.fullName,
       phoneNumber: pending.phoneNumber,
       email,
       password:    pending.password,
@@ -549,7 +561,7 @@ function OtpScreen({
                 "focus:border-primary focus:[box-shadow:0_0_0_3px_var(--color-primary-50)]",
                 "max-[600px]:w-[44px] max-[600px]:h-[50px] max-[600px]:text-[18px]",
                 d     && "border-primary bg-primary-50 text-primary",
-                error && "border-danger bg-[#FEF2F2]"
+                error && "border-danger bg-danger-bg"
               )}
               type="text" inputMode="numeric" maxLength={1}
               value={d}
@@ -603,20 +615,20 @@ function OtpScreen({
 /* ── Success overlay ── */
 type SuccessStage = "enter" | "check" | "text";
 
-function SuccessOverlay({ onDone }: { onDone: () => void }) {
+function SuccessOverlay({ hotelName, onDone }: { hotelName: string; onDone: () => void }) {
   const [stage, setStage] = useState<SuccessStage>("enter");
 
   useEffect(() => {
-    void startOnboarding();
+    void startOnboarding(hotelName);
     const t1 = setTimeout(() => setStage("check"), 350);
     const t2 = setTimeout(() => setStage("text"),  800);
     const t3 = setTimeout(() => onDone(),         3200);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [onDone]);
+  }, [hotelName, onDone]);
 
   return (
     <div className="w-full h-full flex items-center justify-center px-5">
-      <div className="bg-white rounded-[28px] px-10 py-10 w-full max-w-[400px] flex flex-col items-center text-center shadow-[0_24px_72px_rgba(0,0,0,0.22)]">
+      <div className="bg-white rounded-[28px] px-10 py-10 w-full max-w-[400px] flex flex-col items-center text-center shadow-[0_24px_72px_rgba(18,19,26,0.22)]">
 
         {/* Logo / hotel icon */}
         <div className="mb-7">
@@ -703,13 +715,13 @@ export default function SignUpModal({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-modal-fullscreen bg-[rgba(10,10,16,0.52)] backdrop-blur-[8px] flex animate-fade-in overscroll-contain"
+      className="fixed inset-0 z-modal-fullscreen bg-[rgba(18,19,26,0.52)] backdrop-blur-[8px] flex animate-fade-in overscroll-contain"
       style={{ fontFeatureSettings: "'ss01', 'cv11'" }}
       role="dialog"
       aria-modal="true"
     >
       {phase === "success" ? (
-        <SuccessOverlay onDone={handleDone} />
+        <SuccessOverlay hotelName={pending?.hotelName || ""} onDone={handleDone} />
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1080px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] w-full h-full animate-slide-up max-[1080px]:grid-cols-1">
 

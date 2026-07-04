@@ -5,44 +5,44 @@ import { toFormError, type FormError } from "@/lib/api/errors";
 
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: FormError };
 
+/** One line of the pre-checkout invoice. Backend: `{ label, amount }` — see dimension.md §6.1. */
 export interface InvoiceExtra {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-  date?: string;
+  label: string;
+  amount: number;
 }
 
+/** Response of `GET /pms/checkout/:reservationId/invoice` — see dimension.md §6.1. */
 export interface Invoice {
-  reservationId?: string;
-  ref: string;
+  reservationId: string;
   guest: { firstName: string; lastName: string };
   room: { number: string; typeName: string };
   checkInDate: string;
   checkOutDate: string;
   nights: number;
-  extras: InvoiceExtra[];
+  roomRate: number;
   roomTotal: number;
-  touristTax?: number;
+  extras: InvoiceExtra[];
+  extrasTotal: number;
   grandTotal: number;
   paidAmount: number;
   balance: number;
-  paymentMethod?: string;
 }
 
+/** Request body of `POST /pms/checkout/:reservationId` — see dimension.md §6.2. */
 export interface CheckOutPayload {
-  paymentMethod?: string;
-  amountPaid?: number;
   notes?: string;
 }
 
+/** Response of `POST /pms/checkout/:reservationId` — see dimension.md §6.2. */
 export interface CheckOutResult {
   success: boolean;
   reservationId: string;
-  roomNumber: string;
-  guestName: string;
+  status: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  totalAmount: number;
+  paidAmount: number;
   checkedOutAt: string;
-  invoiceRef: string;
 }
 
 export async function getCheckOutInvoice(reservationId: string): Promise<ActionResult<Invoice>> {

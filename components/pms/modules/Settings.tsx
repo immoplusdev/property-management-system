@@ -1,58 +1,15 @@
 "use client";
 import React, { useState } from "react";
+import Link from "next/link";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Icon, toastPromise, Button } from "../shared";
+import { SectionHead, Icon, toastPromise, Button, Skeleton, Switch, Input } from "../shared";
 import { useHotelSettings, useUpdateHotelSettings, useUpdateNotificationSettings } from "@/lib/hooks/pms/useSettings";
 import type { HotelSettings } from "@/lib/api/pms/settings.actions";
+import { useHotel } from "@/lib/pms/HotelContext";
+import { SETTINGS_NAV, type SettingsSection } from "@/lib/pms/settingsNav";
 
-const NAV = [
-  { id:"hotel",    label:"Hôtel & identité",     icon:"bed"        },
-  { id:"rooms",    label:"Types de chambre",      icon:"list"       },
-  { id:"rates",    label:"Tarifs & saisons",      icon:"moneyBill"  },
-  { id:"channels", label:"Canaux de diffusion",   icon:"barChart"   },
-  { id:"payments", label:"Paiements",             icon:"creditCard" },
-  { id:"team",     label:"Équipe & accès",        icon:"users"      },
-  { id:"app",      label:"App Immo Plus",         icon:"sparkles"   },
-  { id:"notifs",   label:"Notifications",         icon:"bell"       },
-  { id:"billing",  label:"Facturation Immo Plus", icon:"fileText"   },
-];
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      className={`relative w-10 h-5.5 rounded-full transition-colors duration-220 focus:outline-none ${value ? "bg-primary" : "bg-border"}`}
-    >
-      <div className={`absolute top-0.75 left-0.75 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-220 ${value ? "translate-x-4.5" : ""}`} />
-    </button>
-  );
-}
-
-function Field({
-  label, value, onChange, type = "text", disabled,
-}: {
-  label: string; value: string; onChange?: (v: string) => void; type?: string; disabled?: boolean;
-}) {
-  return (
-    <div>
-      <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange?.(e.target.value)}
-        disabled={disabled}
-        className="w-full h-10.5 bg-surface border border-border rounded-[10px] px-3 text-[13.5px] text-ink outline-none focus:border-primary disabled:opacity-60 disabled:cursor-not-allowed"
-      />
-    </div>
-  );
-}
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
-
-export function Settings() {
-  const [section, setSection] = useState("hotel");
+export function Settings({ section }: { section: SettingsSection }) {
+  const hotel = useHotel();
 
   // ── Hotel settings (section: hotel) ─────────────────────────────────────────
   const hotelQ     = useHotelSettings();
@@ -150,15 +107,15 @@ export function Settings() {
         {/* Nav */}
         <div className="pr-4 border-r border-border-soft">
           <nav className="grid gap-0.5">
-            {NAV.map(n => (
-              <button
+            {SETTINGS_NAV.map(n => (
+              <Link
                 key={n.id}
+                href={`/pms/${hotel}/settings/${n.id}`}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-[10px] text-[13px] font-medium text-left ${section===n.id ? "bg-primary-50 text-primary" : "text-ink-2 hover:bg-surface-2"}`}
-                onClick={() => setSection(n.id)}
               >
                 <Icon name={n.icon} size={15} color={section===n.id ? "var(--color-primary)" : "var(--color-ink-3)"} />
                 {n.label}
-              </button>
+              </Link>
             ))}
           </nav>
         </div>
@@ -175,14 +132,14 @@ export function Settings() {
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  <Field label="Nom de l'établissement"  value={form.name    ?? ""} onChange={v => setField("name",    v)} />
-                  <Field label="Adresse"                  value={form.address ?? ""} onChange={v => setField("address", v)} />
-                  <Field label="Téléphone"                value={form.phone   ?? ""} onChange={v => setField("phone",   v)} type="tel" />
-                  <Field label="Email"                    value={form.email   ?? ""} onChange={v => setField("email",   v)} type="email" />
+                  <Input label="Nom de l'établissement"  value={form.name    ?? ""} onChange={e => setField("name",    e.target.value)} />
+                  <Input label="Adresse"                  value={form.address ?? ""} onChange={e => setField("address", e.target.value)} />
+                  <Input label="Téléphone"                value={form.phone   ?? ""} onChange={e => setField("phone",   e.target.value)} type="tel" />
+                  <Input label="Email"                    value={form.email   ?? ""} onChange={e => setField("email",   e.target.value)} type="email" />
                   {hotelQ.data && (
                     <>
-                      <Field label="Heure d'arrivée (check-in)"  value={hotelQ.data.checkInTime}  disabled />
-                      <Field label="Heure de départ (check-out)" value={hotelQ.data.checkOutTime} disabled />
+                      <Input label="Heure d'arrivée (check-in)"  value={hotelQ.data.checkInTime}  disabled />
+                      <Input label="Heure de départ (check-out)" value={hotelQ.data.checkOutTime} disabled />
                     </>
                   )}
                 </div>
@@ -240,14 +197,14 @@ export function Settings() {
               <SectionHead icon="creditCard" title="Méthodes de paiement" sub="Activez ou désactivez les options disponibles pour vos clients" />
               <div className="grid gap-2.5 mt-3.5">
                 {([
-                  { key:"waveActive", label:"Wave",           color:"#1BA1F2", note:"Commission 0.5%"  },
-                  { key:"omActive",   label:"Orange Money",   color:"#FF7900", note:"Commission 0.6%"  },
-                  { key:"mtnActive",  label:"MTN Money",      color:"#FFCC00", note:"Commission 0.6%"  },
-                  { key:"cardActive", label:"Carte bancaire", color:"#2744DE", note:"Commission 1.5%"  },
+                  { key:"waveActive", label:"Wave",           color:"var(--color-pay-wave)", note:"Commission 0.5%"  },
+                  { key:"omActive",   label:"Orange Money",   color:"var(--color-pay-om)",   note:"Commission 0.6%"  },
+                  { key:"mtnActive",  label:"MTN Money",      color:"var(--color-pay-mtn)",  note:"Commission 0.6%"  },
+                  { key:"cardActive", label:"Carte bancaire", color:"var(--color-primary)",  note:"Commission 1.5%"  },
                 ] as { key: keyof typeof localToggles; label: string; color: string; note: string }[]).map(p => (
                   <div key={p.key} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-6 rounded-md inline-grid place-items-center font-bold text-[10px] uppercase" style={{ background: p.color, color: p.key==="mtnActive" ? "#111" : "#fff" }}>
+                      <div className="w-9 h-6 rounded-md inline-grid place-items-center font-bold text-[10px] uppercase" style={{ background: p.color, color: p.key==="mtnActive" ? "var(--color-ink)" : "var(--color-surface)" }}>
                         {p.label.slice(0,4)}
                       </div>
                       <div>
@@ -255,7 +212,7 @@ export function Settings() {
                         <div className="text-[11px] text-ink-3">{p.note}</div>
                       </div>
                     </div>
-                    <Toggle value={localToggles[p.key]} onChange={() => toggleLocal(p.key)} />
+                    <Switch on={localToggles[p.key]} onChange={() => toggleLocal(p.key)} />
                   </div>
                 ))}
               </div>
@@ -272,8 +229,8 @@ export function Settings() {
                     <div className="font-medium text-[13px]">Notifications Email</div>
                     <div className="text-[11px] text-ink-3">Recevez les alertes importantes par email</div>
                   </div>
-                  <Toggle
-                    value={notifSettings.emailEnabled}
+                  <Switch
+                    on={notifSettings.emailEnabled}
                     onChange={v => setNotifSettings(s => ({ ...s, emailEnabled: v }))}
                   />
                 </div>
@@ -282,16 +239,16 @@ export function Settings() {
                     <div className="font-medium text-[13px]">Notifications SMS / WhatsApp</div>
                     <div className="text-[11px] text-ink-3">Recevez les alertes via WhatsApp Business</div>
                   </div>
-                  <Toggle
-                    value={notifSettings.smsEnabled}
+                  <Switch
+                    on={notifSettings.smsEnabled}
                     onChange={v => setNotifSettings(s => ({ ...s, smsEnabled: v }))}
                   />
                 </div>
                 {notifSettings.smsEnabled && (
-                  <Field
+                  <Input
                     label="Numéro WhatsApp Business"
                     value={notifSettings.whatsappBusinessNumber}
-                    onChange={v => setNotifSettings(s => ({ ...s, whatsappBusinessNumber: v }))}
+                    onChange={e => setNotifSettings(s => ({ ...s, whatsappBusinessNumber: e.target.value }))}
                     type="tel"
                   />
                 )}
@@ -317,7 +274,7 @@ export function Settings() {
                       <div className="font-medium text-[13px]">{f.label}</div>
                       <div className="text-[11px] text-ink-3">{f.note}</div>
                     </div>
-                    <Toggle value={localToggles[f.key]} onChange={() => toggleLocal(f.key)} />
+                    <Switch on={localToggles[f.key]} onChange={() => toggleLocal(f.key)} />
                   </div>
                 ))}
               </div>
@@ -335,7 +292,7 @@ export function Settings() {
                 ] as { key: keyof typeof localToggles; label: string; note: string }[]).map(c => (
                   <div key={c.key} className="flex items-start justify-between px-4 py-4 border border-border rounded-[14px]">
                     <div className="flex items-center gap-3">
-                      <div className={`w-9.5 h-9.5 rounded-[10px] grid place-items-center font-bold text-white text-[12px] ${c.key==="bookingActive" ? "bg-[#003580]" : "bg-[#FF5A5F]"}`}>
+                      <div className={`w-9.5 h-9.5 rounded-[10px] grid place-items-center font-bold text-white text-[12px] ${c.key==="bookingActive" ? "bg-ota-booking" : "bg-ota-airbnb"}`}>
                         {c.key==="bookingActive" ? "BK" : "AB"}
                       </div>
                       <div>
@@ -343,7 +300,7 @@ export function Settings() {
                         <div className="text-[11.5px] text-ink-3 mt-0.5">{c.note}</div>
                       </div>
                     </div>
-                    <Toggle value={localToggles[c.key]} onChange={() => toggleLocal(c.key)} />
+                    <Switch on={localToggles[c.key]} onChange={() => toggleLocal(c.key)} />
                   </div>
                 ))}
               </div>

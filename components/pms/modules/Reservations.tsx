@@ -1,34 +1,42 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { BookingStatusPill, PayBadge, AppBadge, SourceBadge, Icon, KPICard, Button } from "../shared";
+import { BookingStatusPill, PayBadge, AppBadge, SourceBadge, Icon, KPICard, Button, Skeleton } from "../shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
-import { Modal } from "@/components/ui/Modal";
 import { formatFCFA, formatDate, type Booking } from "../data";
-import type { NavId } from "../PMSSidebar";
 import type { BookingStatus } from "@/lib/types/pms";
-import { useReservations, useCancelReservation } from "@/lib/hooks/pms/useReservations";
-import { toastPromise } from "../shared";
+import { useReservations } from "@/lib/hooks/pms/useReservations";
+import { AV_COLORS } from "@/lib/utils/avatarColor";
+import { useHotel } from "@/lib/pms/HotelContext";
 
-const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
+export function Reservations() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const hotel = useHotel();
+  const go = (id: "checkin" | "checkout") => router.push(`/pms/${hotel}/${id}`);
 
-interface Props { go: (id: NavId) => void; }
+  const filter    = searchParams.get("status") ?? "all";
+  const search    = searchParams.get("q") ?? "";
+  const payFilter = searchParams.get("pay") ?? "all";
 
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
-
-export function Reservations({ go }: Props) {
-  const [filter,    setFilter]    = useState("all");
-  const [search,    setSearch]    = useState("");
-  const [payFilter, setPayFilter] = useState("all");
-  const [selected,  setSelected]  = useState<Booking | null>(null);
+  function updateParams(patch: Record<string, string>) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(patch)) {
+      if (!value || value === "all") params.delete(key);
+      else params.set(key, value);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+  const setFilter    = (v: string) => updateParams({ status: v });
+  const setSearch    = (v: string) => updateParams({ q: v });
+  const setPayFilter = (v: string) => updateParams({ pay: v });
 
   // Fetch all reservations (let API paginate at 100 max for client-side filtering)
   const { data, isLoading, error } = useReservations({ limit: 100 });
   const allBookings: Booking[] = data?.data ?? [];
-
-  const cancelMut = useCancelReservation();
 
   // Client-side filtering
   const list = useMemo(() => {
@@ -51,18 +59,6 @@ export function Reservations({ go }: Props) {
     { id:"checked_in",   label:"Sur place",           count:count("checked_in"),         icon:"user",      iconBg:"var(--color-teal-bg)",    iconColor:"var(--color-teal)"   },
     { id:"checking_out", label:"Départ aujourd'hui",  count:count("checking_out"),       icon:"arrowLeft", iconBg:"var(--color-amber-bg)",   iconColor:"var(--color-amber)"  },
   ];
-
-  async function handleCancel(b: Booking) {
-    if (!confirm(`Annuler la réservation ${b.ref} ?`)) return;
-    try {
-      await toastPromise(cancelMut.mutateAsync(b.id), {
-        loading: "Annulation en cours…",
-        success: `Réservation ${b.ref} annulée`,
-        error: (e) => (e as Error)?.message || "Erreur lors de l'annulation",
-      });
-      setSelected(null);
-    } catch { /* toast déjà affiché */ }
-  }
 
   return (
     <div className="animate-pms-fade-up">
@@ -157,7 +153,7 @@ export function Reservations({ go }: Props) {
                   <tr
                     key={b.id}
                     className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2 cursor-pointer"
-                    onClick={() => setSelected(b)}
+                    onClick={() => router.push(`/pms/${hotel}/reservations/${b.id}`)}
                   >
                     <td className="px-3.5 py-3.5 align-middle">
                       <code style={{ fontSize: 11, color: "var(--color-ink-2)", fontFamily: "var(--font-mono)" }}>
@@ -212,63 +208,6 @@ export function Reservations({ go }: Props) {
           </table>
         )}
       </div>
-
-      {/* Detail modal */}
-      {selected && (
-        <Modal
-          open
-          onClose={() => setSelected(null)}
-          title={selected.guest}
-          footer={
-            <>
-              <Button
-                variant="ghost"
-                onClick={() => handleCancel(selected)}
-                disabled={cancelMut.isPending || ["cancelled","checked_out"].includes(selected.status)}
-              >
-                <Icon name="trash" size={13} /> Annuler
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setSelected(null)}>Fermer</Button>
-                {selected.status === "confirmed" && (
-                  <Button variant="primary" onClick={() => { setSelected(null); go("checkin"); }}>
-                    <Icon name="arrowRight" size={13} /> Check-in
-                  </Button>
-                )}
-                {selected.status === "checking_out" && (
-                  <Button variant="primary" onClick={() => { setSelected(null); go("checkout"); }}>
-                    <Icon name="arrowLeft" size={13} /> Check-out
-                  </Button>
-                )}
-              </div>
-            </>
-          }
-        >
-          <div className="text-[12px] text-ink-3 mb-4">{selected.ref}</div>
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            {[
-              ["Chambre",  selected.room === "—" ? "À attribuer" : selected.room],
-              ["Type",     selected.roomType],
-              ["Arrivée",  formatDate(selected.checkin)],
-              ["Départ",   formatDate(selected.checkout)],
-              ["Nuits",    String(selected.nights)],
-              ["Source",   selected.source],
-              ["Montant",  formatFCFA(selected.amount)],
-              ["Payé",     formatFCFA(selected.paid)],
-            ].map(([label, value]) => (
-              <div key={label} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px]">
-                <span className="text-ink-3 text-[13px]">{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
-          {selected.amount - selected.paid > 0 && (
-            <div className="p-3 rounded-[10px] font-medium text-[13px]" style={{ background: "var(--color-warn-bg)", color: "var(--color-warn)" }}>
-              Solde restant : {formatFCFA(selected.amount - selected.paid)}
-            </div>
-          )}
-        </Modal>
-      )}
     </div>
   );
 }

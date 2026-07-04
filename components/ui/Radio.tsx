@@ -53,7 +53,7 @@ export function Radio({ value, checked, onChange, label, disabled }: RadioProps)
         }}
       >
         {checked && (
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", display: "block" }} />
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--surface)", display: "block" }} />
         )}
       </span>
       {label && (
@@ -132,7 +132,7 @@ export function RadioGroup({ options, value, onChange, label, disabled }: RadioG
                 }}
               >
                 {isChecked && (
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", display: "block" }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--surface)", display: "block" }} />
                 )}
               </span>
               <span>

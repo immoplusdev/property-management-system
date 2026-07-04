@@ -85,10 +85,10 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
             <button
               key={step}
               className={cn(
-                "relative w-11 h-11 rounded-[24px] grid place-items-center cursor-pointer border-0 bg-transparent text-[#9496A8] shrink-0 transition-[background-color,color] duration-180",
-                "hover:bg-[rgba(39,68,222,0.06)] hover:text-primary",
+                "relative w-11 h-11 rounded-[24px] grid place-items-center cursor-pointer border-0 bg-transparent text-ink-3 shrink-0 transition-[background-color,color] duration-180",
+                "hover:bg-primary/6 hover:text-primary",
                 isActive && "bg-primary text-white hover:bg-primary-600",
-                isDone && "bg-[rgba(39,68,222,0.07)] text-primary hover:bg-[rgba(39,68,222,0.12)]"
+                isDone && "bg-primary/7 text-primary hover:bg-primary/12"
               )}
               aria-label={`Étape ${step} — ${label}`}
               aria-current={isActive ? "step" : undefined}
@@ -99,7 +99,7 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
               <Icon
                 size={20}
                 variant={isActive ? "Bold" : "Linear"}
-                color={isActive ? "#ffffff" : isDone ? "#2744DE" : "#9496A8"}
+                color={isActive ? "var(--color-surface)" : isDone ? "var(--color-primary)" : "var(--color-ink-3)"}
               />
             </button>
           );
@@ -125,7 +125,7 @@ export function Sidebar({ currentStep, goTo, completion, stepsDone }: SidebarPro
             <circle
               cx="22" cy="22" r="17"
               fill="none"
-              stroke="#2744DE"
+              stroke="var(--color-primary)"
               strokeWidth="2.5"
               strokeDasharray={`${2 * Math.PI * 17}`}
               strokeDashoffset={`${2 * Math.PI * 17 * (1 - completion / 100)}`}

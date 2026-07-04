@@ -6,9 +6,10 @@ import {
   Camera, Card, Clock, CloseCircle, DocumentDownload,
   DocumentText1, DocumentUpload, Edit2, Eye, Facebook,
   Flag, Gallery, Grid2, Home, Image, InfoCircle, Instagram,
-  Layer, Location, Lock, MagicStar, Menu, Mobile, Moneys, Notification,
-  Pet, Profile2User, Send, Setting2, Shield, Sms, Star1,
+  Lamp, Layer, Location, Lock, MagicStar, Menu, Mobile, Moneys, Notification,
+  Pet, Profile2User, Send, Setting2, Share, Shield, Sms, Star1,
   TickSquare, Trash, TrendUp, Tree, User, Video, WeightMeter, Wifi,
+  SearchNormal1,
 } from "iconsax-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,6 +47,8 @@ const ICONSAX: Record<string, React.ComponentType<any>> = {
   edit:         Edit2,
   trash:        Trash,
   eye:          Eye,
+  search:       SearchNormal1,
+  share:        Share,
   bell:         Notification,
   info:         InfoCircle,
   fileText:     DocumentText1,
@@ -61,6 +64,7 @@ const ICONSAX: Record<string, React.ComponentType<any>> = {
   list:         Menu,
   instagram:    Instagram,
   facebook:     Facebook,
+  lamp:         Lamp,
   palmtree:     Tree,
   dumbbell:     WeightMeter,
   grid:         Grid2,

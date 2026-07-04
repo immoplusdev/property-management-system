@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils/cn";
 const PAY_METHODS = [
   { id: "payWave",  name: "Wave",              image: "/wave.png", desc: "Paiement instantané · sans frais" },
   { id: "payOM",   name: "Orange Money",       image: "/om.png", desc: "Orange Money Côte d'Ivoire" },
+  { id: "payMTN",  name: "MTN Money",          image: "mtnIcon", desc: "MTN Money Côte d'Ivoire" },
   { id: "payCard", name: "Carte bancaire",     image: "creditCard", desc: "Visa, Mastercard" },
   { id: "payCash", name: "Espèces à l'arrivée", image: "banknote", desc: "Paiement au check-in" },
 ] as const;
@@ -26,8 +27,8 @@ const CANCEL_OPTS = [
 
 const optBox = (checked: boolean) =>
   cn(
-    "relative text-left border rounded-xl p-3.5 cursor-pointer transition-[border-color,background] duration-120",
-    checked ? "border-primary-200 bg-primary-50" : "border-border bg-surface hover:border-border-strong hover:bg-surface-2"
+    "relative text-left border rounded-xl p-3.5 cursor-pointer transition-[border-color,background,color] duration-120",
+    checked ? "border-ink bg-ink text-white" : "border-border bg-surface hover:border-border-strong hover:bg-surface-2"
   );
 
 export function Step6({ state, update }: StepProps) {
@@ -59,7 +60,7 @@ export function Step6({ state, update }: StepProps) {
                   className="text-left border border-border rounded-2xl p-3.5 cursor-pointer bg-white"
                 >
                   <div className="flex items-start justify-between mb-2.5">
-                    <div className="w-10 h-10 rounded-[10px] grid place-items-center shrink-0 bg-white text-primary">
+                    <div className="w-10 h-10 rounded-[10px] grid place-items-center shrink-0 bg-white text-ink">
                       {m.image.startsWith("/") ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={m.image} alt={m.name} className="w-6 h-6 object-contain" />
@@ -67,7 +68,7 @@ export function Step6({ state, update }: StepProps) {
                         <Icon name={m.image as any} size={20} />
                       )}
                     </div>
-                    <div className={cn("w-5 h-5 rounded-sm border-2 grid place-items-center transition-all duration-150", checked ? "border-success bg-success" : "border-border-strong bg-transparent")}>
+                    <div className={cn("w-5 h-5 rounded-md border-[1.5px] grid place-items-center transition-all duration-150", checked ? "border-ink bg-ink" : "border-border-strong bg-transparent")}>
                       {checked && <Icon name="check" size={12} stroke={3} className="text-white" />}
                     </div>
                   </div>
@@ -86,7 +87,7 @@ export function Step6({ state, update }: StepProps) {
           <SectionHead
             icon="moneyBill"
             title="Acompte à la réservation"
-            right={p.depositRequired ? <Pill kind="primary" dot>{p.depositPct}%</Pill> : undefined}
+            right={p.depositRequired ? <Pill kind="default" dot>{p.depositPct}%</Pill> : undefined}
           />
 
           <div className="grid grid-cols-2 gap-2 mt-4">
@@ -96,8 +97,8 @@ export function Step6({ state, update }: StepProps) {
             ] as const).map(({ v, label, sub }) => (
               <button key={String(v)} type="button" className={optBox(p.depositRequired === v)} onClick={() => set("depositRequired", v)}>
                 <RadioMark checked={p.depositRequired === v} className="absolute top-3 right-3" />
-                <div className="text-[13px] font-bold pr-6.5">{label}</div>
-                <div className="text-[11.5px] text-ink-3 mt-0.75">{sub}</div>
+                <div className={cn("text-[13px] font-bold pr-6.5", p.depositRequired === v && "text-white")}>{label}</div>
+                <div className={cn("text-[11.5px] mt-0.75", p.depositRequired === v ? "text-white/80" : "text-ink-3")}>{sub}</div>
               </button>
             ))}
           </div>
@@ -112,7 +113,10 @@ export function Step6({ state, update }: StepProps) {
               value={Number(p.depositPct)}
               onChange={(e) => set("depositPct", Number(e.target.value))}
               disabled={!p.depositRequired}
-              className="w-full accent-primary disabled:opacity-50"
+              className="w-full disabled:opacity-45"
+              style={{
+                accentColor: "var(--color-ink)"
+              }}
             />
             <div className="flex justify-between text-[11px] text-ink-3 mt-1">
               <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
@@ -133,18 +137,18 @@ export function Step6({ state, update }: StepProps) {
                 type="button"
                 onClick={() => set("cancelPolicy", opt.id)}
                 className={cn(
-                  "flex items-center justify-between gap-3 p-3.5 border rounded-xl cursor-pointer transition-[border-color,background] duration-120",
-                  p.cancelPolicy === opt.id ? "border-primary-200 bg-primary-50" : "border-border bg-surface hover:border-border-strong hover:bg-surface-2"
+                  "flex items-center justify-between gap-3 p-3.5 border rounded-xl cursor-pointer transition-[border-color,background,color] duration-120",
+                  p.cancelPolicy === opt.id ? "border-ink bg-ink text-white" : "border-border bg-surface hover:border-border-strong hover:bg-surface-2"
                 )}
               >
                 <div className="flex items-start gap-3 min-w-0">
                   <RadioMark checked={p.cancelPolicy === opt.id} className="shrink-0 mt-0.75" />
                   <div className="text-left">
-                    <div className="text-[14px] font-bold tracking-[-0.015em]">{opt.id}</div>
-                    <div className="text-[12px] text-ink-3 mt-0.5 leading-[1.4]">{opt.sub}</div>
+                    <div className={cn("text-[14px] font-bold tracking-[-0.015em]", p.cancelPolicy === opt.id && "text-white")}>{opt.id}</div>
+                    <div className={cn("text-[12px] mt-0.5 leading-[1.4]", p.cancelPolicy === opt.id ? "text-white/80" : "text-ink-3")}>{opt.sub}</div>
                   </div>
                 </div>
-                <span className={cn("shrink-0 text-[10.5px] font-semibold px-2.5 py-0.75 rounded-full whitespace-nowrap", opt.badge)}>{opt.recommend}</span>
+                <span className={cn("shrink-0 text-[10.5px] font-semibold px-2.5 py-0.75 rounded-full whitespace-nowrap", p.cancelPolicy === opt.id ? "bg-white/20 text-white" : opt.badge)}>{opt.recommend}</span>
               </button>
             ))}
           </div>
@@ -209,7 +213,7 @@ export function Step6({ state, update }: StepProps) {
                           onClick={() => set(key, o)}
                           className={cn(
                             "px-2 py-2 text-[11.5px] font-semibold rounded-xl border-[1.5px] transition-colors text-center leading-snug",
-                            active ? "bg-primary text-white border-primary" : "bg-surface text-ink border-border hover:border-border-strong"
+                            active ? "bg-ink text-white border-ink" : "bg-surface text-ink border-border hover:border-border-strong"
                           )}
                         >
                           {o}

@@ -493,74 +493,97 @@ export function Step2({ state, update }: StepProps) {
             title="Informations de base"
             right={<Pill kind="primary" dot>Public</Pill>}
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TextField
-              label="Nom de l'établissement" required
-              value={h.name} onChange={(e) => set("name", e.target.value)}
-              placeholder="Ex: Résidence Lagune Bleue"
-            />
-            <SelectField
-              label="Type d'établissement" required
-              value={h.type} onChange={(e) => set("type", e.target.value)}
-              options={[
-                { value: "", label: "Sélectionner un type…" },
-                { value: "hotel",       label: "Hôtel" },
-                { value: "auberge",     label: "Auberge" },
-                { value: "apart_hotel", label: "Apart-hôtel" },
-                { value: "residence",   label: "Résidence hôtelière" },
-                { value: "boutique",    label: "Hôtel boutique" },
-              ]}
-            />
-            <Field label="Catégorie étoiles">
-              <div className="flex items-center gap-3 mt-1">
-                <StarRate value={h.stars} onChange={(v) => set("stars", v)} />
-                <Btn variant="text" size="sm" onClick={() => set("stars", 0)}>Non classé</Btn>
-              </div>
-            </Field>
-            <TextField
-              label="Année d'ouverture"
-              value={h.yearOpened} onChange={(e) => set("yearOpened", e.target.value)}
-              placeholder="2019"
-            />
-            <TextField
-              label="Téléphone de réception"
-              prefix="CI +225"
-              value={String(h.phone).replace("+225 ", "").replace("+225", "")}
-              onChange={(e) => set("phone", "+225 " + e.target.value)}
-            />
-            <TextField
-              label="Email établissement"
-              value={h.email} onChange={(e) => set("email", e.target.value)}
-              placeholder="contact@hotel.ci"
-            />
-            <TextField
-              label="Site web" prefix="https://"
-              value={String(h.website).replace(/^https?:\/\//, "")}
-              onChange={(e) => set("website", e.target.value)}
-              placeholder="hotel.ci"
-            />
-            <TextField
-              label="Capacité totale (chambres)" type="number"
-              value={String(h.capacity)} onChange={(e) => set("capacity", e.target.value)}
-              placeholder="42"
-            />
-            <TextField
-              label="Instagram" prefix="@"
-              value={String(h.instagram).replace(/^@/, "")}
-              onChange={(e) => set("instagram", "@" + e.target.value)}
-            />
-            <TextField
-              label="Facebook"
-              value={h.facebook} onChange={(e) => set("facebook", e.target.value)}
-            />
-            <Field label="Langues parlées par le personnel" span={2}>
-              <TagInput
-                tags={h.languages}
-                onChange={(v) => set("languages", v)}
-                placeholder="Ajouter une langue…"
+
+          {/* Identité */}
+          <div className="mb-5">
+            <div className="text-[11px] font-bold tracking-[0.03em] uppercase text-ink-3 mb-3">Identité</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TextField
+                label="Nom de l'établissement" required
+                value={h.name} onChange={(e) => set("name", e.target.value)}
+                placeholder="Ex: Résidence Lagune Bleue"
               />
-            </Field>
+              <SelectField
+                label="Type d'établissement" required
+                value={h.type} onChange={(e) => set("type", e.target.value)}
+                options={[
+                  { value: "", label: "Sélectionner un type…" },
+                  { value: "hotel",       label: "Hôtel" },
+                  { value: "auberge",     label: "Auberge" },
+                  { value: "apart_hotel", label: "Apart-hôtel" },
+                  { value: "residence",   label: "Résidence hôtelière" },
+                  { value: "boutique",    label: "Hôtel boutique" },
+                ]}
+              />
+              <Field label="Catégorie étoiles">
+                <div className="flex items-center gap-3 mt-1">
+                  <StarRate value={h.stars} onChange={(v) => set("stars", v)} />
+                  <Btn variant="text" size="sm" onClick={() => set("stars", 0)}>Non classé</Btn>
+                </div>
+              </Field>
+              <TextField
+                label="Année d'ouverture"
+                value={h.yearOpened} onChange={(e) => set("yearOpened", e.target.value)}
+                placeholder="2019"
+              />
+            </div>
           </div>
+
+          {/* Contact */}
+          <div className="mb-5">
+            <div className="text-[11px] font-bold tracking-[0.03em] uppercase text-ink-3 mb-3">Contact</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TextField
+                label="Téléphone de réception"
+                prefix="CI +225"
+                value={String(h.phone).replace("+225 ", "").replace("+225", "")}
+                onChange={(e) => set("phone", "+225 " + e.target.value)}
+              />
+              <TextField
+                label="Email établissement"
+                value={h.email} onChange={(e) => set("email", e.target.value)}
+                placeholder="contact@hotel.ci"
+              />
+              <TextField
+                label="Capacité totale (chambres)" type="number"
+                value={String(h.capacity)} onChange={(e) => set("capacity", e.target.value)}
+                placeholder="42"
+              />
+            </div>
+          </div>
+
+          {/* Réseaux sociaux */}
+          <div className="mb-5">
+            <div className="text-[11px] font-bold tracking-[0.03em] uppercase text-ink-3 mb-3">Réseaux sociaux <span className="font-normal text-ink-3">(facultatif)</span></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TextField
+                label="Site web" prefix="https://"
+                value={String(h.website).replace(/^https?:\/\//, "")}
+                onChange={(e) => set("website", e.target.value)}
+                placeholder="hotel.ci"
+              />
+              <TextField
+                label="Instagram" prefix="@"
+                value={String(h.instagram).replace(/^@/, "")}
+                onChange={(e) => set("instagram", "@" + e.target.value)}
+              />
+              <TextField
+                label="Facebook"
+                value={h.facebook} onChange={(e) => set("facebook", e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Langues */}
+          <div className="mb-4">
+            <div className="text-[11px] font-bold tracking-[0.03em] uppercase text-ink-3 mb-3">Langues parlées par le personnel</div>
+            <TagInput
+              tags={h.languages}
+              onChange={(v) => set("languages", v)}
+              placeholder="Ajouter une langue…"
+            />
+          </div>
+
           <Tip>Le nom s&apos;affiche tel quel dans le feed — évitez les noms génériques ; préférez un nom distinctif et mémorable.</Tip>
         </InsCard>
 
@@ -666,21 +689,46 @@ export function Step2({ state, update }: StepProps) {
               value={h.longDesc} onChange={(e) => set("longDesc", e.target.value)}
               rows={5} span={2}
             />
-            <Field label="Points forts de l'établissement" hint="Cliquez sur les suggestions ou ajoutez les vôtres" span={2}>
-              <TagInput
-                tags={h.strengths}
-                onChange={(v) => set("strengths", v)}
-                placeholder="Ajouter un point fort…"
-              />
-              <div className="flex gap-1.5 flex-wrap mt-2.5">
-                {["Sécurité 24/7", "Climatisation", "Wi-Fi haut débit", "Parking", "Vue mer", "Centre-ville", "Vue lagune", "Calme"]
-                  .filter((x) => !h.strengths.includes(x))
-                  .map((tag) => (
-                    <Btn key={tag} variant="soft" size="sm"
-                      onClick={() => set("strengths", [...h.strengths, tag])}>
-                      <Icon name="plus" size={12} /> {tag}
-                    </Btn>
-                  ))}
+            <Field label="Points forts de l'établissement" span={2}>
+              {h.strengths.length > 0 && (
+                <div className="mb-3">
+                  <div className="text-[11px] font-semibold text-ink-3 mb-2">Sélectionnés ({h.strengths.length})</div>
+                  <div className="flex flex-wrap gap-2">
+                    {h.strengths.map((tag) => (
+                      <div key={tag} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-white text-[13px] font-medium">
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => set("strengths", h.strengths.filter((t) => t !== tag))}
+                          className="flex items-center justify-center w-4 h-4 rounded hover:bg-primary-600 transition-colors"
+                          aria-label={`Retirer ${tag}`}
+                        >
+                          <Icon name="x" size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {h.strengths.length > 0 && (
+                <div className="border-t border-border my-3" />
+              )}
+              <div>
+                <div className="text-[11px] font-semibold text-ink-3 mb-2">Suggestions</div>
+                <div className="flex flex-wrap gap-2">
+                  {["Sécurité 24/7", "Climatisation", "Wi-Fi haut débit", "Parking", "Vue mer", "Centre-ville", "Vue lagune", "Calme"]
+                    .filter((x) => !h.strengths.includes(x))
+                    .map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => set("strengths", [...h.strengths, tag])}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-ink-2 text-[13px] font-medium hover:border-primary hover:text-primary transition-colors"
+                      >
+                        <Icon name="plus" size={14} /> {tag}
+                      </button>
+                    ))}
+                </div>
               </div>
             </Field>
           </div>

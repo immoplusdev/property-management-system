@@ -26,8 +26,8 @@ const methodConfig: Record<"wave" | "om" | "mtn" | "card" | "cash", MethodConfig
   wave: { label: "Wave", image: "/wave.png" },
   om: { label: "Orange Money", image: "/om.png" },
   mtn: { label: "Moov", image: "/moov.png" },
-  card: { label: "Carte", bg: "#2744DE", color: "#fff" },
-  cash: { label: "Espèces", icon: true, bg: "#16A26B", color: "#fff" },
+  card: { label: "Carte", bg: "var(--color-primary)", color: "var(--color-surface)" },
+  cash: { label: "Espèces", icon: true, bg: "var(--color-success)", color: "var(--color-surface)" },
 };
 
 export function PaymentMethodIcon({ method, size = "md", label }: PaymentMethodIconProps) {
@@ -73,7 +73,7 @@ export function PaymentMethodIcon({ method, size = "md", label }: PaymentMethodI
         config.container,
         config.fontSize
       )}
-      style={{ background: methodInfo.bg ?? "#ccc", color: methodInfo.color ?? "#000" }}
+      style={{ background: methodInfo.bg ?? "var(--color-border-strong)", color: methodInfo.color ?? "var(--color-ink)" }}
       title={methodInfo.label}
     >
       {method.toUpperCase().slice(0, 2)}

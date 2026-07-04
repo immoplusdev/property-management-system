@@ -5,6 +5,7 @@ import {
   createRequest,
   updateRequestStatus,
   type CreateRequestPayload,
+  type RequestStatus,
 } from "@/lib/api/pms/requests.actions";
 
 export const requestKeys = {
@@ -41,7 +42,7 @@ export function useCreateRequest() {
 export function useUpdateRequestStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { status: string; assignedTo?: string; notes?: string } }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: { status: RequestStatus; assignedTo?: string; notes?: string } }) =>
       updateRequestStatus(id, payload).then(res => {
         if (!res.ok) throw new Error(res.error.message);
         return res.data;

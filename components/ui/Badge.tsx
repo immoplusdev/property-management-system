@@ -62,11 +62,11 @@ export function BookingStatusPill({ status }: { status: string }) {
 
 /* ─── PayBadge ─── */
 const PAY_MAP: Record<string, { label: string; bg: string; color: string }> = {
-  wave: { label: "Wave", bg: "#1BA1F2", color: "#fff"  },
-  om:   { label: "OM",   bg: "#FF7900", color: "#fff"  },
-  mtn:  { label: "MTN",  bg: "#FFCC00", color: "#111"  },
-  card: { label: "CB",   bg: "#12131A", color: "#fff"  },
-  cash: { label: "ESP",  bg: "#1F8A5B", color: "#fff"  },
+  wave: { label: "Wave", bg: "var(--color-pay-wave)", color: "var(--color-surface)" },
+  om:   { label: "OM",   bg: "var(--color-pay-om)",   color: "var(--color-surface)" },
+  mtn:  { label: "MTN",  bg: "var(--color-pay-mtn)",  color: "var(--color-ink)"     },
+  card: { label: "CB",   bg: "var(--color-primary)",  color: "var(--color-surface)" },
+  cash: { label: "ESP",  bg: "var(--color-success)",   color: "var(--color-surface)" },
 };
 
 export function PayBadge({ method }: { method: string }) {

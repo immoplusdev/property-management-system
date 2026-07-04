@@ -50,8 +50,7 @@ export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
  * `token` est le jeton retourné par /users/verify-otp.
  */
 export const registerSchema = z.object({
-  firstName: z.string().trim().min(1, "Le prénom est requis."),
-  lastName: z.string().trim().min(1, "Le nom est requis."),
+  fullName: z.string().trim().min(2, "Le nom complet est requis."),
   email,
   phoneNumber,
   password,

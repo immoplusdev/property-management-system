@@ -344,8 +344,8 @@ export function Step1({ state, update }: StepProps) {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Commission bloc */}
-            <div className="lg:col-span-1 flex items-center gap-4 px-5 py-4.5 border-[1.5px] border-border rounded-[16px] bg-primary-50">
-              <div className="text-[36px] font-black tracking-tighter text-primary shrink-0 leading-none">
+            <div className="lg:col-span-1 flex items-center gap-4 p-4 border border-border rounded-[14px]">
+              <div className="text-[32px] font-black tracking-tighter text-ink shrink-0 leading-none">
                 8%
               </div>
               <div>

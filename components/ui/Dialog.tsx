@@ -48,7 +48,7 @@ export function Dialog({
         style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(17,17,15,.44)",
+          background: "rgba(18,19,26,.44)",
           animation: "pms-fade .15s ease",
         }}
         onClick={() => !loading && onClose()}
@@ -69,7 +69,7 @@ export function Dialog({
           maxWidth: 420,
           width: "100%",
           padding: 24,
-          boxShadow: "var(--shadow-lg, 0 16px 48px rgba(17,17,15,.12))",
+          boxShadow: "var(--shadow-lg, 0 16px 48px rgba(18,19,26,.12))",
           animation: "pms-slideUp .2s cubic-bezier(.2,.8,.2,1)",
         }}
       >
@@ -149,7 +149,7 @@ export function Dialog({
             aria-busy={loading}
             style={
               variant === "danger"
-                ? { background: "var(--danger)", color: "#fff", borderColor: "var(--danger)" }
+                ? { background: "var(--danger)", color: "var(--surface)", borderColor: "var(--danger)" }
                 : undefined
             }
           >

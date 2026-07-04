@@ -5,19 +5,33 @@ import { toFormError, type FormError } from "@/lib/api/errors";
 
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: FormError };
 
-export interface PlanningSlot {
-  date: string;
-  reservationId: string | null;
-  guestName: string | null;
+/** A room slot occupied by a reservation — see dimension.md §8.1. */
+export interface PlanningBookingSlot {
+  reservationId: string;
+  guestName: string;
+  checkInDate: string;
+  checkOutDate: string;
   status: string;
+  nights: number;
+  color?: string;
 }
+
+/** A room slot blocked for maintenance/other reasons — see dimension.md §8.1. */
+export interface PlanningBlockedSlot {
+  blockId: string;
+  reason: string;
+  fromDate: string;
+  toDate: string;
+  type: "blocked";
+}
+
+export type PlanningSlot = PlanningBookingSlot | PlanningBlockedSlot;
 
 export interface PlanningRoom {
   id: string;
-  roomNumber: string;
+  number: string;
   floor: number;
-  roomTypeName: string;
-  status: string;
+  typeName: string;
   slots: PlanningSlot[];
 }
 

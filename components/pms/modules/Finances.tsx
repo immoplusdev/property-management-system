@@ -1,19 +1,16 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Donut, Icon, KPICard, Button } from "../shared";
+import { SectionHead, Donut, Icon, KPICard, Button, Skeleton } from "../shared";
 import { PaymentMethodIcon } from "../PaymentMethodIcon";
 import { Pill } from "@/components/ui/Pill";
 import { formatFCFA } from "../data";
 import { useFinanceSummary, useTransactions } from "@/lib/hooks/pms/useFinances";
 
 const PAY_COLORS: Record<string, string> = {
-  wave: "#1BA1F2", om: "#FF7900", mtn: "#FFCC00", card: "#2744DE", cash: "#16A26B",
+  wave: "var(--color-pay-wave)", om: "var(--color-pay-om)", mtn: "var(--color-pay-mtn)",
+  card: "var(--color-primary)", cash: "var(--color-success)",
 };
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
 
 export function Finances() {
   const [period, setPeriod] = useState<"day" | "week" | "month">("month");
@@ -27,11 +24,11 @@ export function Finances() {
   // Compute payment mix from transaction list
   const byMethod = useMemo(() => {
     if (!txs.length) return [
-      { id:"wave", label:"Wave",           value:0, color:"#1BA1F2", pct:0, count:0 },
-      { id:"om",   label:"Orange Money",   value:0, color:"#FF7900", pct:0, count:0 },
-      { id:"mtn",  label:"MTN Money",      value:0, color:"#FFCC00", pct:0, count:0 },
-      { id:"card", label:"Carte bancaire", value:0, color:"#2744DE", pct:0, count:0 },
-      { id:"cash", label:"Espèces",        value:0, color:"#16A26B", pct:0, count:0 },
+      { id:"wave", label:"Wave",           value:0, color:"var(--color-pay-wave)", pct:0, count:0 },
+      { id:"om",   label:"Orange Money",   value:0, color:"var(--color-pay-om)",   pct:0, count:0 },
+      { id:"mtn",  label:"MTN Money",      value:0, color:"var(--color-pay-mtn)",  pct:0, count:0 },
+      { id:"card", label:"Carte bancaire", value:0, color:"var(--color-primary)",  pct:0, count:0 },
+      { id:"cash", label:"Espèces",        value:0, color:"var(--color-success)",  pct:0, count:0 },
     ];
     const methods = ["wave","om","mtn","card","cash"];
     const labels: Record<string, string> = { wave:"Wave", om:"Orange Money", mtn:"MTN Money", card:"Carte bancaire", cash:"Espèces" };
@@ -45,10 +42,10 @@ export function Finances() {
   }, [txs]);
 
   const byRoomType = [
-    { type:"Standard",       color:"#7B8DFF" },
-    { type:"Supérieure",     color:"#FF8E73" },
-    { type:"Suite Junior",   color:"#6FB5A8" },
-    { type:"Présidentielle", color:"#B57BE6" },
+    { type:"Standard",       color:"var(--color-cat-3)" },
+    { type:"Supérieure",     color:"var(--color-cat-7)" },
+    { type:"Suite Junior",   color:"var(--color-cat-2)" },
+    { type:"Présidentielle", color:"var(--color-cat-4)" },
   ];
 
   const totalRevenue = s?.totalRevenue ?? 0;
@@ -141,10 +138,10 @@ export function Finances() {
             ? <Skeleton className="h-40 mt-3" />
             : s && (() => {
                 const sources = [
-                  { type:"Hébergement",  value:s.occupancyRevenue ?? 0,    color:"#7B8DFF" },
-                  { type:"Restaurant",   value:s.restaurantRevenue ?? 0,   color:"#FF8E73" },
-                  { type:"Spa & Loisirs",value:s.spaRevenue ?? 0,          color:"#6FB5A8" },
-                  { type:"Autres",       value:s.otherRevenue ?? 0,        color:"#B57BE6" },
+                  { type:"Hébergement",  value:s.occupancyRevenue ?? 0,    color:"var(--color-cat-3)" },
+                  { type:"Restaurant",   value:s.restaurantRevenue ?? 0,   color:"var(--color-cat-7)" },
+                  { type:"Spa & Loisirs",value:s.spaRevenue ?? 0,          color:"var(--color-cat-2)" },
+                  { type:"Autres",       value:s.otherRevenue ?? 0,        color:"var(--color-cat-4)" },
                 ];
                 const total = sources.reduce((sum, r) => sum + r.value, 0) || 1;
                 return sources.map(r => (

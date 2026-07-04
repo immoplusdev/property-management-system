@@ -1,10 +1,11 @@
 "use client";
 import React, { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { PMSHeader } from "./PMSHeader";
-import { SectionHead, Donut, Icon, KPICard, Button } from "./shared";
+import { SectionHead, Donut, Icon, KPICard, Button, Skeleton } from "./shared";
 import { Pill } from "@/components/ui/Pill";
-import { STATUS_CONFIG, REQUEST_TYPES, formatFCFA } from "./data";
-import type { NavId } from "./PMSSidebar";
+import { AV_COLORS } from "@/lib/utils/avatarColor";
+import { STATUS_CONFIG, REQUEST_TYPES, formatFCFA, formatDate } from "./data";
 import type { UserDto } from "@/lib/api/generated/model";
 import type { DashboardKPIs } from "@/lib/api/pms/dashboard.actions";
 import {
@@ -15,13 +16,11 @@ import {
 } from "@/lib/hooks/pms/useDashboard";
 import { useRooms } from "@/lib/hooks/pms/useRooms";
 import { useRequests } from "@/lib/hooks/pms/useRequests";
+import { useHotel } from "@/lib/pms/HotelContext";
 
 interface Props {
-  go: (id: NavId) => void;
   user: UserDto | null;
 }
-
-const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
 
 const ACTIVITY_ICON: Record<string, string> = {
   check_in:           "arrowRight",
@@ -32,11 +31,11 @@ const ACTIVITY_ICON: Record<string, string> = {
 };
 
 const PAYMENT_COLORS: Record<string, string> = {
-  wave:         "#1BA1F2",
-  orange_money: "#FF7900",
-  mtn:          "#FFCC00",
-  credit_card:  "#11110F",
-  cash:         "#1F8A5B",
+  wave:         "var(--color-pay-wave)",
+  orange_money: "var(--color-pay-om)",
+  mtn:          "var(--color-pay-mtn)",
+  credit_card:  "var(--color-primary)",
+  cash:         "var(--color-success)",
 };
 const PAYMENT_LABELS: Record<string, string> = {
   wave:         "Wave",
@@ -45,10 +44,6 @@ const PAYMENT_LABELS: Record<string, string> = {
   credit_card:  "Carte",
   cash:         "Espèces",
 };
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
 
 function fmt(ts: string) {
   return new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -61,7 +56,10 @@ const todayLabel = (() => {
   return d.charAt(0).toUpperCase() + d.slice(1);
 })();
 
-export function Dashboard({ go, user }: Props) {
+export function Dashboard({ user }: Props) {
+  const router = useRouter();
+  const hotel = useHotel();
+  const go = (id: "checkin" | "checkout" | "rooms" | "requests") => router.push(`/pms/${hotel}/${id}`);
   const firstName = user?.firstName ?? "Directeur";
 
   const kpisQ    = useDashboardKPIs();
@@ -286,7 +284,7 @@ export function Dashboard({ go, user }: Props) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[12.5px] font-semibold overflow-hidden text-ellipsis whitespace-nowrap">{r.title}</div>
-                      <div className="text-[11.5px] text-ink-3">Ch. {r.room} · {r.time}</div>
+                      <div className="text-[11.5px] text-ink-3">Ch. {r.roomNumber} · {formatDate(r.createdAt)}</div>
                     </div>
                     <Pill kind="warn">À faire</Pill>
                   </div>
@@ -318,7 +316,7 @@ export function Dashboard({ go, user }: Props) {
                 data={payBreakdown.map(p => ({
                   label: PAYMENT_LABELS[p.method] ?? p.method,
                   value: p.percentage,
-                  color: PAYMENT_COLORS[p.method] ?? "#999",
+                  color: PAYMENT_COLORS[p.method] ?? "var(--color-ink-3)",
                 }))}
                 centerValue={`${mobilePct}%`}
                 centerLabel="Mobile money"
@@ -326,7 +324,7 @@ export function Dashboard({ go, user }: Props) {
               <div className="mt-4 grid gap-1.75">
                 {payBreakdown.map(p => (
                   <div key={p.method} className="flex items-center gap-2 text-[12px]">
-                    <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: PAYMENT_COLORS[p.method] ?? "#999" }} />
+                    <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: PAYMENT_COLORS[p.method] ?? "var(--color-ink-3)" }} />
                     <span className="flex-1 text-ink-2">{PAYMENT_LABELS[p.method] ?? p.method}</span>
                     <strong className="text-ink">{Math.round(p.percentage)}%</strong>
                   </div>

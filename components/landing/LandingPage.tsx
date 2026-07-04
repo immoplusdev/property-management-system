@@ -2,19 +2,46 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useInView } from "framer-motion";
+import { Cal_Sans, Plus_Jakarta_Sans } from "next/font/google";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { cva } from "class-variance-authority";
-import { ArrowRight, Home2, TickCircle, TrendUp, Star, Key, Briefcase, Buildings2, SmartHome, Wallet } from "iconsax-react";
+import {
+  ArrowRight, Home2, TickCircle, TrendUp, Star, Key, Briefcase, Buildings2, SmartHome, Wallet,
+  Link as LinkIcon, Calendar, Cloud, Shield, ShieldTick, Clock, ArrowDown2, Facebook, Instagram, Global, MessageQuestion,
+} from "iconsax-react";
 import { cn } from "@/lib/utils/cn";
 import { Logo } from "@/components/Logo";
 import SignUpModal from "../signup/SignUpModal";
 import LoginModal from "../signup/LoginModal";
 import SmoothScroll from "./SmoothScroll";
 import type { UserDto } from "@/lib/api/generated/model";
+import { SITE_CONFIG, SOCIAL_MEDIA } from "@/lib/seo/seo.config";
 import {
   ease, fadeUp, reveal, stagger, float,
   staggerContainer, staggerItem, hoverTapButton,
 } from "@/lib/animations/motion";
+
+/* ──────────── Typography (landing page only) ────────────
+ * Cal Sans   → display/titrage (H1, H2, H3, gros chiffres)
+ * Plus Jakarta Sans → tout le reste (corps, UI, nav, boutons)
+ * Cal Sans n'existe que dans un seul poids réel côté Google Fonts (400) —
+ * on ne force pas de font-weight:600 dessus pour éviter un faux-gras
+ * synthétisé par le navigateur ; le dessin de la police est déjà "impactant".
+ */
+const calSans = Cal_Sans({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
 
 /* ──────────── Button variants (cva) ──────────── */
 const btn = cva(
@@ -89,6 +116,63 @@ const CheckIcon = ({ size = 17 }: { size?: number }) => (
   </svg>
 );
 
+/* ──────────── Social icons not covered by iconsax-react ──────────── */
+const LinkedinIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.86 0-2.14 1.45-2.14 2.94v5.66H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.11 20.45H3.56V9h3.55v11.45Z" />
+  </svg>
+);
+
+const XIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M13.6 10.6 20.1 3h-1.55l-5.65 6.6L8.4 3H3l6.83 9.95L3 21h1.55l5.97-6.98L15.6 21H21l-7.4-10.4Zm-2.11 2.47-.69-.99L5.3 4.17h2.38l4.44 6.35.69.99 5.77 8.25h-2.38l-4.71-6.74Z" />
+  </svg>
+);
+
+/* ──────────── ANNOUNCE BAR ──────────── */
+function AnnounceBar() {
+  return (
+    <motion.a
+      href="#"
+      className="sticky top-0 z-[60] flex items-center h-11 px-6 max-[560px]:px-4"
+      style={{ background: "#F72585" }}
+      initial="rest"
+      whileHover="hover"
+      animate="rest"
+    >
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        variants={{ rest: { opacity: 0 }, hover: { opacity: 1 } }}
+        transition={{ duration: 0.15 }}
+        style={{ background: "rgba(0,0,0,0.08)" }}
+      />
+
+   
+
+      <div className="relative flex-1 flex items-center justify-start gap-1.5 px-3 min-w-0">
+        <span className="hidden min-[640px]:inline text-[13px] font-bold uppercase tracking-[0.02em] text-black whitespace-nowrap">
+          Déploiement août 2026.
+        </span>
+        <span className="hidden min-[640px]:inline text-black/50">•</span>
+        <span className="hidden min-[640px]:inline text-[13px] font-medium text-black whitespace-nowrap">
+          Découvrez la Bêta Hygge
+        </span>
+        <span className="min-[640px]:hidden text-[12.5px] font-bold uppercase text-black truncate">
+          Août 2026 • Bêta Hygge
+        </span>
+        <motion.span
+          className="inline-flex shrink-0"
+          variants={{ rest: { x: 0 }, hover: { x: 4 } }}
+          transition={{ duration: 0.18, ease }}
+        >
+          <ArrowRight size={14} color="#000000" />
+        </motion.span>
+      </div>
+
+    </motion.a>
+  );
+}
+
 /* ──────────── NAV ──────────── */
 function Nav({ onDemo, user }: { onDemo: () => void; user: UserDto | null }) {
   const [scrolled, setScrolled] = useState(false);
@@ -100,7 +184,7 @@ function Nav({ onDemo, user }: { onDemo: () => void; user: UserDto | null }) {
 
   return (
     <header className={cn(
-      "sticky top-0 z-50 bg-white/[0.82] backdrop-saturate-[180%] backdrop-blur-[14px]",
+      "sticky top-11 z-50 bg-white/[0.82] backdrop-saturate-[180%] backdrop-blur-[14px]",
       "border-b border-transparent transition-[border-color] duration-200",
       scrolled && "border-border"
     )}>
@@ -167,7 +251,7 @@ function HeroCards() {
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-[42px] h-[42px] rounded-[10px] bg-gradient-to-br from-[#dfe3f7] to-[#eef0fb] shrink-0 grid place-items-center text-primary">
+            <div className="w-[42px] h-[42px] rounded-[10px] bg-gradient-to-br from-primary-100 to-primary-50 shrink-0 grid place-items-center text-primary">
               <SmartHome size={22} variant="Outline" />
             </div>
             <div>
@@ -177,7 +261,7 @@ function HeroCards() {
           </div>
           <div
             className="w-[52px] h-[52px] rounded-full shrink-0 grid place-items-center"
-            style={{ background: "conic-gradient(#2744DE 87%, #E8E9EE 0)" }}
+            style={{ background: "conic-gradient(var(--color-primary) 87%, var(--color-border) 0)" }}
           >
             <i className="w-[38px] h-[38px] rounded-full bg-white grid place-items-center not-italic font-semibold text-[12.5px]">87%</i>
           </div>
@@ -195,7 +279,7 @@ function HeroCards() {
           className="absolute left-[-10px] bottom-[-22px] bg-white border border-border rounded-xl shadow-lg p-[9px] pr-[13px] flex items-center gap-2.5 max-[760px]:static max-[760px]:inline-flex max-[760px]:mt-3.5"
           {...float(7, 7, 0.8)}
         >
-          <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-[#6FB5A8]">AK</div>
+          <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-cat-2">AK</div>
           <div>
             <div className="font-semibold text-[13px] leading-[1.15]">Aïcha Koné</div>
             <div className="text-[11px] text-ink-3">Réceptionniste</div>
@@ -210,7 +294,7 @@ function HeroCards() {
       >
         <div className="flex items-center justify-between mb-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-[#7B8DFF]">DK</div>
+            <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-cat-3">DK</div>
             <div>
               <div className="font-semibold text-sm">Facture séjour</div>
               <div className="text-[11.5px] text-ink-3 font-mono">RES-2026-0518-004</div>
@@ -252,7 +336,7 @@ function HeroCards() {
                 <span className={cn(
                   "w-4 h-4 rounded-full grid place-items-center shrink-0",
                   state === "on"   && "bg-primary text-white",
-                  state === "half" && "[background:color-mix(in_srgb,#2744DE_22%,#fff)]",
+                  state === "half" && "[background:color-mix(in_srgb,var(--color-primary)_22%,var(--color-surface))]",
                   state === "off"  && "border-[1.5px] border-border"
                 )}>
                   {state === "on" && (
@@ -270,7 +354,7 @@ function HeroCards() {
           className="absolute right-[-10px] bottom-[-22px] bg-white border border-border rounded-xl shadow-lg p-[9px] pr-[13px] flex items-center gap-2.5 max-[760px]:static max-[760px]:inline-flex max-[760px]:mt-3.5"
           {...float(8, 5.5, 1.4)}
         >
-          <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-[#B57BE6]">DK</div>
+          <div className="w-[34px] h-[34px] rounded-full grid place-items-center text-white font-semibold text-xs shrink-0 bg-cat-4">DK</div>
           <div>
             <div className="font-semibold text-[13px] leading-[1.15]">Daniel Kouassi</div>
             <div className="text-[11px] text-ink-3">Suite Junior</div>
@@ -302,7 +386,7 @@ function HeroCards() {
               key={i}
               className={cn(
                 "flex-1 rounded-t-sm block",
-                i === 6 ? "bg-primary" : "[background:color-mix(in_srgb,#2744DE_24%,#fff)]"
+                i === 6 ? "bg-primary" : "[background:color-mix(in_srgb,var(--color-primary)_24%,var(--color-surface))]"
               )}
               style={{ height: `${h}%` }}
             />
@@ -319,6 +403,23 @@ function Hero({ onDemo }: { onDemo: () => void }) {
   return (
     <section className="relative overflow-hidden pt-[46px]" id="top">
       <div className="absolute inset-0 z-0 pointer-events-none bg-white" />
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <motion.i
+          className="not-italic absolute -left-[10%] top-[-8%] w-[420px] h-[420px] rounded-full blur-[110px] opacity-[0.16]"
+          style={{ background: "var(--color-vibrant-pink)" }}
+          {...float(14, 9, 0)}
+        />
+        <motion.i
+          className="not-italic absolute right-[2%] top-[4%] w-[380px] h-[380px] rounded-full blur-[110px] opacity-[0.14]"
+          style={{ background: "var(--color-vibrant-green)" }}
+          {...float(12, 8, 0.6)}
+        />
+        <motion.i
+          className="not-italic absolute left-[32%] top-[14%] w-[460px] h-[460px] rounded-full blur-[120px] opacity-20"
+          style={{ background: "var(--color-vibrant-peach)" }}
+          {...float(10, 10, 1.1)}
+        />
+      </div>
       <div className="relative z-[1] max-w-[1220px] mx-auto px-7 pb-[40px] max-[1080px]:pb-[24px]">
         <div className="relative z-[6] max-w-[760px] mx-auto text-center pt-[18px]">
 
@@ -333,7 +434,8 @@ function Hero({ onDemo }: { onDemo: () => void }) {
           </motion.div>
 
           <motion.h1
-            className="text-[clamp(40px,6vw,72px)] leading-[1.02] font-semibold tracking-[-0.035em] m-0"
+            className="text-[clamp(40px,5.2vw,56px)] leading-[1.1] tracking-[-0.02em] m-0"
+            style={{ fontFamily: "var(--font-display)" }}
             {...fadeUp(0.06)}
           >
             Tout votre hôtel,<br />dans un seul <span className="text-primary">logiciel.</span>
@@ -394,13 +496,17 @@ const FEAT_ICONS: Record<string, React.ReactElement> = {
 
 function Features() {
   return (
-    <section className="py-24 max-[560px]:py-16" id="features">
+    <section className="relative overflow-hidden py-24 max-[560px]:py-16" id="features">
+      <div
+        className="absolute -right-[8%] -top-[12%] w-[340px] h-[340px] rounded-full blur-[110px] opacity-[0.08] pointer-events-none"
+        style={{ background: "var(--color-vibrant-peach)" }}
+      />
       <Wrap>
         <motion.div className="max-w-[680px] mx-auto mb-14 text-center" {...reveal(0)}>
-          <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">
+          <div className="text-[12.5px] font-bold tracking-[0.08em] uppercase text-primary mb-3.5">
             Une plateforme, tous vos outils
           </div>
-          <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+          <h2 className="text-[clamp(32px,3.4vw,40px)] leading-[1.2] tracking-[-0.02em] m-0" style={{ fontFamily: "var(--font-display)" }}>
             Arrêtez de jongler entre dix outils.
           </h2>
           <p className="text-[17px] leading-[1.55] text-ink-2 mt-[18px] max-w-[560px] mx-auto m-0">
@@ -422,7 +528,7 @@ function Features() {
                   {FEAT_ICONS[f.icon]}
                 </svg>
               </div>
-              <h3 className="text-[19px] font-semibold tracking-[-0.02em] m-0 mb-[9px]">{f.title}</h3>
+              <h3 className="text-[22px] leading-[1.3] tracking-[-0.01em] m-0 mb-[9px]" style={{ fontFamily: "var(--font-display)" }}>{f.title}</h3>
               <p className="text-[14.5px] leading-[1.55] text-ink-2 m-0">{f.desc}</p>
             </motion.div>
           ))}
@@ -435,16 +541,27 @@ function Features() {
 /* ──────────── DASHBOARD SHOWCASE ──────────── */
 function DashboardShowcase() {
   return (
-    <section className="py-24 bg-white border-y border-border-soft max-[560px]:py-16" id="showcase">
+    <section className="relative overflow-hidden py-24 max-[560px]:py-16" id="showcase">
       <Wrap>
-        <div className="grid grid-cols-[1fr_1.15fr] gap-16 items-center max-[880px]:grid-cols-1 max-[880px]:gap-10">
-
-          <motion.div {...reveal(0)}>
-            <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">Le tableau de bord</div>
-            <h2 className="text-[clamp(28px,3.4vw,40px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+        <motion.div
+          className="grid grid-cols-[1fr_1.15fr] rounded-[28px] overflow-hidden max-[880px]:grid-cols-1"
+          {...reveal(0)}
+        >
+          {/* Left panel — dark, text */}
+          <div className="flex flex-col justify-center p-12 pr-10 max-[880px]:p-9" style={{ background: "#1A1423" }}>
+            <div
+              className="text-[12.5px] font-bold tracking-[0.08em] uppercase mb-3.5"
+              style={{ color: "var(--color-vibrant-pink)" }}
+            >
+              Le tableau de bord
+            </div>
+            <h2
+              className="text-[clamp(28px,3vw,36px)] leading-[1.2] tracking-[-0.02em] m-0 text-white"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
               Pilotez votre établissement d&apos;un coup d&apos;œil.
             </h2>
-            <p className="text-[16.5px] leading-[1.55] text-ink-2 mt-4 m-0">
+            <p className="text-[16px] leading-[1.6] text-white/65 mt-4 m-0 max-w-[420px]">
               Occupation, recettes du jour, arrivées et départs : l&apos;essentiel s&apos;affiche dès la connexion. Plus besoin de fouiller dix écrans pour savoir où vous en êtes.
             </p>
             <div className="mt-7 flex flex-col gap-4">
@@ -454,20 +571,24 @@ function DashboardShowcase() {
                 ["Arrivées & départs du jour",  "Préparez l'accueil sans rien oublier, chaque matin."],
               ] as const).map(([b, p]) => (
                 <div key={b} className="flex gap-[13px] items-start">
-                  <span className="w-6 h-6 rounded-[7px] bg-primary-50 text-primary grid place-items-center shrink-0 mt-px">
+                  <span
+                    className="w-6 h-6 rounded-[7px] grid place-items-center shrink-0 mt-px"
+                    style={{ background: "rgba(247,37,133,0.15)", color: "var(--color-vibrant-pink)" }}
+                  >
                     <CheckIcon size={13} />
                   </span>
                   <div>
-                    <b className="font-semibold text-[15px] block">{b}</b>
-                    <p className="m-0 mt-[3px] text-[13.5px] text-ink-2 leading-[1.5]">{p}</p>
+                    <b className="font-semibold text-[15px] block text-white">{b}</b>
+                    <p className="m-0 mt-[3px] text-[13.5px] text-white/55 leading-[1.5]">{p}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div {...reveal(0.1)}>
-            <div className="bg-white border border-border rounded-[22px] shadow-xl overflow-hidden">
+          {/* Right panel — green, dashboard mockup */}
+          <div className="flex items-center justify-center p-10 max-[880px]:p-7" style={{ background: "var(--color-vibrant-green)" }}>
+            <div className="bg-white border border-border rounded-[22px] shadow-xl overflow-hidden w-full max-w-[480px]">
               <div className="flex items-center gap-[7px] p-[13px] px-4 border-b border-border-soft bg-white">
                 {[0, 1, 2].map(k => <div key={k} className="w-[11px] h-[11px] rounded-full bg-border-strong" />)}
                 <span className="ml-3 font-mono text-[11.5px] text-ink-3 bg-white border border-border rounded-[7px] px-3 py-1">
@@ -493,7 +614,7 @@ function DashboardShowcase() {
                       {[48, 62, 54, 78, 70, 92, 64].map((h, i) => (
                         <div key={i} className="flex-1 flex flex-col justify-end gap-[5px]">
                           <b
-                            className={cn("block rounded-[5px_5px_2px_2px]", i === 6 ? "[background:color-mix(in_srgb,#2744DE_22%,#fff)]" : "bg-primary")}
+                            className={cn("block rounded-[5px_5px_2px_2px]", i === 6 ? "[background:color-mix(in_srgb,var(--color-primary)_22%,var(--color-surface))]" : "bg-primary")}
                             style={{ height: `${h}%` }}
                           />
                           <span className="text-[9.5px] text-ink-4 text-center font-mono">{"LMMJVSD"[i]}</span>
@@ -530,8 +651,8 @@ function DashboardShowcase() {
                 </div>
               </div>
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </Wrap>
     </section>
   );
@@ -547,15 +668,19 @@ const PAYS = [
 
 function Payments() {
   return (
-    <section className="py-24 max-[560px]:py-16" id="paiements">
+    <section className="relative overflow-hidden py-24 max-[560px]:py-16" id="paiements">
+      <div
+        className="absolute -right-[6%] -bottom-[16%] w-[320px] h-[320px] rounded-full blur-[110px] opacity-[0.07] pointer-events-none"
+        style={{ background: "var(--color-vibrant-pink)" }}
+      />
       <Wrap>
         <div className="grid grid-cols-[1.1fr_1fr] gap-14 items-center max-[880px]:grid-cols-1 max-[880px]:gap-10">
 
           <motion.div {...reveal(0)}>
-            <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">
+            <div className="text-[12.5px] font-bold tracking-[0.08em] uppercase text-primary mb-3.5">
               Pensé pour l&apos;Afrique de l&apos;Ouest
             </div>
-            <h2 className="text-[clamp(28px,3.4vw,40px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+            <h2 className="text-[clamp(32px,3.4vw,40px)] leading-[1.2] tracking-[-0.02em] m-0" style={{ fontFamily: "var(--font-display)" }}>
               Le mobile money, nativement.
             </h2>
             <p className="text-[16.5px] leading-[1.55] text-ink-2 mt-4 m-0">
@@ -574,7 +699,7 @@ function Payments() {
                 key={p.name}
                 className="flex items-center gap-3.5 bg-white border border-border rounded-2xl px-[18px] py-4 shadow-xs transition-[border-color] duration-150 hover:border-border-strong"
                 {...stagger(i)}
-                whileHover={{ borderColor: "#C8C8E0", x: 2 }}
+                whileHover={{ borderColor: "var(--color-border-strong)", x: 2 }}
               >
                 <div className="w-[46px] h-[46px] rounded-xl grid place-items-center shrink-0 overflow-hidden bg-surface-2">
                   {p.type === "image" ? (
@@ -603,6 +728,243 @@ function Payments() {
   );
 }
 
+/* ──────────── SÉCURITÉ & FIABILITÉ ──────────── */
+const SECURITY_POINTS = [
+  {
+    Icon: Cloud,
+    title: "Hébergement cloud sécurisé",
+    desc: "Vos données sont hébergées sur une infrastructure chiffrée, avec sauvegardes automatiques quotidiennes.",
+  },
+  {
+    Icon: ShieldTick,
+    title: "Confidentialité par conception",
+    desc: "Fiches clients, pièces d'identité et paiements sont traités selon des règles strictes de confidentialité et de conservation.",
+  },
+  {
+    Icon: Clock,
+    title: "Disponibilité continue",
+    desc: "Infrastructure surveillée en continu pour que votre PMS reste accessible — check-in du dimanche compris.",
+  },
+] as const;
+
+function Security() {
+  return (
+    <section className="relative overflow-hidden py-24 max-[560px]:py-16">
+      <Wrap>
+        <motion.div
+          className="grid grid-cols-2 rounded-[28px] overflow-hidden max-[880px]:grid-cols-1"
+          {...reveal(0)}
+        >
+          {/* Left panel — cream, text */}
+          <div className="flex flex-col justify-center p-12 pr-10 max-[880px]:p-9" style={{ background: "#eee0cb" }}>
+            <div
+              className="inline-flex items-center gap-2 w-fit text-[12.5px] font-bold tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 mb-4"
+              style={{ background: "#1A1423", color: "#eee0cb" }}
+            >
+              <Shield size={14} variant="Bold" color="#eee0cb" />
+              Sécurité & fiabilité
+            </div>
+            <h2
+              className="text-[clamp(28px,3vw,36px)] leading-[1.2] tracking-[-0.02em] m-0"
+              style={{ fontFamily: "var(--font-display)", color: "#1A1423" }}
+            >
+              Vos données méritent mieux qu&apos;un tableur.
+            </h2>
+            <p className="text-[16px] leading-[1.6] mt-4 m-0 max-w-[400px]" style={{ color: "color-mix(in srgb, #1A1423 68%, transparent)" }}>
+              Un PMS gère de l&apos;argent et des informations sensibles — identités, séjours, paiements. On a construit Immo Plus en conséquence.
+            </p>
+          </div>
+
+          {/* Right panel — dark, reassurance list */}
+          <div className="flex flex-col justify-center gap-6 p-12 pl-10 max-[880px]:p-9" style={{ background: "#1A1423" }}>
+            {SECURITY_POINTS.map((s, i) => (
+              <motion.div key={s.title} className="flex gap-4 items-start" {...stagger(i)}>
+                <div
+                  className="w-10 h-10 rounded-[12px] grid place-items-center shrink-0"
+                  style={{ background: "rgba(238,224,203,0.12)", color: "#eee0cb" }}
+                >
+                  <s.Icon size={19} variant="Bold" />
+                </div>
+                <div>
+                  <h3 className="text-[15.5px] font-semibold m-0 mb-1 text-white">{s.title}</h3>
+                  <p className="text-[13.5px] text-white/60 leading-[1.5] m-0">{s.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </Wrap>
+    </section>
+  );
+}
+
+/* ──────────── SPLIT SHOWCASE (accès partagé / planning) ──────────── */
+const SPLIT_PANELS = [
+  {
+    tone: "dark" as const,
+    icon: <LinkIcon size={19} variant="Bold" color="#1A1423" />,
+    label: "Accès partagé",
+    title: <>Gérez votre hôtel<br />depuis n&apos;importe quel lien.</>,
+    desc: "Chaque réservation, chambre ou fiche client a sa propre adresse. Partagez-la, rafraîchissez la page, revenez en arrière — tout fonctionne comme un vrai lien web.",
+    linkLabel: "Voir comment ça marche",
+  },
+  {
+    tone: "peach" as const,
+    icon: <Calendar size={19} variant="Bold" color="#F9DBBD" />,
+    label: "Planning",
+    title: <>Visualisez vos réservations<br />en un coup d&apos;œil.</>,
+    desc: "Une grille hebdomadaire par chambre : arrivées, départs et séjours en cours, sans ouvrir dix écrans pour recomposer le planning.",
+    linkLabel: "Découvrir le planning",
+  },
+] as const;
+
+function ShareLinkMockup() {
+  return (
+    <motion.div
+      className="bg-white rounded-2xl shadow-xl p-4 w-full max-w-[300px] -rotate-[2deg]"
+      {...float(8, 6, 0.3)}
+    >
+      <div className="flex items-center gap-1.5 mb-3.5">
+        {[0, 1, 2].map(k => <span key={k} className="w-[7px] h-[7px] rounded-full bg-border-strong" />)}
+        <span className="ml-2 font-mono text-[10.5px] text-ink-3 bg-surface-2 rounded-[6px] px-2 py-1 truncate flex-1">
+          pms.immoplus.ci/hotel-auberge/…
+        </span>
+      </div>
+      <div className="flex items-center gap-3 border border-border rounded-xl p-3">
+        <div
+          className="w-9 h-9 rounded-full grid place-items-center font-semibold text-[11px] shrink-0 text-white"
+          style={{ background: "var(--color-vibrant-pink)" }}
+        >
+          DK
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-[12.5px]">Réservation #0518-004</div>
+          <div className="text-[10.5px] text-ink-3">Lien copié — prêt à partager</div>
+        </div>
+        <TickCircle size={16} className="text-success shrink-0" variant="Bold" />
+      </div>
+    </motion.div>
+  );
+}
+
+function PlanningMockup() {
+  const rows = [
+    { room: "204", bars: [{ start: 0,   width: 45,  tone: "primary" }] },
+    { room: "205", bars: [{ start: 15,  width: 60,  tone: "success" }] },
+    { room: "206", bars: [{ start: 40,  width: 35,  tone: "warn"    }] },
+    { room: "207", bars: [{ start: 5,   width: 25,  tone: "violet"  }, { start: 55, width: 30, tone: "primary" }] },
+  ];
+  const toneVar: Record<string, string> = {
+    primary: "var(--color-primary)",
+    success: "var(--color-success)",
+    warn:    "var(--color-warn)",
+    violet:  "var(--color-violet)",
+  };
+  return (
+    <motion.div
+      className="bg-white rounded-2xl shadow-xl p-4 w-full max-w-[320px] rotate-[2deg]"
+      {...float(9, 7, 0.6)}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-semibold text-[12.5px]">Semaine du 29 juin</span>
+        <span className="text-[10px] text-ink-3 font-mono">7 chambres</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {rows.map(r => (
+          <div key={r.room} className="flex items-center gap-2">
+            <span className="font-mono text-[10px] text-ink-3 w-6 shrink-0">{r.room}</span>
+            <div className="relative flex-1 h-[16px] bg-surface-2 rounded-[5px] overflow-hidden">
+              {r.bars.map((b, i) => (
+                <span
+                  key={i}
+                  className="absolute top-0 bottom-0 rounded-[4px]"
+                  style={{ left: `${b.start}%`, width: `${b.width}%`, background: toneVar[b.tone] }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function SplitShowcase() {
+  return (
+    <section className="py-24 max-[560px]:py-16">
+      <Wrap>
+        <motion.div
+          className="grid grid-cols-2 rounded-[28px] overflow-hidden max-[880px]:grid-cols-1"
+          {...reveal(0)}
+        >
+          {SPLIT_PANELS.map((p, i) => (
+            <div
+              key={p.label}
+              className={cn(
+                "flex flex-col p-10 pb-12 max-[560px]:p-7 max-[560px]:pb-9",
+                p.tone === "dark" ? "text-white" : ""
+              )}
+              style={{ background: p.tone === "dark" ? "#1A1423" : "var(--color-vibrant-peach)" }}
+            >
+              <motion.div {...stagger(i)}>
+                <div
+                  className={cn(
+                    "w-10 h-10 rounded-[12px] grid place-items-center mb-6",
+                    p.tone === "dark" ? "bg-white/10" : "bg-black/[0.06]"
+                  )}
+                  style={{ color: "var(--color-vibrant-pink)" }}
+                >
+                  {p.icon}
+                </div>
+                <div
+                  className="text-[12px] font-bold tracking-[0.08em] uppercase mb-3.5"
+                  style={{ color: "var(--color-vibrant-pink)" }}
+                >
+                  {p.label}
+                </div>
+                <h3
+                  className="text-[clamp(24px,2.2vw,28px)] leading-[1.3] tracking-[-0.01em] m-0"
+                  style={{ color: p.tone === "dark" ? "#fff" : "#1A1423", fontFamily: "var(--font-display)" }}
+                >
+                  {p.title}
+                </h3>
+                <p
+                  className={cn("text-[15px] leading-[1.55] mt-4 mb-0 max-w-[400px]", p.tone === "dark" ? "text-white/65" : "")}
+                  style={{ color: p.tone === "dark" ? undefined : "color-mix(in srgb, #1A1423 68%, transparent)" }}
+                >
+                  {p.desc}
+                </p>
+
+                <motion.a
+                  href="#"
+                  className="inline-flex items-center gap-2 text-[12.5px] font-bold tracking-[0.05em] uppercase mt-7"
+                  style={{ color: "var(--color-vibrant-pink)" }}
+                  whileHover="hover"
+                >
+                  {p.linkLabel}
+                  <motion.span
+                    className="inline-flex"
+                    variants={{ hover: { x: 4 } }}
+                    transition={{ duration: 0.18, ease }}
+                  >
+                    <ArrowRight size={15} variant="Bold" />
+                  </motion.span>
+                </motion.a>
+              </motion.div>
+
+              <div className="flex-1 min-h-[40px]" />
+
+              <div className="flex justify-center max-[560px]:mt-6">
+                {p.tone === "dark" ? <ShareLinkMockup /> : <PlanningMockup />}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+      </Wrap>
+    </section>
+  );
+}
+
 /* ──────────── STATS ──────────── */
 const STATS = [
   { to: 42,  suffix: "",    label: "chambres gérées en démo" },
@@ -621,7 +983,7 @@ function Stats() {
         >
           {STATS.map((s, i) => (
             <motion.div key={s.label} {...stagger(i)}>
-              <div className="text-[clamp(34px,4.4vw,50px)] font-semibold tracking-[-0.04em] leading-none text-primary">
+              <div className="text-[clamp(38px,4.8vw,64px)] leading-[1] tracking-[-0.03em] text-primary" style={{ fontFamily: "var(--font-display)" }}>
                 <Counter to={s.to} suffix={s.suffix} />
               </div>
               <div className="text-[13.5px] text-ink-2 mt-2.5 leading-[1.4]">{s.label}</div>
@@ -642,30 +1004,49 @@ const STEPS = [
 
 function Steps() {
   return (
-    <section className="py-24 max-[560px]:py-16">
+    <section className="relative overflow-hidden py-24 max-[560px]:py-16">
       <Wrap>
-        <motion.div className="max-w-[680px] mx-auto mb-14 text-center" {...reveal(0)}>
-          <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">Démarrage immédiat</div>
-          <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
-            Opérationnel en trois étapes.
-          </h2>
-        </motion.div>
-        <div className="grid grid-cols-3 gap-6 max-[880px]:grid-cols-1">
-          {STEPS.map((s, i) => (
-            <motion.div
-              key={s.n}
-              className="border border-border rounded-[22px] p-[30px] px-[26px] bg-white transition-all duration-[180ms]"
-              {...stagger(i)}
-              whileHover={{ borderColor: "#C8C8E0", y: -3 }}
+        <motion.div
+          className="grid grid-cols-2 rounded-[28px] overflow-hidden max-[880px]:grid-cols-1"
+          {...reveal(0)}
+        >
+          {/* Left panel — lavender, text */}
+          <div className="flex flex-col justify-center p-12 pr-10 max-[880px]:p-9" style={{ background: "#d4c2fc" }}>
+            <div
+              className="inline-flex items-center w-fit text-[12.5px] font-bold tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 mb-4"
+              style={{ background: "#1A1423", color: "#d4c2fc" }}
             >
-              <div className="font-mono text-[13px] font-semibold text-primary w-[34px] h-[34px] rounded-[9px] bg-primary-50 grid place-items-center mb-[18px]">
-                {s.n}
-              </div>
-              <h3 className="text-[18px] font-semibold tracking-[-0.02em] m-0 mb-2">{s.title}</h3>
-              <p className="text-sm text-ink-2 leading-[1.55] m-0">{s.desc}</p>
-            </motion.div>
-          ))}
-        </div>
+              Démarrage immédiat
+            </div>
+            <h2
+              className="text-[clamp(28px,3vw,36px)] leading-[1.2] tracking-[-0.02em] m-0"
+              style={{ fontFamily: "var(--font-display)", color: "#1A1423" }}
+            >
+              Opérationnel en trois étapes.
+            </h2>
+            <p className="text-[16px] leading-[1.6] mt-4 m-0 max-w-[380px]" style={{ color: "color-mix(in srgb, #1A1423 68%, transparent)" }}>
+              De la création de votre établissement au premier encaissement : tout est prêt en quelques minutes, sans accompagnement technique.
+            </p>
+          </div>
+
+          {/* Right panel — dark, steps list */}
+          <div className="flex flex-col justify-center gap-5 p-12 pl-10 max-[880px]:p-9" style={{ background: "#1A1423" }}>
+            {STEPS.map((s, i) => (
+              <motion.div key={s.n} className="flex gap-4 items-start" {...stagger(i)}>
+                <div
+                  className="font-mono text-[14px] font-semibold w-9 h-9 rounded-[10px] grid place-items-center shrink-0"
+                  style={{ background: "#d4c2fc", color: "#1A1423" }}
+                >
+                  {s.n}
+                </div>
+                <div>
+                  <h3 className="text-[16px] font-semibold m-0 mb-1 text-white">{s.title}</h3>
+                  <p className="text-[13.5px] text-white/60 leading-[1.5] m-0">{s.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       </Wrap>
     </section>
   );
@@ -689,11 +1070,19 @@ const PLANS = [
 
 function Pricing() {
   return (
-    <section className="py-24 bg-white border-y border-border-soft max-[560px]:py-16" id="tarifs">
+    <section className="relative overflow-hidden py-24 bg-white border-y border-border-soft max-[560px]:py-16" id="tarifs">
+      <div
+        className="absolute -right-[7%] -bottom-[20%] w-[320px] h-[320px] rounded-full blur-[110px] opacity-[0.07] pointer-events-none"
+        style={{ background: "var(--color-vibrant-pink)" }}
+      />
+      <div
+        className="absolute -left-[8%] top-[6%] w-[260px] h-[260px] rounded-full blur-[100px] opacity-[0.06] pointer-events-none"
+        style={{ background: "var(--color-vibrant-peach)" }}
+      />
       <Wrap>
         <motion.div className="max-w-[680px] mx-auto mb-14 text-center" {...reveal(0)}>
-          <div className="text-[12.5px] font-semibold tracking-[0.1em] uppercase text-primary mb-3.5">Tarifs simples</div>
-          <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0">
+          <div className="text-[12.5px] font-bold tracking-[0.08em] uppercase text-primary mb-3.5">Tarifs simples</div>
+          <h2 className="text-[clamp(32px,3.4vw,40px)] leading-[1.2] tracking-[-0.02em] m-0" style={{ fontFamily: "var(--font-display)" }}>
             Un prix par chambre. Sans surprise.
           </h2>
           <p className="text-[17px] leading-[1.55] text-ink-2 mt-[18px] max-w-[560px] mx-auto m-0">
@@ -710,8 +1099,8 @@ function Pricing() {
             >
               <div className="text-[15px] font-semibold">{p.name}</div>
               <div className="text-[13px] text-ink-3 mt-[5px] min-h-[38px]">{p.desc}</div>
-              <div className="text-[38px] font-semibold tracking-[-0.04em] my-4 mb-0.5 leading-none">
-                {p.price}<small className="text-sm text-ink-3 font-medium tracking-normal"> {p.price !== "Sur devis" ? "FCFA" : ""}</small>
+              <div className="text-[38px] leading-[1] tracking-[-0.03em] my-4 mb-0.5" style={{ fontFamily: "var(--font-display)" }}>
+                {p.price}<small className="text-sm text-ink-3 font-medium tracking-normal" style={{ fontFamily: "var(--font-jakarta)" }}> {p.price !== "Sur devis" ? "FCFA" : ""}</small>
               </div>
               <div className="text-[12.5px] text-ink-3">{p.sub}</div>
               <ul className="list-none p-0 my-[22px] mb-[26px] flex flex-col gap-[11px] flex-1 m-0">
@@ -759,31 +1148,100 @@ function Pricing() {
   );
 }
 
-/* ──────────── CTA ──────────── */
-function CTA({ onDemo }: { onDemo: () => void }) {
+/* ──────────── FAQ ──────────── */
+const FAQS = [
+  {
+    q: "Dois-je m'engager sur une durée minimale ?",
+    a: "Non, aucun engagement. Vous pouvez arrêter à tout moment — vos données restent les vôtres et sont exportables.",
+  },
+  {
+    q: "Puis-je reprendre mes réservations existantes ?",
+    a: "Oui. Que vous partiez d'un cahier papier ou d'un fichier Excel, notre équipe vous aide à importer vos données sans rien perdre.",
+  },
+  {
+    q: "Combien de temps avant d'être opérationnel ?",
+    a: "La plupart des établissements sont opérationnels en moins d'une journée, assistant de configuration compris.",
+  },
+  {
+    q: "Le mobile money est-il vraiment intégré, ou juste « compatible » ?",
+    a: "Wave, Orange Money et MTN Money sont connectés nativement : chaque paiement est rattaché à la bonne facture automatiquement, sans ressaisie.",
+  },
+  {
+    q: "Que se passe-t-il si je change d'avis ?",
+    a: "Vous exportez vos données et fermez votre compte quand vous le souhaitez, sans frais caché ni période de préavis.",
+  },
+] as const;
+
+function FAQItem({ q, a, index }: { q: string; a: string; index: number }) {
+  const [open, setOpen] = useState(false);
   return (
-    <section className="py-24 pt-0 max-[560px]:py-16 max-[560px]:pt-0">
+    <motion.div className="border-b border-white/10 last:border-b-0 py-5" {...stagger(index, 0.05)}>
+      <button
+        type="button"
+        className="w-full flex items-center justify-between gap-4 text-left cursor-pointer"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        <span className="text-[15px] font-semibold text-white">{q}</span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2, ease }}
+          className="shrink-0 w-7 h-7 rounded-full grid place-items-center"
+          style={{ background: "rgba(250,159,66,0.15)", color: "#fa9f42" }}
+        >
+          <ArrowDown2 size={14} variant="Bold" />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease }}
+            className="overflow-hidden"
+          >
+            <p className="text-[13.5px] text-white/60 leading-[1.6] m-0 pt-3 pr-10">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+function FAQ() {
+  return (
+    <section className="relative overflow-hidden py-24 max-[560px]:py-16">
       <Wrap>
         <motion.div
-          className="bg-ink text-white rounded-[28px] py-16 px-12 text-center relative overflow-hidden max-[560px]:px-6 max-[560px]:py-[46px]"
+          className="grid grid-cols-2 rounded-[28px] overflow-hidden max-[880px]:grid-cols-1"
           {...reveal(0)}
         >
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: "radial-gradient(70% 120% at 50% -10%, color-mix(in srgb, #2744DE 55%, transparent), transparent 60%)" }}
-          />
-          <div className="relative">
-            <h2 className="text-[clamp(30px,4vw,46px)] leading-[1.06] font-semibold tracking-[-0.03em] m-0 text-white">
-              Prêt à tout gérer depuis un seul écran ?
-            </h2>
-            <p className="text-white/70 text-[17px] mt-[18px] mx-auto mb-8 max-w-[480px] leading-[1.6] m-0">
-              Rejoignez les établissements qui ont arrêté de jongler. Mise en route en quelques minutes.
-            </p>
-            <div className="flex gap-[13px] justify-center flex-wrap">
-              <motion.button className={btn({ variant: "primary", size: "lg" })} onClick={onDemo} {...hoverTapButton}>
-                Démarrer gratuitement
-              </motion.button>
+          {/* Left panel — orange, text */}
+          <div className="flex flex-col justify-center p-12 pr-10 max-[880px]:p-9" style={{ background: "#fa9f42" }}>
+            <div
+              className="inline-flex items-center gap-2 w-fit text-[12.5px] font-bold tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 mb-4"
+              style={{ background: "#1A1423", color: "#fa9f42" }}
+            >
+              <MessageQuestion size={14} variant="Bold" color="#fa9f42" />
+              Questions fréquentes
             </div>
+            <h2
+              className="text-[clamp(28px,3vw,36px)] leading-[1.2] tracking-[-0.02em] m-0"
+              style={{ fontFamily: "var(--font-display)", color: "#1A1423" }}
+            >
+              On a sans doute déjà répondu à votre question.
+            </h2>
+            <p className="text-[16px] leading-[1.6] mt-4 m-0 max-w-[380px]" style={{ color: "color-mix(in srgb, #1A1423 70%, transparent)" }}>
+              Engagement, migration de données, mobile money… voici ce que les gérants nous demandent le plus avant de se lancer.
+            </p>
+          </div>
+
+          {/* Right panel — dark, accordion */}
+          <div className="flex flex-col justify-center p-12 pl-10 max-[880px]:p-9" style={{ background: "#1A1423" }}>
+            {FAQS.map((f, i) => (
+              <FAQItem key={f.q} q={f.q} a={f.a} index={i} />
+            ))}
           </div>
         </motion.div>
       </Wrap>
@@ -791,53 +1249,128 @@ function CTA({ onDemo }: { onDemo: () => void }) {
   );
 }
 
-/* ──────────── FOOTER ──────────── */
-function Footer() {
+/* ──────────── FOOTER (bandeau d'impact + footer fusionnés) ──────────── */
+const SOCIALS = [
+  { label: "Facebook",  Icon: Facebook,     href: `https://facebook.com/${SOCIAL_MEDIA.facebook}` },
+  { label: "Instagram", Icon: Instagram,    href: `https://instagram.com/${SOCIAL_MEDIA.instagram}` },
+  { label: "LinkedIn",  Icon: LinkedinIcon, href: `https://linkedin.com/company/${SOCIAL_MEDIA.linkedin}` },
+  { label: "X",         Icon: XIcon,        href: `https://twitter.com/${SOCIAL_MEDIA.twitter}` },
+] as const;
+
+const FOOTER_COLUMNS = [
+  { title: "Produit",    links: [["#features","Fonctionnalités"],["#showcase","Tableau de bord"],["#paiements","Paiements"],["#tarifs","Tarifs"]] },
+  { title: "Ressources", links: [["/pms","Démo en ligne"],["/inscription","Créer un compte"],["/login","Se connecter"]] },
+  { title: "Entreprise", links: [["#top","À propos"],["#top","Confidentialité"],["#top","Conditions"]] },
+  { title: "Contact",    links: [[`mailto:${SITE_CONFIG.email}`, SITE_CONFIG.email], [`tel:${SITE_CONFIG.phone.replace(/[^0-9+]/g, "")}`, SITE_CONFIG.phone], ["#top", "Abidjan, Côte d'Ivoire"]] },
+] as const;
+
+function Footer({ onDemo }: { onDemo: () => void }) {
   return (
-    <footer className="border-t border-border pt-[60px] pb-10">
-      <Wrap>
-        <motion.div
-          className="grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-10 mb-12 max-[880px]:grid-cols-2 max-[880px]:gap-8 max-[560px]:grid-cols-1"
-          {...staggerContainer(0.08)}
-        >
-          <motion.div variants={staggerItem}>
-            <Link href="/" className="flex items-center gap-[11px]">
-              <BrandMark />
-              <BrandName />
-            </Link>
-            <p className="text-[13.5px] text-ink-2 leading-relaxed mt-4 max-w-[280px] m-0">
-              Le logiciel de gestion tout-en-un pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.
-            </p>
+    <footer className="relative" style={{ background: "#1A1423" }}>
+      {/* ── Bandeau d'impact ── */}
+      <div className="pt-[110px] pb-[70px] text-center max-[880px]:pt-[70px] max-[880px]:pb-[50px] max-[560px]:pt-[56px] max-[560px]:pb-10">
+        <Wrap>
+          <motion.h2
+            className="text-[clamp(26px,8.5vw,100px)] leading-[0.95] tracking-[-0.02em] uppercase text-white m-0 whitespace-nowrap"
+            style={{ fontFamily: "var(--font-display)" }}
+            {...reveal(0)}
+          >
+            Prêt pour l&apos;impact ?
+          </motion.h2>
+
+          <motion.div className="mt-[55px]" {...reveal(0.15)}>
+            <motion.button
+              className="inline-flex items-center justify-center rounded-full font-bold uppercase tracking-[0.03em] text-white text-[14.5px] h-[60px] px-9"
+              style={{ background: "#2744DE" }}
+              onClick={onDemo}
+              {...hoverTapButton}
+            >
+              Prendre rendez-vous
+            </motion.button>
           </motion.div>
 
-          {([
-            { title: "Produit",    links: [["#features","Fonctionnalités"],["#showcase","Tableau de bord"],["#paiements","Paiements"],["#tarifs","Tarifs"]] },
-            { title: "Ressources", links: [["/pms","Démo en ligne"],["/inscription","Créer un compte"],["#top","Centre d'aide"],["#top","Nous contacter"]] },
-            { title: "Entreprise", links: [["#top","À propos"],["#top","Confidentialité"],["#top","Conditions"]] },
-          ] as const).map(col => (
-            <motion.div key={col.title} variants={staggerItem}>
-              <h4 className="text-xs uppercase tracking-[0.08em] text-ink-3 m-0 mb-4 font-semibold">{col.title}</h4>
-              {col.links.map(([href, label]) => (
-                <a
-                  key={label}
-                  href={href}
-                  className="block text-sm text-ink-2 mb-[11px] hover:text-ink hover:translate-x-[2px] transition-[color,transform] duration-[120ms]"
-                >
-                  {label}
-                </a>
-              ))}
-            </motion.div>
-          ))}
-        </motion.div>
+          <motion.div
+            className="flex items-center justify-center gap-x-7 gap-y-2 flex-wrap mt-9 text-[13.5px] text-white/55"
+            {...reveal(0.2)}
+          >
+            <a href={`mailto:${SITE_CONFIG.email}`} className="hover:text-white transition-colors">{SITE_CONFIG.email}</a>
+            <span className="text-white/20">·</span>
+            <a href={`tel:${SITE_CONFIG.phone.replace(/[^0-9+]/g, "")}`} className="hover:text-white transition-colors">{SITE_CONFIG.phone}</a>
+            <span className="text-white/20">·</span>
+            <span>Abidjan, Côte d&apos;Ivoire</span>
+          </motion.div>
+        </Wrap>
+      </div>
 
-        <motion.div
-          className="flex items-center justify-between pt-[26px] border-t border-border-soft text-[13px] text-ink-3 flex-wrap gap-3"
-          {...reveal(0.1)}
-        >
-          <span>© 2026 Immo Plus. Tous droits réservés.</span>
-          <span>Abidjan · Dakar · Lomé</span>
-        </motion.div>
-      </Wrap>
+      {/* ── Footer principal ── */}
+      <div className="border-t border-white/10 py-[90px] max-[880px]:py-[60px] max-[560px]:py-[46px]">
+        <Wrap>
+          <motion.div
+            className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-10 mb-16 max-[880px]:grid-cols-2 max-[880px]:gap-8 max-[880px]:mb-12 max-[560px]:grid-cols-1"
+            {...staggerContainer(0.08)}
+          >
+            <motion.div variants={staggerItem}>
+              <Link href="/" className="flex items-center gap-[11px]">
+                <BrandMark />
+                <span className="font-semibold text-[17px] tracking-[-0.02em] flex items-center gap-2 text-white">
+                  Immo Plus{" "}
+                  <span className="text-[9px] font-semibold tracking-[0.1em] uppercase text-white/70 border border-white/25 px-1.5 py-px rounded-[5px]">
+                    PMS
+                  </span>
+                </span>
+              </Link>
+              <p className="text-[13.5px] text-white/50 leading-relaxed mt-4 max-w-[250px] m-0">
+                Le logiciel de gestion tout-en-un pour les hôtels et résidences d&apos;Afrique de l&apos;Ouest.
+              </p>
+              <div className="flex items-center gap-2.5 mt-6">
+                {SOCIALS.map(s => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={s.label}
+                    className="w-9 h-9 rounded-full border border-white/15 grid place-items-center text-white/70 hover:text-white hover:border-white/40 transition-colors"
+                  >
+                    <s.Icon size={15} />
+                  </a>
+                ))}
+              </div>
+              <div className="inline-flex items-center gap-1.5 mt-7 text-[12.5px] text-white/45">
+                <Global size={14} /> FR
+              </div>
+            </motion.div>
+
+            {FOOTER_COLUMNS.map(col => (
+              <motion.div key={col.title} variants={staggerItem}>
+                <h4 className="text-[11px] uppercase tracking-[0.1em] text-white/40 m-0 mb-5 font-bold">{col.title}</h4>
+                {col.links.map(([href, label]) => (
+                  <motion.a
+                    key={label}
+                    href={href}
+                    className="block text-[14.5px] text-white/85 mb-[13px]"
+                    whileHover={{ color: "#2744DE", x: 2 }}
+                    transition={{ duration: 0.15, ease }}
+                  >
+                    {label}
+                  </motion.a>
+                ))}
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <motion.div
+            className="flex items-center justify-between pt-[26px] border-t border-white/10 text-[13px] text-white/40 flex-wrap gap-3"
+            {...reveal(0.1)}
+          >
+            <span>© 2026 Immo Plus. Tous droits réservés.</span>
+            <div className="flex gap-5">
+              <a href="#top" className="hover:text-white transition-colors">Confidentialité</a>
+              <a href="#top" className="hover:text-white transition-colors">Conditions</a>
+            </div>
+          </motion.div>
+        </Wrap>
+      </div>
     </footer>
   );
 }
@@ -862,18 +1395,21 @@ export default function LandingPage({ user }: { user: UserDto | null }) {
   const openLogin = () => { setDemoOpen(false);  setLoginOpen(true); };
 
   return (
-    <>
+    <div className={cn(calSans.variable, jakarta.variable)} style={{ fontFamily: "var(--font-jakarta)" }}>
       <SmoothScroll />
+      <AnnounceBar />
       <Nav onDemo={openDemo} user={user} />
       <Hero onDemo={openDemo} />
-      <Features />
       <DashboardShowcase />
+      <Features />
+      <SplitShowcase />
       <Payments />
+      <Security />
       <Stats />
       <Steps />
       <Pricing />
-      <CTA onDemo={openDemo} />
-      <Footer />
+      <FAQ />
+      <Footer onDemo={openDemo} />
       {demoOpen  && <SignUpModal onClose={() => setDemoOpen(false)} />}
       {loginOpen && (
         <LoginModal
@@ -881,6 +1417,6 @@ export default function LandingPage({ user }: { user: UserDto | null }) {
           onSwitchToSignUp={() => { setLoginOpen(false); setDemoOpen(true); }}
         />
       )}
-    </>
+    </div>
   );
 }

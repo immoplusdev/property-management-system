@@ -1,11 +1,14 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Icon, showToast, toastPromise, Button } from "../shared";
+import { SectionHead, Icon, showToast, toastPromise, Button, Skeleton } from "../shared";
 import { Pill } from "@/components/ui/Pill";
 import { Modal } from "@/components/ui/Modal";
 import { useStaff, useInviteStaff, useRevokeStaff } from "@/lib/hooks/pms/useStaff";
 import type { StaffRole, StaffMember } from "@/lib/api/pms/staff.actions";
+import { AV_COLORS } from "@/lib/utils/avatarColor";
+import { useHotel } from "@/lib/pms/HotelContext";
 
 const ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bg: string }> = {
   director:     { label: "Directeur",      color: "var(--color-primary)", bg: "var(--color-primary-50)"  },
@@ -13,16 +16,13 @@ const ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bg: string 
   housekeeper:  { label: "Ménage",         color: "var(--color-violet)",  bg: "var(--color-violet-bg)"   },
 };
 
-const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
 const avatarBg  = (id: string) => AV_COLORS[id.charCodeAt(1) % AV_COLORS.length];
 const initials  = (m: StaffMember) =>
   `${m.user.firstName[0] ?? ""}${m.user.lastName[0] ?? ""}`.toUpperCase();
 
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
-
 export function Staff() {
+  const router = useRouter();
+  const hotel = useHotel();
   const { data, isLoading } = useStaff();
   const inviteM  = useInviteStaff();
   const revokeM  = useRevokeStaff();
@@ -128,7 +128,7 @@ export function Staff() {
                 const rc = ROLE_CONFIG[m.role];
                 return (
                   <tr key={m.id} className={`border-b border-border last:border-0 ${idx % 2 === 0 ? "" : "bg-surface-2/40"}`}>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-3.5 cursor-pointer" onClick={() => router.push(`/pms/${hotel}/staff/${m.id}`)}>
                       <div className="flex items-center gap-2.5">
                         <div
                           className="w-9 h-9 rounded-full inline-grid place-items-center text-white font-semibold text-[13px] shrink-0"

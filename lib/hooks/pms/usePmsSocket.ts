@@ -12,7 +12,7 @@ import { checkoutKeys }    from "./useCheckOut";
 import { financeKeys }     from "./useFinances";
 
 /**
- * Mount once at the PMS layout level (PMSApp).
+ * Mount once at the PMS layout level (PMSShell).
  *
  * Fetches the realtime credentials from a Server Action (the access token lives
  * in an httpOnly cookie, so it can only be read server-side), opens the Socket.IO
@@ -101,8 +101,8 @@ export function usePmsSocket() {
       });
 
       // ── Avis (suggestion IA async) ───────────────────────────────
-      sub("review.ai_suggestion", () => {
-        qc.invalidateQueries({ queryKey: reviewKeys.all() });
+      sub("review.ai_suggestion", ({ reviewId, suggestion }) => {
+        qc.setQueryData(reviewKeys.suggestion(reviewId), suggestion);
       });
     })();
 

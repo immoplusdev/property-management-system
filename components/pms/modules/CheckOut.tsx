@@ -1,22 +1,18 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Icon, toastPromise, Button } from "../shared";
+import { SectionHead, Icon, toastPromise, Button, Skeleton } from "../shared";
 import { Pill } from "@/components/ui/Pill";
 import { formatFCFA, formatDate, type Booking } from "../data";
 import { useReservations } from "@/lib/hooks/pms/useReservations";
 import { useCheckOutInvoice, usePerformCheckOut } from "@/lib/hooks/pms/useCheckOut";
 import type { Invoice } from "@/lib/api/pms/checkout.actions";
+import { AV_COLORS } from "@/lib/utils/avatarColor";
 
 const STEPS = ["Vérification", "Règlement", "Départ"];
 
-const AV_COLORS = ["#E89060","#6FB5A8","#7B8DFF","#B57BE6","#F5C572","#6FCC92","#FF8585","#6FB5DD"];
 const initials = (name: string) => name.split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
 const avatarBg  = (name: string) => AV_COLORS[name.charCodeAt(0) % AV_COLORS.length];
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
 
 export function CheckOut() {
   const [step,     setStep]     = useState(0);
@@ -300,7 +296,6 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
           <div className="font-bold text-[14px]">{guestName}</div>
           <div className="text-[12px] text-ink-3">Chambre {inv.room.number} · {formatDate(inv.checkInDate)} → {formatDate(inv.checkOutDate)}</div>
         </div>
-        <div className="text-[11px] text-ink-3">{inv.ref}</div>
       </div>
       <div className="grid gap-1.5 text-[13px]">
         <div className="flex justify-between">
@@ -309,16 +304,10 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
         </div>
         {inv.extras.map((extra, i) => (
           <div key={i} className="flex justify-between">
-            <span className="text-ink-2">{extra.description}</span>
-            <span className="font-semibold">{formatFCFA(extra.total)}</span>
+            <span className="text-ink-2">{extra.label}</span>
+            <span className="font-semibold">{formatFCFA(extra.amount)}</span>
           </div>
         ))}
-        {(inv.touristTax ?? 0) > 0 && (
-          <div className="flex justify-between text-ink-3">
-            <span>Taxe de séjour</span>
-            <span>{formatFCFA(inv.touristTax!)}</span>
-          </div>
-        )}
         <div className="flex justify-between text-ink-3">
           <span>Acompte versé</span>
           <span>− {formatFCFA(inv.paidAmount)}</span>

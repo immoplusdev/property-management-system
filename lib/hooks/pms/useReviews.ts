@@ -7,8 +7,9 @@ import {
 } from "@/lib/api/pms/reviews.actions";
 
 export const reviewKeys = {
-  all:    () => ["reviews"] as const,
-  list:   (params?: object) => ["reviews", "list", params] as const,
+  all:        () => ["reviews"] as const,
+  list:       (params?: object) => ["reviews", "list", params] as const,
+  suggestion: (reviewId: string) => ["reviews", "suggestion", reviewId] as const,
 };
 
 export function useReviews(params?: { page?: number; limit?: number; minRating?: number; needsReply?: boolean }) {
@@ -44,5 +45,20 @@ export function useSuggestReviewReply() {
         if (!res.ok) throw new Error(res.error.message);
         return res.data;
       }),
+  });
+}
+
+/**
+ * Reads the AI-generated reply suggestion for a review, delivered asynchronously
+ * via the `review.ai_suggestion` WS event (see usePmsSocket.ts) into this same
+ * cache entry. Returns `null` until the event arrives.
+ */
+export function useReviewSuggestion(reviewId: string) {
+  return useQuery({
+    queryKey: reviewKeys.suggestion(reviewId),
+    queryFn: () => null as string | null,
+    initialData: null,
+    staleTime: Infinity,
+    enabled: false,
   });
 }

@@ -1,33 +1,26 @@
 "use client";
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { Pill, Icon, showToast, toastPromise, KPICard, Button } from "../shared";
+import { Pill, Icon, showToast, toastPromise, KPICard, Button, Skeleton } from "../shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
-import { REQUEST_TYPES } from "../data";
+import { REQUEST_TYPES, formatDate } from "../data";
 import { useRequests, useUpdateRequestStatus, useCreateRequest } from "@/lib/hooks/pms/useRequests";
+import type { RequestStatus } from "@/lib/api/pms/requests.actions";
+import { useHotel } from "@/lib/pms/HotelContext";
 
-type ReqStatus = "pending" | "in-progress" | "confirmed" | "done";
-
-const STATUS_META: Record<ReqStatus, { label: string; kind: string }> = {
-  "pending":     { label: "En attente", kind: "warn"    },
-  "in-progress": { label: "En cours",   kind: "primary" },
-  "confirmed":   { label: "Confirmé",   kind: "success" },
-  "done":        { label: "Terminé",    kind: "success" },
+const STATUS_META: Record<RequestStatus, { label: string; kind: string }> = {
+  pending:     { label: "En attente", kind: "warn"    },
+  in_progress: { label: "En cours",   kind: "primary" },
+  completed:   { label: "Terminé",    kind: "success" },
+  cancelled:   { label: "Annulée",    kind: "danger"  },
 };
-
-const PRIORITY_META: Record<string, { label: string; kind: string }> = {
-  high:   { label: "Urgent", kind: "danger" },
-  normal: { label: "Normal", kind: "muted"  },
-  urgent: { label: "Urgent", kind: "danger" },
-};
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
 
 export function Requests() {
+  const router = useRouter();
+  const hotel = useHotel();
   const [typeFilter,   setTypeFilter]   = useState("all");
   const [search,       setSearch]       = useState("");
   const [manualOpen,   setManualOpen]   = useState(false);
@@ -39,7 +32,6 @@ export function Requests() {
     description:   "",
     amount:        "",
     paymentMethod: "cash",
-    priority:      "normal" as "normal" | "high" | "urgent",
   });
 
   const { data, isLoading } = useRequests({ limit: 100 });
@@ -49,17 +41,17 @@ export function Requests() {
   const allRequests = data?.data ?? [];
 
   const pending    = allRequests.filter(r => r.status === "pending");
-  const inProgress = allRequests.filter(r => r.status === "in-progress");
-  const confirmed  = allRequests.filter(r => r.status === "confirmed");
-  const done       = allRequests.filter(r => r.status === "done");
+  const inProgress = allRequests.filter(r => r.status === "in_progress");
+  const completed  = allRequests.filter(r => r.status === "completed");
+  const cancelled  = allRequests.filter(r => r.status === "cancelled");
 
   const list = useMemo(() => {
     let res = allRequests;
     if (typeFilter !== "all") res = res.filter(r => r.type === typeFilter);
     if (search) res = res.filter(r =>
-      r.guest.toLowerCase().includes(search.toLowerCase()) ||
+      r.guestName.toLowerCase().includes(search.toLowerCase()) ||
       r.title.toLowerCase().includes(search.toLowerCase()) ||
-      r.room.includes(search)
+      r.roomNumber.includes(search)
     );
     return res;
   }, [allRequests, typeFilter, search]);
@@ -79,7 +71,6 @@ export function Requests() {
           description:   manualForm.description || undefined,
           amount:        manualForm.amount ? Number(manualForm.amount) : undefined,
           paymentMethod: manualForm.paymentMethod,
-          priority:      manualForm.priority,
         }),
         {
           loading: "Création de la demande…",
@@ -88,14 +79,14 @@ export function Requests() {
         },
       );
       setManualOpen(false);
-      setManualForm({ reservationId: "", guestId: "", type: "room_service", title: "", description: "", amount: "", paymentMethod: "cash", priority: "normal" });
+      setManualForm({ reservationId: "", guestId: "", type: "room_service", title: "", description: "", amount: "", paymentMethod: "cash" });
     } catch { /* toast déjà affiché */ }
   }
 
-  async function handleUpdateStatus(id: string, status: string) {
+  async function handleUpdateStatus(id: string, status: RequestStatus) {
     const labels: Record<string, string> = {
-      "in-progress": "prise en charge",
-      "done": "marquée terminée",
+      in_progress: "prise en charge",
+      completed:   "marquée terminée",
     };
     try {
       await toastPromise(updateStatus.mutateAsync({ id, payload: { status } }), {
@@ -127,15 +118,13 @@ export function Requests() {
               <KPICard value={allRequests.length} label="Total aujourd'hui"
                 icon="list" iconBg="var(--color-surface-2)" iconColor="var(--color-ink-2)" />
               <KPICard value={pending.length} label="En attente" sub="À traiter maintenant"
-                icon="clock" iconBg="var(--color-warn-bg)" iconColor="var(--color-warn)"
-                trend={`${pending.filter(r => r.priority === "high" || r.priority === "urgent").length} urgentes`}
-                trendUp={false} trendStyle={{ background: "var(--color-warn-bg)", color: "var(--color-warn)" }} />
+                icon="clock" iconBg="var(--color-warn-bg)" iconColor="var(--color-warn)" />
               <KPICard value={inProgress.length} label="En cours" sub="Pris en charge par l'équipe"
                 icon="refresh" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)" />
-              <KPICard value={confirmed.length} label="Confirmés" sub="Planifiés, en attente exécution"
+              <KPICard value={completed.length} label="Terminés" sub="Ce jour"
                 icon="check" iconBg="var(--color-success-bg)" iconColor="var(--color-success)" />
-              <KPICard value={done.length} label="Terminés" sub="Ce jour"
-                icon="check" iconBg="var(--color-surface-2)" iconColor="var(--color-ink-3)" />
+              <KPICard value={cancelled.length} label="Annulées" sub="Non exécutées"
+                icon="x" iconBg="var(--color-surface-2)" iconColor="var(--color-ink-3)" />
             </>
         }
       </div>
@@ -165,8 +154,7 @@ export function Requests() {
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
           : list.map(req => {
               const typeMeta   = REQUEST_TYPES[req.type] ?? { label: req.type, icon: "list", color: "ink" };
-              const statusMeta = STATUS_META[req.status as ReqStatus] ?? { label: req.status, kind: "muted" };
-              const priMeta    = PRIORITY_META[req.priority ?? "normal"] ?? { label: "Normal", kind: "muted" };
+              const statusMeta = STATUS_META[req.status] ?? { label: req.status, kind: "muted" };
               return (
                 <div key={req.id} className="grid gap-3.5 items-center px-4 py-3.5 rounded-xl border border-border bg-surface hover:border-ink-3 transition-all duration-120" style={{ gridTemplateColumns: "auto minmax(0,1fr) auto auto" }}>
                   {/* Icon */}
@@ -178,21 +166,20 @@ export function Requests() {
                   </div>
 
                   {/* Main info */}
-                  <div>
+                  <div className="cursor-pointer" onClick={() => router.push(`/pms/${hotel}/requests/${req.id}`)}>
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="font-bold text-[14px]">{req.title}</span>
-                      <Pill kind={priMeta.kind as "danger" | "muted"}>{priMeta.label}</Pill>
-                      <Pill kind={statusMeta.kind as "warn" | "success" | "primary"}>{statusMeta.label}</Pill>
+                      <Pill kind={statusMeta.kind as "warn" | "success" | "primary" | "danger" | "muted"}>{statusMeta.label}</Pill>
                     </div>
                     <div className="text-[11.5px] text-ink-3 mb-1.5">
-                      <Icon name="bed" size={11} /> Ch. {req.room} ·{" "}
-                      <Icon name="user" size={11} /> {req.guest} ·{" "}
-                      <Icon name="clock" size={11} /> {req.time} · {typeMeta.label}
-                      {req.price > 0 && (
-                        <> · <strong style={{ color: "var(--color-primary)" }}>{req.price.toLocaleString("fr-FR")} FCFA</strong></>
+                      <Icon name="bed" size={11} /> Ch. {req.roomNumber} ·{" "}
+                      <Icon name="user" size={11} /> {req.guestName} ·{" "}
+                      <Icon name="clock" size={11} /> {formatDate(req.createdAt)} · {typeMeta.label}
+                      {!!req.amount && req.amount > 0 && (
+                        <> · <strong style={{ color: "var(--color-primary)" }}>{req.amount.toLocaleString("fr-FR")} FCFA</strong></>
                       )}
                     </div>
-                    <div className="text-[12.5px] text-ink-2 leading-[1.4]">{req.details}</div>
+                    {req.description && <div className="text-[12.5px] text-ink-2 leading-[1.4]">{req.description}</div>}
                   </div>
 
                   {/* Actions */}
@@ -202,7 +189,7 @@ export function Requests() {
                       <>
                         <Button variant="primary" size="sm" style={{ minWidth: 130 }}
                           disabled={updateStatus.isPending}
-                          onClick={() => handleUpdateStatus(req.id, "in-progress")}>
+                          onClick={() => handleUpdateStatus(req.id, "in_progress")}>
                           <Icon name="check" size={13} /> Prendre en charge
                         </Button>
                         <Button variant="ghost" size="sm" style={{ minWidth: 130 }} onClick={() => showToast("Message WhatsApp envoyé", "check")}>
@@ -210,11 +197,11 @@ export function Requests() {
                         </Button>
                       </>
                     )}
-                    {req.status === "in-progress" && (
+                    {req.status === "in_progress" && (
                       <>
                         <Button variant="primary" size="sm" style={{ minWidth: 130 }}
                           disabled={updateStatus.isPending}
-                          onClick={() => handleUpdateStatus(req.id, "done")}>
+                          onClick={() => handleUpdateStatus(req.id, "completed")}>
                           <Icon name="check" size={13} /> Marquer terminé
                         </Button>
                         <Button variant="ghost" size="sm" style={{ minWidth: 130 }}>
@@ -222,13 +209,8 @@ export function Requests() {
                         </Button>
                       </>
                     )}
-                    {req.status === "confirmed" && (
-                      <Button variant="ghost" size="sm" style={{ minWidth: 130 }}
-                        onClick={() => handleUpdateStatus(req.id, "done")}>
-                        <Icon name="check" size={13} /> Finaliser
-                      </Button>
-                    )}
-                    {req.status === "done" && <Pill kind="success" dot>Terminé</Pill>}
+                    {req.status === "completed" && <Pill kind="success" dot>Terminé</Pill>}
+                    {req.status === "cancelled" && <Pill kind="danger" dot>Annulée</Pill>}
                   </div>
                 </div>
               );
@@ -320,21 +302,6 @@ export function Requests() {
                     <option key={m} value={m}>{m.replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}</option>
                   ))}
                 </select>
-              </div>
-            </div>
-            <div>
-              <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">Priorité</label>
-              <div className="flex gap-2">
-                {(["normal","high","urgent"] as const).map(p => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setManualForm(f => ({ ...f, priority: p }))}
-                    className={`flex-1 py-2 rounded-[9px] border text-[12.5px] font-medium capitalize transition-colors ${manualForm.priority === p ? "border-primary bg-primary-50 text-primary" : "border-border text-ink-2"}`}
-                  >
-                    {p === "normal" ? "Normal" : p === "high" ? "Élevé" : "Urgent"}
-                  </button>
-                ))}
               </div>
             </div>
           </div>

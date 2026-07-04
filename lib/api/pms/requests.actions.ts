@@ -2,17 +2,34 @@
 import { backendFetch } from "@/lib/api/server/http";
 import { getAccessToken } from "@/lib/api/server/cookies";
 import { toFormError, type FormError } from "@/lib/api/errors";
-import type { AppRequest } from "@/lib/types/pms";
 
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: FormError };
+
+/** Real request statuses — see dimension.md §9. No `confirmed`/`done`, no `priority` field. */
+export type RequestStatus = "pending" | "in_progress" | "completed" | "cancelled";
+
+/** See dimension.md §9.1. */
+export interface AppRequest {
+  id: string;
+  type: string;
+  title: string;
+  description?: string;
+  amount?: number;
+  paymentMethod?: string;
+  status: RequestStatus;
+  reservationId: string;
+  guestName: string;
+  roomNumber: string;
+  assignedTo: string | null;
+  createdAt: string;
+}
 
 export interface RequestsList {
   data: AppRequest[];
   total: number;
-  page: number;
-  limit: number;
 }
 
+/** Request body of `POST /pms/requests` — see dimension.md §9.2. */
 export interface CreateRequestPayload {
   reservationId: string;
   guestId: string;
@@ -21,7 +38,21 @@ export interface CreateRequestPayload {
   description?: string;
   amount?: number;
   paymentMethod?: string;
-  priority?: "normal" | "high" | "urgent";
+}
+
+/** Response of `POST /pms/requests` — see dimension.md §9.2. */
+export interface CreateRequestResult {
+  requestId: string;
+  status: RequestStatus;
+  createdAt: string;
+}
+
+/** Response of `PATCH /pms/requests/:id/status` — see dimension.md §9.3. */
+export interface UpdateRequestStatusResult {
+  success: boolean;
+  requestId: string;
+  status: RequestStatus;
+  updatedAt: string;
 }
 
 export async function getRequests(params?: {
@@ -50,11 +81,11 @@ export async function getRequests(params?: {
 
 export async function createRequest(
   payload: CreateRequestPayload
-): Promise<ActionResult<AppRequest>> {
+): Promise<ActionResult<CreateRequestResult>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<AppRequest>("/pms/requests", {
+    const data = await backendFetch<CreateRequestResult>("/pms/requests", {
       method: "POST",
       json: payload,
       accessToken,
@@ -67,12 +98,12 @@ export async function createRequest(
 
 export async function updateRequestStatus(
   id: string,
-  payload: { status: string; assignedTo?: string; notes?: string }
-): Promise<ActionResult<AppRequest>> {
+  payload: { status: RequestStatus; assignedTo?: string; notes?: string }
+): Promise<ActionResult<UpdateRequestStatusResult>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<AppRequest>(`/pms/requests/${id}/status`, {
+    const data = await backendFetch<UpdateRequestStatusResult>(`/pms/requests/${id}/status`, {
       method: "PATCH",
       json: payload,
       accessToken,

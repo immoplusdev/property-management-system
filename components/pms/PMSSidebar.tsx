@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { Logo } from "@/components/Logo";
 import { Icon } from "./shared";
@@ -8,6 +9,7 @@ import { logout } from "@/lib/api/auth/auth.actions";
 import { useRooms } from "@/lib/hooks/pms/useRooms";
 import type { UserDto } from "@/lib/api/generated/model";
 import { usePmsStatus } from "@/lib/pms/PmsStatusContext";
+import { useHotel } from "@/lib/pms/HotelContext";
 
 export const NAV = [
   { id: "dashboard",    icon: "home",      label: "Tableau de bord",      badge: null,  section: "main",   fromApp: false },
@@ -27,14 +29,15 @@ export const NAV = [
 export type NavId = typeof NAV[number]["id"];
 
 interface Props {
-  active: NavId;
-  setActive: (id: NavId) => void;
   user: UserDto | null;
   hotelName: string;
 }
 
-export function PMSSidebar({ active, setActive, user, hotelName }: Props) {
+export function PMSSidebar({ user, hotelName }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const hotel = useHotel();
+  const active = (pathname.split("/")[3] ?? "dashboard") as NavId;
   const { hasBanner } = usePmsStatus();
   const [collapsed, setCollapsed] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -56,16 +59,16 @@ export function PMSSidebar({ active, setActive, user, hotelName }: Props) {
     NAV.filter(n => n.section === section).map(n => {
       const isActive = active === n.id;
       return (
-        <button
+        <Link
           key={n.id}
+          href={`/pms/${hotel}/${n.id}`}
           className={cn(
             "flex items-center gap-2.5 py-2.5 rounded-full text-[13px] font-medium cursor-pointer transition-all duration-[150ms] relative whitespace-nowrap border-none text-left w-full",
             collapsed ? "justify-center px-2.5" : "px-3.5",
             isActive
               ? "bg-primary text-white"
-              : "bg-transparent text-ink-2 hover:bg-[rgba(39,68,222,0.07)] hover:text-primary"
+              : "bg-transparent text-ink-2 hover:bg-(--primary-soft) hover:text-primary"
           )}
-          onClick={() => setActive(n.id)}
           title={collapsed ? n.label : undefined}
         >
           <Icon name={n.icon} size={16} stroke={isActive ? 2.5 : 1.6} />
@@ -90,7 +93,7 @@ export function PMSSidebar({ active, setActive, user, hotelName }: Props) {
               isActive ? "bg-white border-primary" : "bg-primary border-surface"
             )} />
           )}
-        </button>
+        </Link>
       );
     });
 
@@ -110,7 +113,7 @@ export function PMSSidebar({ active, setActive, user, hotelName }: Props) {
           "group-hover/side:opacity-100 group-hover/side:pointer-events-auto",
           collapsed && "opacity-100 pointer-events-auto"
         )}
-        style={{ boxShadow: "0 2px 8px rgba(17,17,15,0.10), 0 0 0 1px rgba(17,17,15,0.04)" }}
+        style={{ boxShadow: "0 2px 8px rgba(18,19,26,0.10), 0 0 0 1px rgba(18,19,26,0.04)" }}
         onClick={() => setCollapsed(c => !c)}
         title={collapsed ? "Agrandir la barre latérale" : "Réduire"}
         aria-label={collapsed ? "Agrandir" : "Réduire"}

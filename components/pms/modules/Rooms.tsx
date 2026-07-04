@@ -1,17 +1,14 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { StatusPill, Icon, Button, toastPromise } from "../shared";
+import { StatusPill, Icon, Button, Skeleton } from "../shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
-import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils/cn";
 import { ROOM_TYPES_PMS, STATUS_CONFIG, formatFCFA, formatDate } from "../data";
-import type { Room, RoomStatus } from "@/lib/types/pms";
-import { useRooms, useUpdateRoomStatus } from "@/lib/hooks/pms/useRooms";
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
+import type { Room } from "@/lib/types/pms";
+import { useRooms } from "@/lib/hooks/pms/useRooms";
+import { useHotel } from "@/lib/pms/HotelContext";
 
 function RoomTile({ room, onClick }: { room: Room; onClick: () => void }) {
   const type = ROOM_TYPES_PMS.find(t => t.code === room.type);
@@ -32,21 +29,29 @@ function RoomTile({ room, onClick }: { room: Room; onClick: () => void }) {
   );
 }
 
-const EDITABLE_STATUSES: { value: RoomStatus; label: string }[] = [
-  { value: "free",           label: "Libre"           },
-  { value: "cleaning",       label: "Ménage"          },
-  { value: "out_of_service", label: "Hors service"    },
-];
-
 export function Rooms() {
-  const [view,     setView]     = useState<"grid"|"list">("grid");
-  const [filter,   setFilter]   = useState("all");
-  const [selected, setSelected] = useState<Room|null>(null);
-  const [newStatus, setNewStatus] = useState<RoomStatus | "">("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const hotel = useHotel();
+
+  const view   = (searchParams.get("view") === "list" ? "list" : "grid") as "grid" | "list";
+  const filter = searchParams.get("status") ?? "all";
+
+  function updateParams(patch: Record<string, string>) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(patch)) {
+      if (!value || value === "all" || (key === "view" && value === "grid")) params.delete(key);
+      else params.set(key, value);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+  const setView   = (v: "grid" | "list") => updateParams({ view: v });
+  const setFilter = (v: string) => updateParams({ status: v });
 
   const { data, isLoading, error } = useRooms();
   const rooms: Room[] = data?.floors?.flatMap(f => f.rooms) ?? [];
-  const updateStatus  = useUpdateRoomStatus();
 
   const filtered = filter === "all" ? rooms : rooms.filter(r => r.status === filter);
   const counts: Record<string, number> = {
@@ -59,17 +64,8 @@ export function Rooms() {
     return acc;
   }, {});
 
-  async function handleUpdateStatus() {
-    if (!selected?.id || !newStatus) return;
-    try {
-      await toastPromise(updateStatus.mutateAsync({ id: selected.id, status: newStatus }), {
-        loading: "Mise à jour de la chambre…",
-        success: `Chambre ${selected.num} → ${STATUS_CONFIG[newStatus]?.label ?? newStatus}`,
-        error: (e) => (e as Error)?.message || "Erreur lors de la mise à jour",
-      });
-      setSelected(null);
-      setNewStatus("");
-    } catch { /* toast déjà affiché */ }
+  function openRoom(r: Room) {
+    if (r.id) router.push(`/pms/${hotel}/rooms/${r.id}`);
   }
 
   return (
@@ -142,7 +138,7 @@ export function Rooms() {
             </div>
             <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))" }}>
               {byFloor[Number(floor)].map(r => (
-                <RoomTile key={r.id} room={r} onClick={() => { setSelected(r); setNewStatus(""); }} />
+                <RoomTile key={r.id ?? r.num} room={r} onClick={() => openRoom(r)} />
               ))}
             </div>
           </div>
@@ -164,7 +160,7 @@ export function Rooms() {
                   <tr
                     key={r.num}
                     className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2 cursor-pointer"
-                    onClick={() => { setSelected(r); setNewStatus(""); }}
+                    onClick={() => openRoom(r)}
                   >
                     <td className="px-3.5 py-3.5 align-middle"><strong className="text-[15px]">{r.num}</strong></td>
                     <td className="px-3.5 py-3.5 align-middle">{type?.name}</td>
@@ -185,66 +181,6 @@ export function Rooms() {
             </tbody>
           </table>
         </div>
-      )}
-
-      {selected && (
-        <Modal
-          open
-          onClose={() => setSelected(null)}
-          title={`Chambre ${selected.num}`}
-          maxWidth={440}
-          footer={
-            <>
-              <Button variant="ghost" onClick={() => setSelected(null)}>Fermer</Button>
-              <Button
-                variant="primary"
-                onClick={handleUpdateStatus}
-                disabled={!newStatus || newStatus === selected.status || updateStatus.isPending}
-              >
-                {updateStatus.isPending ? "Mise à jour…" : "Confirmer"}
-              </Button>
-            </>
-          }
-        >
-          <div className="mb-3"><StatusPill status={selected.status} /></div>
-          {selected.guest && (
-            <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px] mb-2">
-              <span className="text-ink-3 text-[13px]">Occupant</span>
-              <strong>{selected.guest}</strong>
-            </div>
-          )}
-          {selected.checkout && (
-            <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px] mb-2">
-              <span className="text-ink-3 text-[13px]">Check-out</span>
-              <strong>{formatDate(selected.checkout)}</strong>
-            </div>
-          )}
-          <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px] mb-4">
-            <span className="text-ink-3 text-[13px]">Type</span>
-            <strong>{ROOM_TYPES_PMS.find(t => t.code === selected.type)?.name ?? selected.type}</strong>
-          </div>
-          {selected.id && (
-            <div>
-              <div className="text-[11.5px] text-ink-3 font-medium mb-1.5">Changer le statut</div>
-              <div className="flex gap-2 flex-wrap">
-                {EDITABLE_STATUSES.map(s => (
-                  <button
-                    key={s.value}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-[12.5px] font-medium border transition-all",
-                      newStatus === s.value
-                        ? "bg-primary text-white border-primary"
-                        : "bg-surface border-border text-ink-2 hover:border-ink-3"
-                    )}
-                    onClick={() => setNewStatus(s.value)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </Modal>
       )}
     </div>
   );

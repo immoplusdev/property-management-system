@@ -54,6 +54,39 @@
   --color-pink:      #BC3679;
   --color-pink-bg:   #F8E3ED;
 
+  /* ── Categorical palette (avatars, chart series) — single source, was duplicated 8x ── */
+  --color-cat-1: #E89060;
+  --color-cat-2: #6FB5A8;
+  --color-cat-3: #7B8DFF;
+  --color-cat-4: #B57BE6;
+  --color-cat-5: #F5C572;
+  --color-cat-6: #6FCC92;
+  --color-cat-7: #FF8585;
+  --color-cat-8: #6FB5DD;
+
+  /* ── Payment method brand colors — single source, was duplicated/drifted across 4 files ── */
+  --color-pay-wave: #1BA1F2;
+  --color-pay-om:   #FF7900;
+  --color-pay-mtn:  #FFCC00;
+
+  /* ── Star rating gold (on dark surfaces — brighter than --color-amber for contrast) ── */
+  --color-star: #FFCB47;
+
+  /* ── Tip/lamp accent (inscription hints — brighter gold than --color-amber) ── */
+  --color-tip: #D9A62E;
+
+  /* ── OTA / channel manager brand colors ── */
+  --color-ota-booking: #003580;
+  --color-ota-airbnb:  #FF5A5F;
+
+  /* ── Vibrant trio — decorative accent mesh (Hero + CTA glow), single source ── */
+  --color-vibrant-pink:  #F72585;
+  --color-vibrant-green: #35FF69;
+  --color-vibrant-peach: #F9DBBD;
+
+  /* ── Auth modal hero gradient — single source, was duplicated in SignUpModal + LoginModal ── */
+  --gradient-auth-hero: linear-gradient(145deg, #1535C4 0%, #2744DE 52%, #4161F6 100%);
+
   /* ── Shadows ── */
   --shadow-xs: 0 1px 2px rgba(18, 19, 26, 0.04);
   --shadow-sm: 0 1px 2px rgba(18, 19, 26, 0.04);

@@ -1,10 +1,12 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, showToast, Icon, Button } from "../shared";
+import { SectionHead, showToast, Icon, Button, Skeleton } from "../shared";
 import { ROOM_TYPES_PMS, STATUS_CONFIG } from "../data";
 import { usePlanning } from "@/lib/hooks/pms/usePlanning";
 import type { PlanningRoom } from "@/lib/api/pms/planning.actions";
+import { isBlockedSlot } from "@/lib/utils/planning";
 
 const COL_W = 180;
 
@@ -14,10 +16,11 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; border: string 
   checking_out:{ bg: "var(--color-warn-bg)",    color: "var(--color-warn)",    border: "var(--color-warn)"    },
   departure:   { bg: "var(--color-warn-bg)",    color: "var(--color-warn)",    border: "var(--color-warn)"    },
   pending:     { bg: "var(--color-violet-bg)",  color: "var(--color-violet)",  border: "var(--color-violet)"  },
+  blocked:     { bg: "var(--color-surface-2)",  color: "var(--color-ink-3)",   border: "var(--color-border-strong)" },
 };
 
-function getMonday(offset = 0): Date {
-  const d = new Date();
+function getMonday(offset = 0, ref: Date = new Date()): Date {
+  const d = new Date(ref);
   const day = d.getDay();
   const diff = (day === 0 ? -6 : 1 - day) + offset * 7;
   d.setDate(d.getDate() + diff);
@@ -36,16 +39,34 @@ function toISO(d: Date) {
 }
 
 const FR_SHORT = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
-const FR_LONG  = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"];
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`bg-surface-2 rounded-lg animate-pulse ${className}`} />;
-}
 
 export function Planning({ hotelName }: { hotelName: string }) {
-  const [weekOffset, setWeekOffset] = useState(0);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const monday = useMemo(() => getMonday(weekOffset), [weekOffset]);
+  const currentMonday = useMemo(() => getMonday(0), []);
+  const monday = useMemo(() => {
+    const dateParam = searchParams.get("date");
+    if (!dateParam) return currentMonday;
+    const parsed = new Date(`${dateParam}T00:00:00`);
+    return isNaN(parsed.getTime()) ? currentMonday : getMonday(0, parsed);
+  }, [searchParams, currentMonday]);
+  const isCurrentWeek = monday.getTime() === currentMonday.getTime();
+
+  function goToWeek(target: Date) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("date", toISO(target));
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function goToday() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("date");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
   const days   = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
   const from   = toISO(days[0]);
   const to     = toISO(days[6]);
@@ -94,9 +115,9 @@ export function Planning({ hotelName }: { hotelName: string }) {
                 </button>
               ))}
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setWeekOffset(o => o - 1)}><Icon name="chevronLeft" size={14} /></Button>
-            <Button variant="ghost" size="sm" onClick={() => setWeekOffset(0)}>Aujourd&apos;hui</Button>
-            <Button variant="ghost" size="sm" onClick={() => setWeekOffset(o => o + 1)}><Icon name="chevronRight" size={14} /></Button>
+            <Button variant="ghost" size="sm" onClick={() => goToWeek(addDays(monday, -7))}><Icon name="chevronLeft" size={14} /></Button>
+            <Button variant="ghost" size="sm" onClick={goToday}>Aujourd&apos;hui</Button>
+            <Button variant="ghost" size="sm" onClick={() => goToWeek(addDays(monday, 7))}><Icon name="chevronRight" size={14} /></Button>
           </>
         }
       />
@@ -126,8 +147,8 @@ export function Planning({ hotelName }: { hotelName: string }) {
           <div className="px-3 py-3 text-[12px] font-medium text-ink-2 border-r border-border-soft">Chambres</div>
           {days.map((d, i) => (
             <div key={i} className="px-3 py-3 border-r border-border-soft last:border-r-0">
-              <div className={`text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5 ${weekOffset===0 && i===new Date().getDay()-1 ? "text-primary" : "text-ink-3"}`}>{FR_SHORT[i]}</div>
-              <div className={`text-[20px] font-semibold tracking-tight leading-none ${weekOffset===0 && i===new Date().getDay()-1 ? "text-primary" : "text-ink"}`}>{d.getDate()}</div>
+              <div className={`text-[11px] uppercase tracking-[0.06em] font-medium mb-0.5 ${isCurrentWeek && i===new Date().getDay()-1 ? "text-primary" : "text-ink-3"}`}>{FR_SHORT[i]}</div>
+              <div className={`text-[20px] font-semibold tracking-tight leading-none ${isCurrentWeek && i===new Date().getDay()-1 ? "text-primary" : "text-ink"}`}>{d.getDate()}</div>
             </div>
           ))}
         </div>
@@ -141,7 +162,7 @@ export function Planning({ hotelName }: { hotelName: string }) {
           <div className="py-12 text-center text-ink-3 text-[13px]">Aucune chambre disponible pour cette période</div>
         ) : (
           rooms.map(room => {
-            const typeInfo = room.roomTypeName ? ROOM_TYPES_PMS.find(t => t.code === room.roomTypeName.slice(0,3).toUpperCase()) : undefined;
+            const typeInfo = room.typeName ? ROOM_TYPES_PMS.find(t => t.code === room.typeName.slice(0,3).toUpperCase()) : undefined;
             const sc = STATUS_CONFIG.free;
 
             return (
@@ -152,32 +173,38 @@ export function Planning({ hotelName }: { hotelName: string }) {
                     className="w-7.5 h-7.5 rounded-[7px] grid place-items-center font-bold text-[11px] shrink-0"
                     style={{ background: sc.bg, color: sc.color }}
                   >
-                    {room.roomNumber}
+                    {room.number}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[12px] font-semibold leading-tight">{typeInfo?.code ?? room.roomTypeName?.slice(0,3) ?? "N/A"} · Ét.{room.floor}</div>
+                    <div className="text-[12px] font-semibold leading-tight">{typeInfo?.code ?? room.typeName?.slice(0,3).toUpperCase() ?? "—"} · Ét.{room.floor}</div>
                     <div className="text-[10.5px] text-ink-3 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {room.roomTypeName?.split(" ").slice(0, 2).join(" ") ?? "—"}
+                      {room.typeName?.split(" ").slice(0, 2).join(" ") ?? "—"}
                     </div>
                   </div>
                 </div>
 
                 {/* Day cells */}
                 {days.map((_, ci) => (
-                  <div key={ci} className={`border-r border-border-soft last:border-r-0 ${weekOffset===0 && ci===new Date().getDay()-1 ? "bg-[rgba(39,68,222,0.07)]" : ""}`} />
+                  <div key={ci} className={`border-r border-border-soft last:border-r-0 ${isCurrentWeek && ci===new Date().getDay()-1 ? "bg-(--primary-soft)" : ""}`} />
                 ))}
 
                 {/* Booking bars */}
-                {room.slots.filter(s => s.guestName).map((slot, bi) => {
-                  const { startFr, widthFr, rl, rr } = slotToFraction(slot.date, slot.date);
+                {room.slots.map((slot, slotIndex) => {
+                  const blocked = isBlockedSlot(slot);
+                  const rangeStart = blocked ? slot.fromDate : slot.checkInDate;
+                  const rangeEnd   = blocked ? slot.toDate   : slot.checkOutDate;
+                  const { startFr, widthFr, rl, rr } = slotToFraction(rangeStart, rangeEnd);
                   if (widthFr <= 0) return null;
-                  const s = STATUS_STYLES[slot.status] ?? STATUS_STYLES.confirmed;
-                  const label    = slot.guestName || "—";
-                  const toastMsg = `${label} · Ch. ${room.roomNumber}`;
+                  const s     = blocked ? STATUS_STYLES.blocked : (STATUS_STYLES[slot.status] ?? STATUS_STYLES.confirmed);
+                  const label = blocked ? slot.reason : (slot.guestName || "—");
+                  const toastMsg = `${label} · Ch. ${room.number}`;
+                  // Le backend renvoie parfois `reservationId`/`blockId` à `null` — on ne peut
+                  // pas s'y fier seul pour l'unicité de la clé, d'où le repli sur l'index.
+                  const slotKey = (blocked ? slot.blockId : slot.reservationId) ?? `${room.id}-${slotIndex}`;
 
                   return (
                     <div
-                      key={bi}
+                      key={slotKey}
                       className="absolute top-2 bottom-2 px-2.5 py-2 text-[11.5px] flex flex-col justify-center cursor-pointer overflow-hidden transition-transform duration-120 hover:scale-[1.01] hover:z-10"
                       style={{
                         left:  `calc(${COL_W}px + ${startFr.toFixed(6)} * (100% - ${COL_W}px))`,
@@ -190,7 +217,7 @@ export function Planning({ hotelName }: { hotelName: string }) {
                       onClick={() => showToast(toastMsg, "bell")}
                     >
                       <div className="font-semibold leading-tight tracking-[-0.01em]">{label}</div>
-                      <div className="text-[10.5px] opacity-70 mt-0.5">{room.roomTypeName?.slice(0, 3) ?? "—"}</div>
+                      <div className="text-[10.5px] opacity-70 mt-0.5">{blocked ? "Bloqué" : (room.typeName?.slice(0, 3) ?? "—")}</div>
                     </div>
                   );
                 })}
@@ -207,7 +234,7 @@ export function Planning({ hotelName }: { hotelName: string }) {
           <SectionHead icon="trendingUp" title="Tendance d'occupation" sub={weekLabel} />
           <div className="flex items-end gap-1.25 h-24 mt-3.5">
             {OCC.map((v, i) => {
-              const isToday = weekOffset === 0 && i === new Date().getDay() - 1;
+              const isToday = isCurrentWeek && i === new Date().getDay() - 1;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-0.75">
                   <div className={`text-[9.5px] font-semibold ${isToday ? "text-primary" : "text-ink-3"}`}>{v}%</div>

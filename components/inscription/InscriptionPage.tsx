@@ -1,5 +1,6 @@
 "use client";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { Step1 } from "./steps/Step1";
 import { Step2 } from "./steps/Step2";
@@ -133,12 +134,14 @@ function buildInitialState(user: UserDto | null | undefined): InscriptionState {
 interface Props { initialUser?: UserDto | null; }
 
 export function InscriptionPage({ initialUser }: Props) {
+  const router = useRouter();
   const [state, setState]             = useState<InscriptionState>(() => buildInitialState(initialUser));
   const [currentStep, setCurrentStep] = useState(1);
   const [completionScore, setCompletionScore] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stepError, setStepError]     = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
+  const [isDraftLoading, setIsDraftLoading] = useState(false);
 
   // ── Restore progress on mount ─────────────────────────────────────────────
   useEffect(() => {
@@ -293,6 +296,13 @@ export function InscriptionPage({ initialUser }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, state.account, state.hotel, state.equip, state.roomTypes, state.valueAdds, state.pricing]);
 
+  const handleDraft = useCallback(async () => {
+    setIsDraftLoading(true);
+    // Simulate brief loading state before redirect
+    await new Promise(resolve => setTimeout(resolve, 800));
+    router.push("/");
+  }, [router]);
+
   const StepComponent = STEP_COMPONENTS[currentStep - 1];
   const isWide = currentStep === 7;
   const isMultiCol = currentStep === 1 || currentStep === 2 || currentStep === 3 || currentStep === 4 || currentStep === 5 || currentStep === 6;
@@ -376,8 +386,25 @@ export function InscriptionPage({ initialUser }: Props) {
                   {stepError}
                 </span>
               )}
-              <Btn variant="ghost" size="sm" disabled={isSubmitting || isRestoring}>
-                <Icon name="fileText" size={14} /> Brouillon
+              <Btn
+                variant="ghost"
+                size="sm"
+                onClick={handleDraft}
+                disabled={isSubmitting || isRestoring || isDraftLoading}
+              >
+                {isDraftLoading ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Enregistrement…
+                  </>
+                ) : (
+                  <>
+                    <Icon name="fileText" size={14} /> Brouillon
+                  </>
+                )}
               </Btn>
               {currentStep < 7 && (
                 <Btn

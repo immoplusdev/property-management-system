@@ -62,7 +62,7 @@ export function BrandPane() {
   return (
     <section
       className="relative overflow-hidden hidden min-[1080px]:flex flex-col h-full px-10 pt-9 pb-8"
-      style={{ background: "linear-gradient(145deg, #1535c4 0%, #2744DE 52%, #4161f6 100%)" }}
+      style={{ background: "var(--gradient-auth-hero)" }}
     >
       {/* Decorative circles */}
       <div aria-hidden className="absolute -top-28 -right-16 w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: "rgba(255,255,255,0.06)" }} />
@@ -219,7 +219,7 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
         </div>
 
         {error && (
-          <div role="alert" className="text-[12px] text-danger bg-[#FEF2F2] border border-danger/30 rounded-lg px-3 py-2 leading-[1.45]">
+          <div role="alert" className="text-[12px] text-danger bg-danger-bg border border-danger/30 rounded-lg px-3 py-2 leading-[1.45]">
             {error}
           </div>
         )}
@@ -274,7 +274,7 @@ export default function LoginModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-modal-fullscreen bg-[rgba(10,10,16,0.52)] backdrop-blur-[8px] flex animate-fade-in overscroll-contain"
+      className="fixed inset-0 z-modal-fullscreen bg-[rgba(18,19,26,0.52)] backdrop-blur-[8px] flex animate-fade-in overscroll-contain"
       style={{ fontFeatureSettings: "'ss01', 'cv11'" }}
       role="dialog"
       aria-modal="true"

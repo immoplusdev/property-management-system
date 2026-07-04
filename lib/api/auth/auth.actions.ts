@@ -117,14 +117,18 @@ export async function registerCustomer(
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success) return fromZod(parsed.error);
 
+  const parts = parsed.data.fullName.trim().split(/\s+/);
+  const firstName = parts[0] || "";
+  const lastName = parts.slice(1).join(" ") || "";
+
   try {
     const envelope = await backendFetch<WrapperResponseLoginCommandResponseDto>(
       "/auth/register-customer",
       {
         method: "POST",
         json: {
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
+          firstName,
+          lastName,
           email: parsed.data.email,
           phoneNumber: parsed.data.phoneNumber,
           password: parsed.data.password,

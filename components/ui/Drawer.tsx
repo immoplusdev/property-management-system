@@ -39,7 +39,7 @@ export function Drawer({
         style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(17,17,15,.38)",
+          background: "rgba(18,19,26,.38)",
           animation: "pms-fade .15s ease",
         }}
         onClick={onClose}
@@ -57,7 +57,7 @@ export function Drawer({
           borderLeft:  side === "right"  ? "1px solid var(--border)" : undefined,
           borderRight: side === "left"   ? "1px solid var(--border)" : undefined,
           borderTop:   side === "bottom" ? "1px solid var(--border)" : undefined,
-          boxShadow: "var(--shadow-lg, 0 16px 48px rgba(17,17,15,.12))",
+          boxShadow: "var(--shadow-lg, 0 16px 48px rgba(18,19,26,.12))",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",

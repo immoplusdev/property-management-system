@@ -136,10 +136,10 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
       html: `
         <div style="
           width: 44px; height: 44px; border-radius: 50%;
-          background: #2744DE; border: 3px solid #fff;
+          background: var(--color-primary); border: 3px solid var(--color-surface);
           box-shadow: 0 4px 14px rgba(39,68,222,0.4), 0 0 0 6px rgba(39,68,222,0.15);
           display: flex; align-items: center; justify-content: center;
-          color: #fff; font-size: 18px; font-weight: 700;
+          color: var(--color-surface); font-size: 18px; font-weight: 700;
           transform: translate(-22px, -22px);
         ">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -151,7 +151,7 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
           position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
           width: 0; height: 0;
           border-left: 8px solid transparent; border-right: 8px solid transparent;
-          border-top: 10px solid #2744DE;
+          border-top: 10px solid var(--color-primary);
           filter: drop-shadow(0 2px 4px rgba(39,68,222,0.3));
         "></div>
       `,
@@ -237,13 +237,13 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
       <div ref={containerRef} className="location-map-container h-80 w-full z-0" />
 
       {/* Floating info card */}
-      <div className="absolute bottom-3.5 left-3.5 z-1000 bg-white/96 backdrop-blur-[12px] rounded-xl px-4 py-3 shadow-[0_2px_12px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.04)] max-w-[320px]">
+      <div className="absolute bottom-3.5 left-3.5 z-1000 bg-white/96 backdrop-blur-[12px] rounded-xl px-4 py-3 shadow-[0_2px_12px_rgba(18,19,26,0.1),0_0_0_1px_rgba(18,19,26,0.04)] max-w-[320px]">
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="font-bold text-[13px] text-ink">{locationName || "Position sur la carte"}</div>
             {locationSub && <div className="text-[11px] text-ink-3 mt-0.5">{locationSub}</div>}
           </div>
-          <div className="flex items-center gap-1 text-[11px] font-semibold tabular-nums text-primary bg-[rgba(39,68,222,0.08)] px-2.5 py-1 rounded-lg whitespace-nowrap">
+          <div className="flex items-center gap-1 text-[11px] font-semibold tabular-nums text-primary bg-primary/8 px-2.5 py-1 rounded-lg whitespace-nowrap">
             <span>{coords.lat.toFixed(3)}° N</span>
             <span className="text-ink-4">,</span>
             <span>{Math.abs(coords.lng).toFixed(3)}° W</span>
@@ -255,7 +255,7 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
       <div className="absolute bottom-3.5 right-3.5 z-1000 flex gap-2">
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border-0 bg-white/96 backdrop-blur-[12px] shadow-[0_2px_12px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.04)] text-[12px] font-semibold text-ink cursor-pointer transition-all duration-150 hover:bg-white hover:text-primary hover:shadow-[0_4px_16px_rgba(39,68,222,0.15),0_0_0_1px_rgba(39,68,222,0.1)]"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] border-0 bg-white/96 backdrop-blur-[12px] shadow-[0_2px_12px_rgba(18,19,26,0.1),0_0_0_1px_rgba(18,19,26,0.04)] text-[12px] font-semibold text-ink cursor-pointer transition-all duration-150 hover:bg-white hover:text-primary hover:shadow-[0_4px_16px_rgba(39,68,222,0.15),0_0_0_1px_rgba(39,68,222,0.1)]"
           onClick={handleRecenter}
           title="Utiliser ma position GPS"
         >
@@ -281,13 +281,13 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
               }
             }}
             onFocus={() => searchInput.length >= 2 && setShowSuggestions(true)}
-            className="flex-1 px-3.5 py-2 rounded-lg bg-white/96 backdrop-blur-md border border-[rgba(0,0,0,0.1)] text-[12px] font-medium placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary shadow-[0_2px_12px_rgba(0,0,0,0.1)]"
+            className="flex-1 px-3.5 py-2 rounded-lg bg-white/96 backdrop-blur-md border border-[rgba(18,19,26,0.1)] text-[12px] font-medium placeholder-ink-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary shadow-[0_2px_12px_rgba(18,19,26,0.1)]"
           />
           <button
             type="button"
             onClick={() => forwardGeocode(searchInput)}
             disabled={!searchInput.trim() || isSearching}
-            className="px-3.5 py-2 rounded-lg bg-primary text-white text-[12px] font-semibold hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_2px_12px_rgba(0,0,0,0.1)]"
+            className="px-3.5 py-2 rounded-lg bg-primary text-white text-[12px] font-semibold hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-[0_2px_12px_rgba(18,19,26,0.1)]"
             title="Chercher l'adresse"
           >
             {isSearching ? (
@@ -306,13 +306,13 @@ function MapInner({ lat, lng, label, subLabel, onPositionChange }: LocationMapPr
 
         {/* Suggestions dropdown */}
         {showSuggestions && suggestions.length > 0 && (
-          <div className="bg-white/96 backdrop-blur-md rounded-lg border border-[rgba(0,0,0,0.1)] shadow-[0_4px_20px_rgba(0,0,0,0.15)] overflow-hidden max-h-48 overflow-y-auto">
+          <div className="bg-white/96 backdrop-blur-md rounded-lg border border-[rgba(18,19,26,0.1)] shadow-[0_4px_20px_rgba(18,19,26,0.15)] overflow-hidden max-h-48 overflow-y-auto">
             {suggestions.map((suggestion, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => forwardGeocode(suggestion.display_name)}
-                className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-primary-50 border-b border-[rgba(0,0,0,0.05)] last:border-b-0 transition-colors"
+                className="w-full text-left px-3.5 py-2 text-[11px] hover:bg-primary-50 border-b border-[rgba(18,19,26,0.05)] last:border-b-0 transition-colors"
               >
                 <div className="font-semibold text-ink truncate">{suggestion.display_name.split(",")[0]}</div>
                 <div className="text-ink-3 text-[10px] truncate">{suggestion.display_name.split(",").slice(1, 3).join(",")}</div>

@@ -73,7 +73,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-modal flex items-center justify-center p-4 sm:p-6 bg-[rgba(17,17,15,0.45)] backdrop-blur-[2px] animate-pms-fade overscroll-contain"
+      className="fixed inset-0 z-modal flex items-center justify-center p-4 sm:p-6 bg-[rgba(18,19,26,0.45)] backdrop-blur-[2px] animate-pms-fade overscroll-contain"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
       role="dialog"
       aria-modal="true"

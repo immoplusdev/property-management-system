@@ -11,10 +11,19 @@ import { InsCard } from "../ui/InsCard";
 import { cn } from "@/lib/utils/cn";
 import { fileUrl } from "@/lib/utils/fileUrl";
 
-const STATUS_ICON: Record<string, string> = {
-  ok:   "border-[rgba(31,138,91,0.18)] bg-success-bg text-success",
-  warn: "border-[rgba(184,107,10,0.22)] bg-warn-bg text-warn",
-  info: "border-[rgba(39,68,222,0.18)] bg-primary-50 text-primary",
+// Icône conteneur pour étapes — toujours neutre
+const STEP_ICON_CLASS = "border-border bg-surface-2 text-ink-3";
+
+// Helper pour obtenir le statut texte et icône
+const getStatusDisplay = (status: string) => {
+  switch (status) {
+    case "ok":
+      return { text: "Complété", icon: "check", color: "text-success" };
+    case "warn":
+      return { text: "À compléter", icon: "clock", color: "text-ink-3" };
+    default:
+      return { text: "Optionnel", icon: "info", color: "text-ink-3" };
+  }
 };
 
 export function Step7({ state, completion = 89, goTo }: StepProps) {
@@ -176,7 +185,7 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
           <div className="flex flex-col flex-1">
             {activationItems.map((it) => (
               <div key={it.t} className="flex items-start gap-3 border-b border-border py-3.5 first:pt-1 last:border-b-0 last:pb-0">
-                <div className="w-8.5 h-8.5 shrink-0 grid place-items-center border border-[rgba(39,68,222,0.14)] rounded-[10px] bg-primary-50 text-primary">
+                <div className="w-8.5 h-8.5 shrink-0 grid place-items-center border border-primary/14 rounded-[10px] bg-primary-50 text-primary">
                   <Icon name={it.i} size={16} />
                 </div>
                 <div>
@@ -192,30 +201,34 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
         <InsCard flat className="col-span-12 lg:col-span-7 flex flex-col">
           <SectionHead icon="list" title="Récapitulatif par section" />
           <div className="flex flex-col flex-1">
-            {sections.map((s) => (
-              <article key={s.id} className="flex items-center justify-between gap-4 border-b border-border py-3.25 last:border-b-0 last:pb-0">
-                <div className="flex-1 min-w-0 flex items-center gap-3">
-                  <div className={cn("w-9 h-9 shrink-0 grid place-items-center border rounded-[10px]", STATUS_ICON[s.status])}>
-                    <Icon name={s.icon} size={17} />
+            {sections.map((s) => {
+              const statusDisplay = getStatusDisplay(s.status);
+              return (
+                <article key={s.id} className="flex items-center justify-between gap-4 border-b border-border py-3.25 last:border-b-0 last:pb-0">
+                  <div className="flex-1 min-w-0 flex items-center gap-3">
+                    <div className={cn("w-9 h-9 shrink-0 grid place-items-center border rounded-xl", STEP_ICON_CLASS)}>
+                      <Icon name={s.icon} size={17} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13.5px] font-bold tracking-[-0.02em] text-ink">Étape {s.id} · {s.title}</div>
+                      <div className="mt-1 text-ink-3 text-[12.5px] leading-[1.45]">{s.info}</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-[13.5px] font-bold tracking-[-0.02em] text-ink">Étape {s.id} · {s.title}</div>
-                    <div className="mt-1 text-ink-3 text-[12.5px] leading-[1.45]">{s.info}</div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <div className={cn("flex items-center gap-1.5 text-[12.5px] font-medium", statusDisplay.color)}>
+                      <Icon name={statusDisplay.icon} size={15} />
+                      {statusDisplay.text}
+                    </div>
+                    <button
+                      onClick={() => goTo?.(s.id)}
+                      className="inline-flex items-center gap-1.75 h-8.5 px-3.5 text-[12.5px] font-semibold rounded-lg border-[1.5px] border-border bg-surface text-ink hover:bg-surface-2 hover:border-border-strong"
+                    >
+                      <Icon name="edit" size={13} /> Modifier
+                    </button>
                   </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Pill kind={s.status === "ok" ? "success" : s.status === "warn" ? "warn" : "primary"} dot>
-                    {s.status === "ok" ? "OK" : s.status === "warn" ? "À compléter" : "Optionnel"}
-                  </Pill>
-                  <button
-                    onClick={() => goTo?.(s.id)}
-                    className="inline-flex items-center gap-1.75 h-8.5 px-3.5 text-[12.5px] font-semibold rounded-lg border-[1.5px] border-border bg-surface text-ink hover:bg-surface-2 hover:border-border-strong"
-                  >
-                    <Icon name="edit" size={13} /> Modifier
-                  </button>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         </InsCard>
 
@@ -291,9 +304,9 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
         </InsCard>
 
         {/* Submit */}
-        <InsCard flat className="col-span-12 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)] items-center gap-7 border-[rgba(31,138,91,0.24)]">
+        <InsCard flat className="col-span-12 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)] items-center gap-7 border-l-[3px] border-l-primary border-r border-t border-b border-border">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="w-13.5 h-13.5 shrink-0 grid place-items-center border border-[rgba(31,138,91,0.22)] rounded-xl bg-success-bg text-success">
+            <div className="w-13.5 h-13.5 shrink-0 grid place-items-center border border-primary-50 rounded-xl bg-primary-50 text-primary">
               <Icon name="check" size={24} stroke={3} />
             </div>
             <div className="min-w-0">
@@ -305,7 +318,7 @@ export function Step7({ state, completion = 89, goTo }: StepProps) {
           </div>
           <div className="flex flex-col gap-2.5">
             {submitError && (
-              <div className="flex items-start gap-2 text-[12.5px] text-danger bg-danger-bg border border-[rgba(193,56,56,0.18)] rounded-xl px-3.5 py-2.5 leading-[1.4]">
+              <div className="flex items-start gap-2 text-[12.5px] text-danger bg-danger-bg border border-danger/18 rounded-xl px-3.5 py-2.5 leading-[1.4]">
                 <Icon name="alertTriangle" size={14} className="shrink-0 mt-px" />
                 {submitError}
               </div>

@@ -33,10 +33,10 @@ export function Checkbox({ checked, onChange, label, sub, disabled }: CheckboxPr
       {/* Tick box */}
       <div
         className={cn(
-          "shrink-0 mt-px w-4.5 h-4.5 rounded-[5px] border-[1.5px] grid place-items-center transition-all duration-150",
+          "shrink-0 mt-px w-5 h-5 rounded-md border-[1.5px] grid place-items-center transition-all duration-150",
           checked
             ? "bg-primary border-primary text-white"
-            : "bg-surface border-border-strong group-hover:border-primary/60"
+            : "bg-transparent border-border-strong group-hover:border-border"
         )}
       >
         {checked && <Icon name="check" size={12} stroke={3} />}

@@ -1,9 +1,5 @@
 import React from "react";
-
-const AV_COLORS = [
-  "#E89060", "#6FB5A8", "#7B8DFF", "#B57BE6",
-  "#F5C572", "#6FCC92", "#FF8585", "#6FB5DD",
-];
+import { AV_COLORS } from "@/lib/utils/avatarColor";
 
 interface AvatarProps {
   name: string;
@@ -13,7 +9,7 @@ interface AvatarProps {
 
 export function Avatar({ name, index, size = 32 }: AvatarProps) {
   const initials = name.split(" ").map(x => x[0]).join("").slice(0, 2).toUpperCase();
-  const bg = AV_COLORS[index % 8];
+  const bg = AV_COLORS[index % AV_COLORS.length];
   return (
     <div
       role="img"
@@ -23,7 +19,7 @@ export function Avatar({ name, index, size = 32 }: AvatarProps) {
         height: size,
         borderRadius: "50%",
         background: bg,
-        color: "#fff",
+        color: "var(--color-surface)",
         display: "inline-grid",
         placeItems: "center",
         fontWeight: 600,

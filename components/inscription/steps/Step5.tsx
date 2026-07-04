@@ -373,6 +373,20 @@ export function Step5({ state, update }: StepProps) {
     });
   };
 
+  const toggleSpacePublic = (def: VaDef) => {
+    const entry = va[def.id];
+    setVa(def.id, { ...entry, isOpenToPublic: !entry.isOpenToPublic } as ValueAddsState[SpaceKey]);
+  };
+
+  const toggleCustomSpacePublic = (id: string) => {
+    update("valueAdds", {
+      ...va,
+      customSpaces: va.customSpaces.map((cs) =>
+        cs.id === id ? { ...cs, isOpenToPublic: !cs.isOpenToPublic } : cs
+      ),
+    });
+  };
+
   // ── stats ─────────────────────────────────────────────────────────────────
 
   const configuredFixed  = VA_DEFS.filter((d) => va[d.id].configured).length;
@@ -410,9 +424,9 @@ export function Step5({ state, update }: StepProps) {
                   onClick={() => toggleSpace(d.id)}
                   className="relative text-left rounded-2xl p-4.5 cursor-pointer border border-border bg-white"
                 >
-                  <div className={`absolute top-3 right-3 w-5 h-5 rounded-sm border-2 grid place-items-center transition-all duration-150 ${
+                  <div className={`absolute top-3 right-3 w-5 h-5 rounded-md border-[1.5px] grid place-items-center transition-all duration-150 ${
                     conf
-                      ? "border-success bg-success"
+                      ? "border-primary bg-primary"
                       : "border-border-strong bg-transparent"
                   }`}>
                     {conf && <Icon name="check" size={12} stroke={3} className="text-white" />}
@@ -507,9 +521,10 @@ export function Step5({ state, update }: StepProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Pill kind={isPublic ? "success" : "warn"} dot>
-                        {isPublic ? "Public" : "Privé"}
-                      </Pill>
+                      <Btn variant="ghost" size="sm"
+                        onClick={() => toggleSpacePublic(d)}>
+                        <Icon name={isPublic ? "share" : "lock"} size={13} /> {isPublic ? "Public" : "Privé"}
+                      </Btn>
                       <Btn variant="ghost" size="sm"
                         onClick={() => setOpenModal({ kind: "space", def: d })}>
                         <Icon name="edit" size={13} /> Modifier
@@ -534,9 +549,10 @@ export function Step5({ state, update }: StepProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Pill kind={cs.isOpenToPublic ? "success" : "warn"} dot>
-                      {cs.isOpenToPublic ? "Public" : "Privé"}
-                    </Pill>
+                    <Btn variant="ghost" size="sm"
+                      onClick={() => toggleCustomSpacePublic(cs.id)}>
+                      <Icon name={cs.isOpenToPublic ? "share" : "lock"} size={13} /> {cs.isOpenToPublic ? "Public" : "Privé"}
+                    </Btn>
                     <Btn variant="ghost" size="sm"
                       onClick={() => setOpenModal({ kind: "custom-edit", data: cs })}>
                       <Icon name="edit" size={13} /> Modifier
