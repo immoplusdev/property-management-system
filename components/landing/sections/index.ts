@@ -3,14 +3,12 @@ export { AnnounceBar } from "./AnnounceBar";
 export { Nav } from "./Nav";
 export { Stats } from "./Stats";
 export { Pricing } from "./Pricing";
-
-// TODO: Extract remaining sections
-// - Hero.tsx (with HeroCards)
-// - Features.tsx
-// - DashboardShowcase.tsx
-// - Payments.tsx
-// - Security.tsx
-// - SplitShowcase.tsx
-// - Steps.tsx
-// - FAQ.tsx
-// - Footer.tsx
+export { Hero } from "./Hero";
+export { Features } from "./Features";
+export { DashboardShowcase } from "./DashboardShowcase";
+export { Payments } from "./Payments";
+export { Security } from "./Security";
+export { SplitShowcase } from "./SplitShowcase";
+export { Steps } from "./Steps";
+export { FAQ } from "./FAQ";
+export { Footer } from "./Footer";
