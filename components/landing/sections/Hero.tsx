@@ -10,7 +10,6 @@ import { Wrap, btn } from "../shared";
 const TYPING_WORDS = [
   { word: "endroit.", color: "#F72585" },
   { word: "Hub.", color: "#2744de" },
-  { word: "logiciel.", color: "#35ff69" },
   { word: "Espace.", color: "#fa9f42" },
   { word: "portail.", color: "#d4c2fc" },
 ];
