@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, SmartHome, TrendUp, TickCircle } from "iconsax-react";
@@ -7,9 +7,55 @@ import { cn } from "@/lib/utils/cn";
 import { fadeUp, float, ease, hoverTapButton } from "@/lib/animations/motion";
 import { Wrap, btn } from "../shared";
 
+const TYPING_WORDS = [
+  { word: "endroit.", color: "#F72585" },
+  { word: "Hub.", color: "#2744de" },
+  { word: "logiciel.", color: "#35ff69" },
+  { word: "Espace.", color: "#fa9f42" },
+  { word: "portail.", color: "#d4c2fc" },
+];
+
+function TypingAnimation() {
+  const [wordIndex, setWordIndex] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const currentWord = TYPING_WORDS[wordIndex].word;
+    const timer = setTimeout(
+      () => {
+        if (!isDeleting) {
+          if (displayText.length < currentWord.length) {
+            setDisplayText(currentWord.substring(0, displayText.length + 1));
+          } else {
+            setTimeout(() => setIsDeleting(true), 2000);
+          }
+        } else {
+          if (displayText.length > 0) {
+            setDisplayText(displayText.substring(0, displayText.length - 1));
+          } else {
+            setIsDeleting(false);
+            setWordIndex((prev) => (prev + 1) % TYPING_WORDS.length);
+          }
+        }
+      },
+      isDeleting ? 50 : 80
+    );
+
+    return () => clearTimeout(timer);
+  }, [displayText, isDeleting, wordIndex]);
+
+  return (
+    <span style={{ color: TYPING_WORDS[wordIndex].color, fontStyle: "italic" }}>
+      {displayText}
+      <span className="animate-pulse">|</span>
+    </span>
+  );
+}
+
 function HeroCards() {
   return (
-    <div className="relative max-w-[1100px] mx-auto mt-1 min-h-[400px] max-[760px]:min-h-0 max-[760px]:mt-7 max-[760px]:flex max-[760px]:flex-col max-[760px]:items-center max-[760px]:gap-6">
+    <div className="pt-6 relative max-w-[1100px] mx-auto mt-1 min-h-[400px] max-[760px]:min-h-0 max-[760px]:mt-7 max-[760px]:flex max-[760px]:flex-col max-[760px]:items-center max-[760px]:gap-6">
 
       {/* Occupation card — left, floating, tilted */}
       <motion.div
@@ -204,7 +250,7 @@ export function Hero({ onDemo }: { onDemo: () => void }) {
             style={{ fontFamily: "var(--font-display)" }}
             {...fadeUp(0.06)}
           >
-            Tout votre hôtel,<br />dans un seul <span className="text-primary">logiciel.</span>
+            Tout votre hôtel,<br />dans un seul <TypingAnimation />
           </motion.h1>
 
           <motion.p

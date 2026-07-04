@@ -6,7 +6,7 @@ export function AnnounceBar() {
   return (
     <motion.a
       href="#"
-      className="sticky top-0 z-[60] flex items-center justify-center h-11 px-6 max-[560px]:px-4"
+      className="sticky top-0 z-[60] flex items-center justify-start h-11 px-6 max-[560px]:px-4"
       style={{ background: "#F72585" }}
       initial="rest"
       whileHover="hover"
@@ -19,7 +19,7 @@ export function AnnounceBar() {
         style={{ background: "rgba(0,0,0,0.08)" }}
       />
 
-      <div className="relative flex items-center justify-center gap-1.5 min-w-0">
+      <div className="relative flex items-center justify-start gap-1.5 min-w-0">
         <span className="hidden min-[640px]:inline text-[13px] font-bold uppercase tracking-[0.02em] text-black whitespace-nowrap">
           Déploiement août 2026.
         </span>

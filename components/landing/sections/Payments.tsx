@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Wallet } from "iconsax-react";
+import { Money } from "iconsax-react";
 import { reveal, stagger, ease } from "@/lib/animations/motion";
 import { Wrap, btn } from "../shared";
 
@@ -59,7 +59,7 @@ export function Payments() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <Wallet size={24} className="text-ink" variant="Outline" />
+                    <Money size={24} variant="Bold" color="var(--color-ink)" />
                   )}
                 </div>
                 <div>

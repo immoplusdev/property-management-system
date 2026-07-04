@@ -2,7 +2,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
-import { reveal } from "@/lib/animations/motion";
+import { reveal, float } from "@/lib/animations/motion";
 import { Wrap } from "../shared";
 
 const CheckIcon = ({ size = 17 }: { size?: number }) => (
@@ -65,54 +65,58 @@ export function DashboardShowcase() {
 
           {/* Right panel — green, dashboard mockup */}
           <div className="flex items-center justify-center p-10 max-[880px]:p-7" style={{ background: "var(--color-vibrant-green)" }}>
-            <div className="bg-white border border-border rounded-[22px] shadow-xl overflow-hidden w-full max-w-[480px]">
-              <div className="flex items-center gap-[7px] p-[13px] px-4 border-b border-border-soft bg-white">
-                {[0, 1, 2].map(k => <div key={k} className="w-[11px] h-[11px] rounded-full bg-border-strong" />)}
-                <span className="ml-3 font-mono text-[11.5px] text-ink-3 bg-white border border-border rounded-[7px] px-3 py-1">
+            <motion.div
+              className="bg-white border border-border rounded-[22px] shadow-xl overflow-hidden w-full max-w-[400px]"
+              style={{ rotate: "-2deg" }}
+              {...float(6, 4, 0.4)}
+            >
+              <div className="flex items-center gap-[5px] p-[10px] px-3 border-b border-border-soft bg-white">
+                {[0, 1, 2].map(k => <div key={k} className="w-[8px] h-[8px] rounded-full bg-border-strong" />)}
+                <span className="ml-2 font-mono text-[9.5px] text-ink-3 bg-white border border-border rounded-[5px] px-2.5 py-0.5">
                   pms.immoplus.ci/tableau-de-bord
                 </span>
               </div>
-              <div className="p-[22px]">
-                <div className="grid grid-cols-4 gap-3 mb-4 max-[880px]:grid-cols-2">
+              <div className="p-[16px]">
+                <div className="grid grid-cols-4 gap-2.5 mb-3 max-[880px]:grid-cols-2">
                   {([["Occupation","87%",""],["Recettes / j","1,2","M FCFA"],["Arrivées","8",""],["Départs","5",""]] as const).map(([k, v, s]) => (
-                    <div key={k} className="border border-border rounded-xl p-[13px]">
-                      <div className="text-[9.5px] font-semibold tracking-[0.06em] uppercase text-ink-3 mb-[7px]">{k}</div>
-                      <div className="text-[21px] font-semibold tracking-[-0.03em]">{v}<small className="text-[11px] text-ink-3 font-medium">{s}</small></div>
+                    <div key={k} className="border border-border rounded-lg p-[10px]">
+                      <div className="text-[8.5px] font-semibold tracking-[0.06em] uppercase text-ink-3 mb-[5px]">{k}</div>
+                      <div className="text-[18px] font-semibold tracking-[-0.03em]">{v}<small className="text-[9.5px] text-ink-3 font-medium">{s}</small></div>
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-[1.4fr_1fr] gap-3.5 max-[880px]:grid-cols-1">
-                  <div className="border border-border rounded-xl p-[15px]">
-                    <div className="text-[13px] font-semibold mb-3.5 flex items-center justify-between">
+                <div className="grid grid-cols-[1.4fr_1fr] gap-2.5 max-[880px]:grid-cols-1">
+                  <div className="border border-border rounded-lg p-[12px]">
+                    <div className="text-[11.5px] font-semibold mb-2.5 flex items-center justify-between">
                       Recettes · 7 derniers jours
-                      <span className="text-success text-[10.5px] font-mono">+18%</span>
+                      <span className="text-success text-[9px] font-mono">+18%</span>
                     </div>
-                    <div className="flex items-end gap-[9px] h-[104px]">
+                    <div className="flex items-end gap-[7px] h-[80px]">
                       {[48, 62, 54, 78, 70, 92, 64].map((h, i) => (
-                        <div key={i} className="flex-1 flex flex-col justify-end gap-[5px]">
+                        <div key={i} className="flex-1 flex flex-col justify-end gap-[4px]">
                           <b
-                            className={cn("block rounded-[5px_5px_2px_2px]", i === 6 ? "[background:color-mix(in_srgb,var(--color-primary)_22%,var(--color-surface))]" : "bg-primary")}
+                            className={cn("block rounded-[4px_4px_2px_2px]", i === 6 ? "[background:color-mix(in_srgb,var(--color-primary)_22%,var(--color-surface))]" : "bg-primary")}
                             style={{ height: `${h}%` }}
                           />
-                          <span className="text-[9.5px] text-ink-4 text-center font-mono">{"LMMJVSD"[i]}</span>
+                          <span className="text-[8px] text-ink-4 text-center font-mono">{"LMMJVSD"[i]}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="border border-border rounded-xl p-[15px]">
-                    <div className="text-[13px] font-semibold mb-3.5">Chambres · étage 2</div>
-                    <div className="flex gap-1.5 flex-wrap">
+                  <div className="border border-border rounded-lg p-[12px]">
+                    <div className="text-[11.5px] font-semibold mb-2.5">Chambres · étage 2</div>
+                    <div className="flex gap-1 flex-wrap">
                       {([
                         ["201","bg-primary"],["202","bg-primary"],["203","bg-surface-2 text-ink-3"],
                         ["204","bg-primary"],["205","bg-primary"],["206","bg-amber"],
                         ["207","bg-primary"],["208","bg-surface-2 text-ink-3"],["209","bg-coral"],["210","bg-primary"],
                       ] as const).map(([n, c]) => (
-                        <span key={n} className={cn("w-[30px] h-[30px] rounded-[7px] grid place-items-center text-[9.5px] font-semibold font-mono text-white", c)}>
+                        <span key={n} className={cn("w-[24px] h-[24px] rounded-[6px] grid place-items-center text-[8px] font-semibold font-mono text-white", c)}>
                           {n}
                         </span>
                       ))}
                     </div>
-                    <div className="flex gap-3.5 mt-3 text-[11px] text-ink-3 flex-wrap">
+                    <div className="flex gap-2.5 mt-2 text-[9.5px] text-ink-3 flex-wrap">
                       {([
                         ["bg-primary",   "Occupée"],
                         ["bg-surface-2 border border-border", "Libre"],
@@ -120,14 +124,14 @@ export function DashboardShowcase() {
                         ["bg-coral",     "HS"],
                       ] as const).map(([c, l]) => (
                         <span key={l} className="flex items-center gap-1">
-                          <i className={cn("w-[9px] h-[9px] rounded-[3px] inline-block not-italic", c)} />{l}
+                          <i className={cn("w-[7px] h-[7px] rounded-[2px] inline-block not-italic", c)} />{l}
                         </span>
                       ))}
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </motion.div>
       </Wrap>
