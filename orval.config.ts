@@ -12,12 +12,18 @@ import { defineConfig } from "orval";
  * All HTTP goes through the same-origin BFF proxy via the `bffFetch` mutator,
  * so generated client hooks never see the access token (it stays httpOnly
  * server-side). Regenerate with `npm run gen:api` whenever the backend changes.
+ *
+ * TAGS is scoped to what the app currently consumes from the generated output
+ * (only DTO/enum types from lib/api/generated/model — no generated hooks are
+ * used, all HTTP goes through hand-written actions). Add a tag here once the
+ * app actually starts importing types/hooks tied to it.
  */
 const SPEC = "https://api-dev.immoplus.ci/swagger/json";
+const TAGS = ["Auth", "User", "Commune", "Ville"];
 
 export default defineConfig({
   immoplus: {
-    input: { target: SPEC },
+    input: { target: SPEC, filters: { tags: TAGS } },
     output: {
       mode: "tags-split",
       target: "lib/api/generated",
@@ -47,7 +53,7 @@ export default defineConfig({
   // `tsc` (see tsconfig.json) until the backend spec is fixed; auth validation
   // uses hand-written schemas in lib/api/auth/auth.schemas.ts meanwhile.
   immoplusZod: {
-    input: { target: SPEC },
+    input: { target: SPEC, filters: { tags: TAGS } },
     output: {
       mode: "tags-split",
       target: "lib/api/generated",
