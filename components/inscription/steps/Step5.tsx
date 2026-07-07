@@ -13,7 +13,6 @@ import { Tip } from "../ui/Tip";
 import { Btn } from "../ui/Btn";
 import { InsModal } from "../ui/InsModal";
 import { PhotoGallery } from "../ui/PhotoGallery";
-import { uploadFile } from "@/lib/api/files/files.client";
 
 // ─── Définitions des espaces fixes ──────────────────────────────────────────
 
@@ -312,14 +311,8 @@ function CustomSpaceModal({ initial, onSave, onClose }: {
             Photos de l&apos;espace
           </div>
           <PhotoGallery
-            fileIds={d.imageIds as string[]}
-            onAdd={async (file) => {
-              const uploaded = await uploadFile(file);
-              set("imageIds", [...(d.imageIds as string[]), uploaded.id]);
-            }}
-            onRemove={(fileId) => {
-              set("imageIds", (d.imageIds as string[]).filter((id) => id !== fileId));
-            }}
+            imageIds={(d.imageIds as string[] | undefined) ?? []}
+            onChange={(ids) => set("imageIds", ids)}
           />
         </div>
 

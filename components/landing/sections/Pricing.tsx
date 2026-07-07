@@ -10,7 +10,7 @@ const PLANS = [
     name: "Découverte", desc: "Pour tester et gérer une petite structure.",
     price: "0",         sub: "jusqu'à 5 chambres",
     items: ["Réservations & planning", "Check-in & fiches clients", "1 utilisateur", "Commission 8% par réservation"],
-    cta: "Commencer", href: "/inscription", pop: false,
+    cta: "Commencer", href: "/inscription", pop: false, external: false,
   },
   {
     name: "Partenaire",  desc: "Pour les établissements d'envergure avec besoins spécifiques.",

@@ -51,7 +51,7 @@ export function Rooms() {
   const setFilter = (v: string) => updateParams({ status: v });
 
   const { data, isLoading, error } = useRooms();
-  const rooms: Room[] = data?.floors?.flatMap(f => f.rooms) ?? [];
+  const rooms: Room[] = data?.rooms ?? [];
 
   const filtered = filter === "all" ? rooms : rooms.filter(r => r.status === filter);
   const counts: Record<string, number> = {

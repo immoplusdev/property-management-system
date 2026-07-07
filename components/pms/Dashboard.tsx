@@ -70,7 +70,7 @@ export function Dashboard({ user }: Props) {
   const reqsQ    = useRequests({ status: "pending", limit: 3 });
 
   const kpis     = kpisQ.data;
-  const rooms    = roomsQ.data?.floors?.flatMap(f => f.rooms) ?? [];
+  const rooms    = roomsQ.data?.rooms ?? [];
   const movements = useMemo(() => {
     const arr = (movQ.data?.arrivals ?? []).map(a => ({ ...a, mvmt: "arrivee" as const }));
     const dep = (movQ.data?.departures ?? []).map(d => ({ ...d, mvmt: "depart" as const }));
