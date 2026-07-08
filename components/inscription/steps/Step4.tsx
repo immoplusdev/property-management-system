@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { StepProps, RoomType } from "../types";
 import { SectionHead } from "../ui/SectionHead";
-import { TextField, SelectField, Field } from "../ui/FormFields";
+import { TextField, TextArea, SelectField, Field } from "../ui/FormFields";
 import { Pill } from "../ui/Pill";
 import { Fcfa } from "../ui/Fcfa";
 import { Icon } from "../ui/Icon";
@@ -171,6 +171,14 @@ function RoomModal({ room, setRoom, onSave, onClose }: {
               placeholder="Ex: Suite Junior Vue Lagune"
               span={2}
             />
+            <TextArea
+              label="Description"
+              value={room.description}
+              onChange={(e) => set("description", e.target.value)}
+              placeholder="Décrivez ce type de chambre : ambiance, vue, équipements marquants…"
+              span={2}
+              rows={3}
+            />
             <TextField
               label="Nombre de chambres" required
               type="number"
@@ -301,6 +309,7 @@ export function Step4({ state, update }: StepProps) {
     setEditing({
       id: "rt-" + Date.now(),
       name: "",
+      description: "",
       totalRooms: 0,
       surface: "",
       bedType: "",

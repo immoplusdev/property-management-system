@@ -276,6 +276,7 @@ export async function submitStep5(input: Step5Input): Promise<ActionResult<StepS
 export interface Step4RoomInput {
   id: string;
   name: string;
+  description: string;
   totalRooms: number;
   surface: number | string;
   bedType: string;
@@ -307,6 +308,7 @@ export async function submitStep4(rooms: Step4RoomInput[]): Promise<ActionResult
     return {
       id:              r.id.startsWith("rt-") ? undefined : r.id,
       name:            r.name,
+      description:     r.description || undefined,
       basePrice:       r.basePrice,
       weekendPrice:    r.weekendPrice !== "" ? Number(r.weekendPrice) : undefined,
       longStayPrice:   r.longStayPrice !== "" ? Number(r.longStayPrice) : undefined,

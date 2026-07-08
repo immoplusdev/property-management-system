@@ -134,6 +134,7 @@ export function mapProgressToState(
         return {
           id:              str(r.id) || `rt-restored-${i}`,
           name:            str(r.name),
+          description:     str(r.description),
           totalRooms:      num(r.totalRooms),
           surface,
           bedType:         str(r.bedType),

@@ -55,6 +55,7 @@ export interface EquipState {
 export interface RoomType {
   id: string;
   name: string;
+  description: string;
   totalRooms: number;
   surface: number | string;
   bedType: string;
