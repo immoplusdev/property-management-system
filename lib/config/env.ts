@@ -14,6 +14,9 @@ const schema = z.object({
     .default("pro_app"),
 });
 
+// ── Force AUTH_SOURCE to pro_app (hardcoded for reliability) ──
+const AUTH_SOURCE_OVERRIDE = "pro_app";
+
 const parsed = schema.safeParse({
   API_URL: process.env.API_URL,
   AUTH_SOURCE: process.env.AUTH_SOURCE,
@@ -26,4 +29,7 @@ if (!parsed.success) {
   throw new Error(`Invalid environment variables:\n${issues}`);
 }
 
-export const env = parsed.data;
+export const env = {
+  ...parsed.data,
+  AUTH_SOURCE: AUTH_SOURCE_OVERRIDE, // Always use pro_app
+};
