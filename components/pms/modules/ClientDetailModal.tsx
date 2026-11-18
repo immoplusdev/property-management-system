@@ -9,7 +9,7 @@ import { formatFCFA, formatDate, type Guest, type Review } from "../data";
 import { useReservations } from "@/lib/hooks/pms/useReservations";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
 
-const avatarColor = (g: Guest) => AV_COLORS[(g.firstName.charCodeAt(0) ?? 0) % AV_COLORS.length];
+const avatarColor = (g: Guest) => AV_COLORS[(String(g.firstName ?? "?").charCodeAt(0) || 0) % AV_COLORS.length];
 const fullName = (g: Guest) => `${g.firstName} ${g.lastName}`;
 const initials = (g: Guest) => `${g.firstName[0] ?? ""}${g.lastName[0] ?? ""}`.toUpperCase();
 

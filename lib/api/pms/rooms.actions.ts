@@ -60,6 +60,7 @@ export async function updateRoomStatus(
       method: "PATCH",
       json: { status },
       accessToken,
+      headers: { "Idempotency-Key": crypto.randomUUID() },
     });
     return { ok: true, data };
   } catch (err) {
@@ -69,20 +70,30 @@ export async function updateRoomStatus(
 
 export async function blockRoom(
   id: string,
-  payload: { from: string; to: string; reason?: string }
-): Promise<ActionResult<{ success: boolean }>> {
+  payload: { fromDate: string; toDate: string; reason: string; notes?: string }
+): Promise<ActionResult<{ blockId: string; roomId: string; fromDate: string; toDate: string; status: string }>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<{ success: boolean }>(`/pms/rooms/${id}/block`, {
+    const data = await backendFetch<{ blockId: string; roomId: string; fromDate: string; toDate: string; status: string }>(`/pms/rooms/${id}/block`, {
       method: "POST",
       json: payload,
       accessToken,
+      headers: { "Idempotency-Key": crypto.randomUUID() },
     });
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
+}
+
+export async function unblockRoom(id: string, blockId: string): Promise<ActionResult<{ blockId: string; status: string; unblockedAt: string }>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ blockId: string; status: string; unblockedAt: string }>(`/pms/rooms/${id}/blocks/${blockId}`, { method: "DELETE", accessToken, headers: { "Idempotency-Key": crypto.randomUUID() } });
+    return { ok: true, data };
+  } catch (err) { return { ok: false, error: toFormError(err) }; }
 }
 
 export async function getHousekeepingTasks(params?: {
@@ -129,14 +140,14 @@ export async function updateHousekeepingTask(
 export async function checkAvailability(params: {
   checkInDate: string;
   checkOutDate: string;
-  roomTypeId?: string;
-}): Promise<ActionResult<{ available: Room[] }>> {
+  roomId?: string;
+}): Promise<ActionResult<{ available: boolean; roomId?: string; reasons?: string[] }>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
     const qs = new URLSearchParams({ checkInDate: params.checkInDate, checkOutDate: params.checkOutDate });
-    if (params.roomTypeId) qs.set("roomTypeId", params.roomTypeId);
-    const data = await backendFetch<{ available: Room[] }>(
+    if (params.roomId) qs.set("roomId", params.roomId);
+    const data = await backendFetch<{ available: boolean; roomId?: string; reasons?: string[] }>(
       `/pms/reservations/availability?${qs}`,
       { accessToken }
     );

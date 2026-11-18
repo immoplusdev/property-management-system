@@ -9,9 +9,9 @@ import { useGuests } from "@/lib/hooks/pms/useGuests";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
 import { useHotel } from "@/lib/pms/HotelContext";
 
-const avatarColor = (g: Guest) => AV_COLORS[(g.firstName.charCodeAt(0) ?? 0) % AV_COLORS.length];
-const fullName = (g: Guest) => `${g.firstName} ${g.lastName}`;
-const initials = (g: Guest) => `${g.firstName[0] ?? ""}${g.lastName[0] ?? ""}`.toUpperCase();
+const avatarColor = (g: Guest) => AV_COLORS[(String(g.firstName ?? "?").charCodeAt(0) || 0) % AV_COLORS.length];
+const fullName = (g: Guest) => `${g.firstName ?? ""} ${g.lastName ?? ""}`.trim() || "Client";
+const initials = (g: Guest) => `${g.firstName?.[0] ?? ""}${g.lastName?.[0] ?? ""}`.toUpperCase() || "?";
 
 export function Clients() {
   const router = useRouter();
@@ -44,7 +44,7 @@ export function Clients() {
     if (filter === "new")  res = res.filter(c => c.totalStays <= 1);
     if (search) res = res.filter(c =>
       fullName(c).toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase())
+      String(c.email ?? "").toLowerCase().includes(search.toLowerCase())
     );
     return res;
   }, [allGuests, filter, search]);

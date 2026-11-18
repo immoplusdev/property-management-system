@@ -21,7 +21,7 @@ export function Reviews() {
   const allReviews: Review[] = data?.data ?? [];
   const stats = data?.stats;
 
-  const guestName = (r: Review) => `${r.guest.firstName} ${r.guest.lastName}`;
+  const guestName = (r: Review) => `${r.guest?.firstName ?? ""} ${r.guest?.lastName ?? ""}`.trim() || "Client";
 
   const list = useMemo(() => {
     let res = [...allReviews];
@@ -31,7 +31,7 @@ export function Reviews() {
     if (filter === "low")         res = res.filter(r => r.rating <= 3);
     if (search) res = res.filter(r =>
       guestName(r).toLowerCase().includes(search.toLowerCase()) ||
-      r.comment.toLowerCase().includes(search.toLowerCase())
+      String(r.comment ?? "").toLowerCase().includes(search.toLowerCase())
     );
     return res;
   }, [allReviews, filter, search]);
@@ -230,9 +230,11 @@ function ReviewCard({
   onStartReply, onCancelReply, onSuggest, onReply, suggestPending, replyPending,
 }: ReviewCardProps) {
   const { data: suggestion } = useReviewSuggestion(r.id);
-  const initials  = `${r.guest.firstName[0] ?? ""}${r.guest.lastName[0] ?? ""}`.toUpperCase();
-  const avatarBg  = AV_COLORS[(r.guest.firstName.charCodeAt(0) ?? 0) % AV_COLORS.length];
-  const placeholder = `Bonjour ${r.guest.firstName}, merci pour votre retour ! `;
+  const firstName = r.guest?.firstName ?? "";
+  const lastName = r.guest?.lastName ?? "";
+  const initials  = `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase() || "?";
+  const avatarBg  = AV_COLORS[(firstName.charCodeAt(0) || 0) % AV_COLORS.length];
+  const placeholder = `Bonjour ${firstName || ""}, merci pour votre retour ! `;
   const value = draft ?? placeholder;
 
   // When the async AI suggestion lands (via WS), fill the draft if the user hasn't typed anything yet.
@@ -255,7 +257,7 @@ function ReviewCard({
           <div>
             <div className="font-semibold text-[14px]">{guestName}</div>
             <div className="text-[11.5px] text-ink-3 mt-0.5">
-              {r.guest.nationality} · {formatDate(r.createdAt)}
+              {r.guest?.nationality ?? "—"} · {formatDate(r.createdAt)}
             </div>
           </div>
         </div>

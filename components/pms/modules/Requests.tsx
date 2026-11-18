@@ -49,8 +49,8 @@ export function Requests() {
     let res = allRequests;
     if (typeFilter !== "all") res = res.filter(r => r.type === typeFilter);
     if (search) res = res.filter(r =>
-      r.guestName.toLowerCase().includes(search.toLowerCase()) ||
-      r.title.toLowerCase().includes(search.toLowerCase()) ||
+      String(r.guestName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      String(r.title ?? "").toLowerCase().includes(search.toLowerCase()) ||
       r.roomNumber.includes(search)
     );
     return res;

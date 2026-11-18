@@ -1,13 +1,14 @@
 "use client";
 import React, { useState } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Icon, toastPromise, Button, Skeleton } from "../shared";
+import { SectionHead, Icon, toastPromise, Button, Skeleton, showToast } from "../shared";
 import { Pill } from "@/components/ui/Pill";
 import { formatFCFA, formatDate, type Booking } from "../data";
 import { useReservations } from "@/lib/hooks/pms/useReservations";
 import { useCheckOutInvoice, usePerformCheckOut } from "@/lib/hooks/pms/useCheckOut";
 import type { Invoice } from "@/lib/api/pms/checkout.actions";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
+import { getInvoicePdf } from "@/lib/api/pms/folio.actions";
 
 const STEPS = ["Vérification", "Règlement", "Départ"];
 
@@ -17,12 +18,16 @@ const avatarBg  = (name: string) => AV_COLORS[name.charCodeAt(0) % AV_COLORS.len
 export function CheckOut() {
   const [step,     setStep]     = useState(0);
   const [selected, setSelected] = useState<Booking | null>(null);
+  const [verifications, setVerifications] = useState({ roomInspected: false, keyReturned: false, valuablesChecked: false });
+  const [notes, setNotes] = useState("");
 
   const checkedInQ = useReservations({ status: "checked_in", limit: 100 });
+  const selectedInvoiceQ = useCheckOutInvoice(selected?.id ?? "", !!selected);
+  const invoiceBalance = selectedInvoiceQ.data?.balanceDue ?? selectedInvoiceQ.data?.balance ?? (selected ? selected.amount - selected.paid : 0);
   const performCO = usePerformCheckOut();
   
   const allCheckedIn = checkedInQ.data?.data ?? [];
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Abidjan", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   
   const departures = allCheckedIn.filter(b => b.checkout.startsWith(todayStr));
   const checkedIn  = allCheckedIn.filter(b => !b.checkout.startsWith(todayStr));
@@ -30,18 +35,33 @@ export function CheckOut() {
   function openCheckout(b: Booking) {
     setSelected(b);
     setStep(0);
+    setVerifications({ roomInspected: false, keyReturned: false, valuablesChecked: false });
+    setNotes("");
   }
 
   async function handleComplete() {
     if (!selected) return;
     try {
-      await toastPromise(performCO.mutateAsync({ reservationId: selected.id }), {
+      await toastPromise(performCO.mutateAsync({ reservationId: selected.id, payload: { verifications, notes } }), {
         loading: "Check-out en cours…",
         success: `Check-out ${selected.guest} confirmé`,
         error: (e) => (e as Error)?.message || "Erreur lors du check-out",
       });
       setSelected(null);
     } catch { /* toast déjà affiché */ }
+  }
+
+  async function handleInvoicePdf() {
+    if (!selected) return;
+    const tab = window.open("about:blank", "_blank", "noopener,noreferrer");
+    const result = await getInvoicePdf(selected.id);
+    if (result.ok && result.data.status === "ready" && result.data.downloadUrl) {
+      if (tab) tab.location.href = result.data.downloadUrl;
+      else window.location.href = result.data.downloadUrl;
+    } else {
+      tab?.close();
+      showToast(result.ok ? "La facture PDF est en cours de génération." : result.error.message, result.ok ? "info" : "x");
+    }
   }
 
   return (
@@ -146,9 +166,10 @@ export function CheckOut() {
                   <div className="grid gap-2">
                     <CheckItem checked label="Identité vérifiée au check-in" />
                     <CheckItem checked={selected.paid >= selected.amount} label="Acompte versé" />
-                    <CheckItem checked={selected.paid >= selected.amount} label="Solde soldé" />
-                    <CheckItem checked label="Objets valuables vérifiés (coffre)" />
+                    <CheckItem checked={!selectedInvoiceQ.isLoading && invoiceBalance <= 0} label="Solde soldé" />
+                    <CheckItem checked={verifications.valuablesChecked} label="Objets de valeur vérifiés" />
                   </div>
+                  <p className="text-[11px] text-ink-3 mt-2">Le solde doit être nul et les trois contrôles de départ doivent être attestés avant la clôture.</p>
 
                   <Button variant="primary" size="sm" className="w-full mt-4" onClick={() => setStep(1)}>
                     Passer au règlement <Icon name="arrowRight" size={14} />
@@ -161,8 +182,8 @@ export function CheckOut() {
                 <div>
                   <InvoicePanel reservationId={selected.id} booking={selected} />
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Button variant="ghost" size="sm"><Icon name="download" size={13} /> Facture PDF</Button>
-                    <Button variant="primary" size="sm" onClick={() => setStep(2)}>
+                    <Button variant="ghost" size="sm" onClick={handleInvoicePdf}><Icon name="download" size={13} /> Facture PDF</Button>
+                    <Button variant="primary" size="sm" disabled={selectedInvoiceQ.isLoading || invoiceBalance > 0} onClick={() => setStep(2)}>
                       Valider <Icon name="arrowRight" size={14} />
                     </Button>
                   </div>
@@ -183,16 +204,22 @@ export function CheckOut() {
                   </div>
 
                   <div className="grid gap-2 mb-4">
-                    <CheckItem checked label="Clé / carte rendue" />
-                    <CheckItem checked={false} label="Minibar relevé" />
-                    <CheckItem checked label="Chambre signalée au ménage" />
-                    <CheckItem checked label="Facture remise au client" />
+                    {([
+                      ["roomInspected", "Chambre inspectée"],
+                      ["keyReturned", "Clé / carte rendue"],
+                      ["valuablesChecked", "Objets de valeur vérifiés"],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2.5 px-3 py-2.5 border border-border rounded-[9px] text-[12.5px] cursor-pointer">
+                        <input type="checkbox" checked={verifications[key]} onChange={e => setVerifications(v => ({ ...v, [key]: e.target.checked }))} />{label}
+                      </label>
+                    ))}
+                    <label className="grid gap-1 text-[12px] text-ink-2">Notes de départ<textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="w-full bg-surface border border-border rounded-[9px] p-2.5 text-[13px]" placeholder="Observations" /></label>
                   </div>
 
                   <div className="grid gap-2">
                     <Button
                       variant="primary" size="sm" className="w-full"
-                      disabled={performCO.isPending}
+                      disabled={performCO.isPending || selectedInvoiceQ.isLoading || invoiceBalance > 0 || !verifications.roomInspected || !verifications.keyReturned || !verifications.valuablesChecked}
                       onClick={handleComplete}
                     >
                       <Icon name="check" size={14} /> {performCO.isPending ? "Traitement…" : "Confirmer le check-out"}
@@ -288,6 +315,18 @@ function InvoicePanel({ reservationId, booking: b }: { reservationId: string; bo
 }
 
 function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
+  if (!inv.guest || !inv.room || !inv.checkInDate || !inv.checkOutDate) {
+    const balance = inv.balanceDue ?? 0;
+    return <div className="bg-surface-2 rounded-[12px] p-4 grid gap-2 text-[13px]">
+      <div className="flex justify-between"><span>Total HT</span><strong>{formatFCFA(inv.folio?.totalHt ?? 0)}</strong></div>
+      <div className="flex justify-between"><span>Taxes</span><strong>{formatFCFA(inv.folio?.taxTotal ?? 0)}</strong></div>
+      <div className="flex justify-between"><span>Total TTC</span><strong>{formatFCFA(inv.folio?.totalTtc ?? 0)}</strong></div>
+      <div className="flex justify-between"><span>Encaissements confirmés</span><strong>{formatFCFA(inv.payments?.confirmedTotal ?? 0)}</strong></div>
+      <div className="h-px bg-border" />
+      <div className="flex justify-between font-bold"><span>Solde à régler</span><strong className={balance > 0 ? "text-warn" : "text-success"}>{formatFCFA(balance)}</strong></div>
+      <div className="text-[11px] text-ink-3">Facture : {inv.invoiceStatus ?? "pending"}</div>
+    </div>;
+  }
   const guestName = `${inv.guest.firstName} ${inv.guest.lastName}`;
   return (
     <div className="bg-surface-2 rounded-[12px] p-4">
@@ -302,7 +341,7 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
           <span className="text-ink-2">{inv.nights} nuit{inv.nights > 1 ? "s" : ""} · {inv.room.typeName}</span>
           <span className="font-semibold">{formatFCFA(inv.roomTotal)}</span>
         </div>
-        {inv.extras.map((extra, i) => (
+        {(inv.extras ?? []).map((extra, i) => (
           <div key={i} className="flex justify-between">
             <span className="text-ink-2">{extra.label}</span>
             <span className="font-semibold">{formatFCFA(extra.amount)}</span>
@@ -310,12 +349,12 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
         ))}
         <div className="flex justify-between text-ink-3">
           <span>Acompte versé</span>
-          <span>− {formatFCFA(inv.paidAmount)}</span>
+          <span>− {formatFCFA(inv.paidAmount ?? 0)}</span>
         </div>
         <div className="h-px bg-border my-1" />
         <div className="flex justify-between font-bold text-[14px]">
           <span>Solde à régler</span>
-          <span className={inv.balance > 0 ? "text-warn" : "text-success"}>{formatFCFA(inv.balance)}</span>
+          <span className={(inv.balance ?? 0) > 0 ? "text-warn" : "text-success"}>{formatFCFA(inv.balance ?? 0)}</span>
         </div>
       </div>
     </div>

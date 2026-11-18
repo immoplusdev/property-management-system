@@ -195,12 +195,12 @@ function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) 
   const showRules  = pwdFocused || form.pwd.length > 0;
   const emailError = form.email.length > 0 && !emailOk(form.email);
   const pwd2Error  = form.pwd2.length > 0 && form.pwd !== form.pwd2;
-  const phoneError = form.phoneNumber.length > 0 && !/^\d{10,15}$/.test(form.phoneNumber.trim());
+  const phoneError = form.phoneNumber.length > 0 && !/^\d{10}$/.test(form.phoneNumber.trim());
 
   const canSubmit =
     form.fullName.trim().length >= 2 &&
     form.hotelName.trim().length >= 5 &&
-    /^\d{10,15}$/.test(form.phoneNumber.trim()) &&
+    /^\d{10}$/.test(form.phoneNumber.trim()) &&
     emailOk(form.email) &&
     pwdOk(form.pwd) && form.pwd === form.pwd2 && form.pwd2.length > 0 &&
     form.cgv;
@@ -216,7 +216,7 @@ function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) 
     if (res.ok) {
       onSubmit({
         fullName:    form.fullName.trim(),
-        phoneNumber: form.phoneNumber.trim(),
+        phoneNumber: `225${form.phoneNumber.trim()}`,
         hotelName:   form.hotelName.trim(),
         email:       form.email.trim(),
         password:    form.pwd,
@@ -284,14 +284,24 @@ function SignUpForm({ onSubmit }: { onSubmit: (pending: PendingForm) => void }) 
           <label className="text-xs font-medium text-ink flex items-center gap-1">
             Téléphone <span className="text-primary">*</span>
           </label>
-          <input
-            className={cn(inputBase, phoneError && "border-danger")}
-            type="tel" autoComplete="tel"
-            placeholder="2250123456789"
-            value={form.phoneNumber} onChange={set("phoneNumber")}
-          />
+          <div className={cn("flex overflow-hidden rounded-xl border border-line bg-white", phoneError && "border-danger")}>
+            <span className="flex items-center border-r border-line bg-surface px-3 text-sm text-ink-2" aria-label="Indicatif téléphonique de la Côte d’Ivoire">+225</span>
+            <input
+              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-ink outline-none"
+              type="tel" inputMode="numeric" autoComplete="tel-national"
+              placeholder="01 23 45 67 89"
+              value={form.phoneNumber}
+              onChange={(e) => setForm(f => {
+                const digits = e.target.value.replace(/\D/g, "");
+                const localNumber = digits.startsWith("225") && digits.length > 10
+                  ? digits.slice(3, 13)
+                  : digits.slice(0, 10);
+                return { ...f, phoneNumber: localNumber };
+              })}
+            />
+          </div>
           {phoneError && (
-            <div className="text-[11px] text-danger min-h-[1em]">Format invalide. Exemple : 2250123456789</div>
+            <div className="text-[11px] text-danger min-h-[1em]">Saisissez les 10 chiffres après +225.</div>
           )}
         </div>
 
