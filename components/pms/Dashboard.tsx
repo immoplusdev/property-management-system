@@ -17,6 +17,7 @@ import {
 import { useRooms } from "@/lib/hooks/pms/useRooms";
 import { useRequests } from "@/lib/hooks/pms/useRequests";
 import { useHotel } from "@/lib/pms/HotelContext";
+import { DashboardExportAction } from "@/components/pms/DashboardExportAction";
 
 interface Props {
   user: UserDto | null;
@@ -60,7 +61,7 @@ export function Dashboard({ user }: Props) {
   const router = useRouter();
   const hotel = useHotel();
   const go = (id: "checkin" | "checkout" | "rooms" | "requests") => router.push(`/pms/${hotel}/${id}`);
-  const firstName = user?.firstName ?? "Directeur";
+  const firstName = user?.firstName;
 
   const kpisQ    = useDashboardKPIs();
   const movQ     = useDashboardMovements();
@@ -92,18 +93,25 @@ export function Dashboard({ user }: Props) {
     <div className="animate-pms-fade-up">
       <PMSHeader
         title={`Bonjour, ${firstName}`}
-        sub={`${todayLabel} · ${kpis ? `${kpis.arrivalsToday ?? 0} arrivées · ${kpis.departuresToday ?? 0} départs prévus` : "Chargement…"}`}
+        sub={`${todayLabel}${kpis ? ` · ${kpis.arrivalsToday} arrivées · ${kpis.departuresToday} départs prévus` : ""}`}
         actions={
           <>
-            <Button variant="ghost" size="sm">
-              <Icon name="download" size={13} /> Export
-            </Button>
+            <DashboardExportAction />
             <Button variant="primary" size="sm" onClick={() => go("checkin")}>
-              <Icon name="plus" size={13} /> Nouvelle résa
+              <Icon name="arrowRight" size={13} /> Check-in
             </Button>
           </>
         }
       />
+
+      {[kpisQ, movQ, actQ, payMixQ, roomsQ, reqsQ].some(query => query.isError) && <div role="alert" className="mb-4 text-sm text-danger">
+        {kpisQ.isError && `Indicateurs : ${(kpisQ.error as Error).message} `}
+        {movQ.isError && `Mouvements : ${(movQ.error as Error).message} `}
+        {actQ.isError && `Activité : ${(actQ.error as Error).message} `}
+        {payMixQ.isError && `Paiements : ${(payMixQ.error as Error).message} `}
+        {roomsQ.isError && `Chambres : ${(roomsQ.error as Error).message} `}
+        {reqsQ.isError && `Demandes : ${(reqsQ.error as Error).message}`}
+      </div>}
 
       {/* KPI Row */}
       <div className="grid grid-cols-4 gap-3 mb-5.5">
@@ -113,32 +121,32 @@ export function Dashboard({ user }: Props) {
           <>
             <KPICard
               label="Taux d'occupation"
-              value={kpis ? Math.round(kpis.occupancyRate ?? 0) : "—"}
+              value={kpis ? Math.round(kpis.occupancyRate) : "—"}
               unit="%"
-              trend={kpis ? `${kpis.occupiedRooms ?? 0}/${kpis.totalRooms ?? 0} ch.` : ""}
+              trend={kpis ? `${kpis.occupiedRooms}/${kpis.totalRooms} ch.` : ""}
               trendUp
-              sub={kpis ? `${kpis.availableRooms ?? 0} libres · ${kpis.inHouseGuests ?? 0} hôtes` : ""}
+              sub={kpis ? `${kpis.availableRooms} libres · ${kpis.inHouseGuests} hôtes` : ""}
             />
             <KPICard
               label="Revenus du jour"
-              value={kpis ? ((kpis.todayRevenue ?? 0) / 1000).toFixed(0) : "—"}
+              value={kpis ? (kpis.todayRevenue / 1000).toFixed(0) : "—"}
               unit="k FCFA"
               trendUp
-              sub={kpis ? `${((kpis.monthRevenue ?? 0) / 1_000_000).toFixed(1)} M ce mois` : ""}
+              sub={kpis ? `${(kpis.monthRevenue / 1_000_000).toFixed(1)} M ce mois` : ""}
             />
             <KPICard
               label="RevPAR"
-              value={kpis ? ((kpis.revPAR ?? 0) / 1000).toFixed(1) : "—"}
+              value={kpis ? (kpis.revPAR / 1000).toFixed(1) : "—"}
               unit="k FCFA"
               trendUp
               sub="Revenu / chambre disponible"
             />
             <KPICard
               label="ADR · prix moyen"
-              value={kpis ? ((kpis.averageDailyRate ?? 0) / 1000).toFixed(0) : "—"}
+              value={kpis ? (kpis.averageDailyRate / 1000).toFixed(0) : "—"}
               unit="k FCFA"
               trendUp
-              sub={kpis ? `${kpis.pendingReservations ?? 0} résa en attente` : ""}
+              sub={kpis ? `${kpis.pendingReservations} résa en attente` : ""}
             />
           </>
         )}
@@ -175,7 +183,7 @@ export function Dashboard({ user }: Props) {
                   const time  = b.mvmt === "arrivee"
                     ? (b.expectedTime ? fmt(b.expectedTime) : "14:00")
                     : "12:00";
-                  const balance = b.mvmt === "depart" ? (b.balance ?? 0) : null;
+                  const balance = b.mvmt === "depart" ? b.balance : null;
                   return (
                     <tr key={i} className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2">
                       <td className="px-3.5 py-3.5 align-middle">
@@ -201,7 +209,7 @@ export function Dashboard({ user }: Props) {
                       <td className="px-3.5 py-3.5 align-middle">
                         {balance !== null
                           ? balance > 0
-                            ? <span style={{ color: "var(--color-warn)", fontWeight: 600 }}>{formatFCFA(balance)}</span>
+                          ? <span style={{ color: "var(--color-warn)", fontWeight: 600 }}>{formatFCFA(balance)}</span>
                             : <span style={{ color: "var(--color-success)", fontWeight: 500 }}>Soldé</span>
                           : <span className="text-ink-3">—</span>}
                       </td>
@@ -374,11 +382,11 @@ function RevenueChart({ kpis }: { kpis: DashboardKPIs | undefined }) {
 
   // L'API ne fournit pas de série journalière dédiée ; on affiche les agrégats
   // réels disponibles (jour / mois) issus de /pms/dashboard/kpis.
-  const todayRev = kpis.todayRevenue ?? 0;
-  const monthRev = kpis.monthRevenue ?? 0;
-  const avgRate = kpis.averageDailyRate ?? 0;
-  const revpar = kpis.revPAR ?? 0;
-  const occRate = kpis.occupancyRate ?? 0;
+  const todayRev = kpis.todayRevenue;
+  const monthRev = kpis.monthRevenue;
+  const avgRate = kpis.averageDailyRate;
+  const revpar = kpis.revPAR;
+  const occRate = kpis.occupancyRate;
 
   const cards = [
     {

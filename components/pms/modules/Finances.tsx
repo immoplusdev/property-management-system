@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useMemo } from "react";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Donut, Icon, KPICard, Button, Skeleton } from "../shared";
+import { SectionHead, Donut, KPICard, Skeleton } from "../shared";
 import { PaymentMethodIcon } from "../PaymentMethodIcon";
 import { Pill } from "@/components/ui/Pill";
 import { formatFCFA } from "../data";
 import { useFinanceSummary, useTransactions } from "@/lib/hooks/pms/useFinances";
+import { ExportAction } from "@/components/pms/ExportAction";
 
 const PAY_COLORS: Record<string, string> = {
   wave: "var(--color-pay-wave)", om: "var(--color-pay-om)", mtn: "var(--color-pay-mtn)",
@@ -23,33 +24,20 @@ export function Finances() {
 
   // Compute payment mix from transaction list
   const byMethod = useMemo(() => {
-    if (!txs.length) return [
-      { id:"wave", label:"Wave",           value:0, color:"var(--color-pay-wave)", pct:0, count:0 },
-      { id:"om",   label:"Orange Money",   value:0, color:"var(--color-pay-om)",   pct:0, count:0 },
-      { id:"mtn",  label:"MTN Money",      value:0, color:"var(--color-pay-mtn)",  pct:0, count:0 },
-      { id:"card", label:"Carte bancaire", value:0, color:"var(--color-primary)",  pct:0, count:0 },
-      { id:"cash", label:"Espèces",        value:0, color:"var(--color-success)",  pct:0, count:0 },
-    ];
-    const methods = ["wave","om","mtn","card","cash"];
+    if (!txs.length) return [];
+    const methods = [...new Set(txs.map(transaction => transaction.method))];
     const labels: Record<string, string> = { wave:"Wave", om:"Orange Money", mtn:"MTN Money", card:"Carte bancaire", cash:"Espèces" };
     const colors: Record<string, string> = PAY_COLORS;
     const total = txs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
     return methods.map(id => {
       const group = txs.filter(t => t.method === id && t.amount > 0);
       const val   = group.reduce((s, t) => s + t.amount, 0);
-      return { id, label: labels[id], value: val, color: colors[id], pct: total > 0 ? Math.round((val/total)*100) : 0, count: group.length };
+      return { id, label: labels[id] ?? id, value: val, color: colors[id] ?? "var(--color-ink-3)", pct: total > 0 ? Math.round((val/total)*100) : 0, count: group.length };
     });
   }, [txs]);
 
-  const byRoomType = [
-    { type:"Standard",       color:"var(--color-cat-3)" },
-    { type:"Supérieure",     color:"var(--color-cat-7)" },
-    { type:"Suite Junior",   color:"var(--color-cat-2)" },
-    { type:"Présidentielle", color:"var(--color-cat-4)" },
-  ];
-
-  const totalRevenue = s?.totalRevenue ?? 0;
-  const changePct    = s?.revenueChange ?? 0;
+  const totalRevenue = s?.totalRevenue;
+  const changePct    = s?.revenueChange;
   const isLoading    = summaryQ.isLoading;
 
   const mobileMoneyPct = byMethod.filter(m => ["wave","om","mtn"].includes(m.id)).reduce((s, m) => s + m.pct, 0);
@@ -58,7 +46,7 @@ export function Finances() {
     <div className="animate-pms-fade-up">
       <PMSHeader
         title="Finances"
-        sub="Vue financière complète · revenus, remboursements, commissions"
+        sub="Vue financière · revenus, remboursements et soldes"
         actions={
           <>
             <div className="flex gap-0.5 bg-surface-2 p-0.75 rounded-[9px]">
@@ -72,33 +60,38 @@ export function Finances() {
                 </button>
               ))}
             </div>
-            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export</Button>
+            <ExportAction dataset="finances" format="xlsx" label="Export XLSX" />
           </>
         }
       />
+
+      {(summaryQ.isError || transactionsQ.isError) && <div role="alert" className="mb-4 text-sm text-danger">
+        {summaryQ.isError && `Résumé financier : ${(summaryQ.error as Error).message} `}
+        {transactionsQ.isError && `Transactions : ${(transactionsQ.error as Error).message}`}
+      </div>}
 
       <div className="grid grid-cols-4 gap-3 mb-5.5">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
           : <>
               <KPICard
-                value={s ? `${(totalRevenue/1000000).toFixed(1)}` : "—"} unit="M FCFA"
-                sub={`${transactionsQ.data?.total ?? 0} transactions`}
+                value={totalRevenue !== undefined ? `${(totalRevenue/1000000).toFixed(1)}` : "—"} unit="M FCFA"
+                sub={`${transactionsQ.data?.total ?? "—"} transactions`}
                 icon="trendingUp" iconBg="var(--color-success-bg)" iconColor="var(--color-success)"
-                trend={changePct >= 0 ? `↑ ${changePct.toFixed(0)}%` : `↓ ${Math.abs(changePct).toFixed(0)}%`}
-                trendUp={changePct >= 0}
+                trend={changePct === undefined ? undefined : changePct >= 0 ? `↑ ${changePct.toFixed(0)}%` : `↓ ${Math.abs(changePct).toFixed(0)}%`}
+                trendUp={changePct === undefined ? undefined : changePct >= 0}
               />
               <KPICard
-                value={`${mobileMoneyPct}%`} sub="Part mobile money"
+                value={txs.length ? `${mobileMoneyPct}%` : "—"} sub="Part mobile money"
                 icon="creditCard" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)"
               />
               <KPICard
-                value={s?.netRevenue ? `${(s.netRevenue/1000000).toFixed(1)}` : "—"} unit="M FCFA"
-                sub="Revenu net (après commission)"
+                value={s ? `${(s.netRevenue/1000000).toFixed(1)}` : "—"} unit="M FCFA"
+                sub="Revenu net calculé par le serveur"
                 icon="award" iconBg="var(--color-teal-bg)" iconColor="var(--color-teal)"
               />
               <KPICard
-                value={s?.refunds ? formatFCFA(s.refunds) : "0 FCFA"} sub="Remboursements"
+                value={s ? formatFCFA(s.refunds) : "—"} sub="Remboursements"
                 icon="barChart" iconBg="var(--color-violet-bg)" iconColor="var(--color-violet)"
               />
             </>
@@ -114,7 +107,7 @@ export function Finances() {
             : <>
                 <Donut
                   data={byMethod.filter(m => m.pct > 0).map(m => ({ label:m.label, value:m.pct, color:m.color }))}
-                  centerValue={`${mobileMoneyPct}%`}
+                  centerValue={txs.length ? `${mobileMoneyPct}%` : "—"}
                   centerLabel="Mobile money"
                 />
                 <div className="mt-3.5 grid gap-1.75">
@@ -126,6 +119,7 @@ export function Finances() {
                       <strong>{m.pct}%</strong>
                     </div>
                   ))}
+                  {byMethod.length === 0 && <div className="text-[12px] text-ink-3">Aucune transaction pour cette période.</div>}
                 </div>
               </>
           }
@@ -138,10 +132,10 @@ export function Finances() {
             ? <Skeleton className="h-40 mt-3" />
             : s && (() => {
                 const sources = [
-                  { type:"Hébergement",  value:s.occupancyRevenue ?? 0,    color:"var(--color-cat-3)" },
-                  { type:"Restaurant",   value:s.restaurantRevenue ?? 0,   color:"var(--color-cat-7)" },
-                  { type:"Spa & Loisirs",value:s.spaRevenue ?? 0,          color:"var(--color-cat-2)" },
-                  { type:"Autres",       value:s.otherRevenue ?? 0,        color:"var(--color-cat-4)" },
+                  { type:"Hébergement",  value:s.occupancyRevenue,    color:"var(--color-cat-3)" },
+                  { type:"Restaurant",   value:s.restaurantRevenue,   color:"var(--color-cat-7)" },
+                  { type:"Spa & Loisirs",value:s.spaRevenue,          color:"var(--color-cat-2)" },
+                  { type:"Autres",       value:s.otherRevenue,        color:"var(--color-cat-4)" },
                 ];
                 const total = sources.reduce((sum, r) => sum + r.value, 0) || 1;
                 return sources.map(r => (
@@ -166,10 +160,10 @@ export function Finances() {
             ? <Skeleton className="h-40 mt-3" />
             : <div className="grid gap-1.5">
                 {[
-                  { label:"Revenu brut",      value:s ? formatFCFA(s.totalRevenue ?? 0)  : "—", color:"var(--color-success)" },
-                  { label:"Remboursements",   value:s ? "−"+formatFCFA(s.refunds ?? 0)   : "—", color:"var(--color-danger)"  },
-                  { label:"Soldes en attente",value:s ? formatFCFA(s.pendingBalance ?? 0): "—", color:"var(--color-warn)"    },
-                  { label:"Revenu net",        value:s ? formatFCFA(s.netRevenue ?? 0)    : "—", color:"var(--color-ink)"     },
+                  { label:"Revenu brut",      value:s ? formatFCFA(s.totalRevenue)  : "—", color:"var(--color-success)" },
+                  { label:"Remboursements",   value:s ? "−"+formatFCFA(s.refunds)   : "—", color:"var(--color-danger)"  },
+                  { label:"Soldes en attente",value:s ? formatFCFA(s.pendingBalance): "—", color:"var(--color-warn)"    },
+                  { label:"Revenu net",        value:s ? formatFCFA(s.netRevenue)    : "—", color:"var(--color-ink)"     },
                 ].map(row => (
                   <div key={row.label} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px]">
                     <span className="text-ink-3 text-[13px]">{row.label}</span>

@@ -30,28 +30,28 @@ export interface TransactionsList {
 
 const object = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
-const amount = (value: unknown): number => {
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 const stringValue = (value: unknown, fallback = "—"): string =>
   typeof value === "string" || typeof value === "number" ? String(value) : fallback;
 
 function normalizeSummary(value: unknown): FinanceSummary {
   const raw = object(object(value).data ?? value);
+  const numericFields = ["totalRevenue", "previousRevenue", "revenueChange", "occupancyRevenue", "restaurantRevenue", "spaRevenue", "otherRevenue", "pendingBalance", "refunds", "netRevenue"] as const;
+  if (typeof raw.period !== "string" || typeof raw.date !== "string" || numericFields.some(key => typeof raw[key] !== "number" || !Number.isFinite(raw[key]))) {
+    throw new Error("Réponse API invalide : résumé financier incomplet.");
+  }
   return {
-    period: stringValue(raw.period, "month"),
-    date: stringValue(raw.date, ""),
-    totalRevenue: amount(raw.totalRevenue),
-    previousRevenue: amount(raw.previousRevenue),
-    revenueChange: amount(raw.revenueChange),
-    occupancyRevenue: amount(raw.occupancyRevenue),
-    restaurantRevenue: amount(raw.restaurantRevenue),
-    spaRevenue: amount(raw.spaRevenue),
-    otherRevenue: amount(raw.otherRevenue),
-    pendingBalance: amount(raw.pendingBalance),
-    refunds: amount(raw.refunds),
-    netRevenue: amount(raw.netRevenue ?? raw.totalRevenue),
+    period: raw.period,
+    date: raw.date,
+    totalRevenue: raw.totalRevenue as number,
+    previousRevenue: raw.previousRevenue as number,
+    revenueChange: raw.revenueChange as number,
+    occupancyRevenue: raw.occupancyRevenue as number,
+    restaurantRevenue: raw.restaurantRevenue as number,
+    spaRevenue: raw.spaRevenue as number,
+    otherRevenue: raw.otherRevenue as number,
+    pendingBalance: raw.pendingBalance as number,
+    refunds: raw.refunds as number,
+    netRevenue: raw.netRevenue as number,
   };
 }
 
@@ -59,18 +59,38 @@ function normalizeTransactions(value: unknown): TransactionsList {
   const root = object(value);
   const nested = object(root.data);
   const rows = Array.isArray(root.data) ? root.data : Array.isArray(nested.data) ? nested.data : [];
+  const totalValue = root.total ?? nested.total;
+  const pageValue = root.page ?? nested.page;
+  const limitValue = root.limit ?? nested.limit;
+  if (!Array.isArray(root.data) && !Array.isArray(nested.data)) throw new Error("Réponse API invalide : liste des transactions absente.");
+  if (![totalValue, pageValue, limitValue].every(value => typeof value === "number" && Number.isFinite(value))) {
+    throw new Error("Réponse API invalide : pagination des transactions absente.");
+  }
   const data: Transaction[] = rows.map((entry, index) => {
     const row = object(entry);
-    const recordedAt = stringValue(row.recordedAt ?? row.time, "");
-    const method = stringValue(row.paymentMethod ?? row.method);
+    const id = row.id ?? row.transactionId;
+    const recordedAt = row.recordedAt ?? row.time;
+    const method = row.paymentMethod ?? row.method;
+    const description = row.description ?? row.desc;
+    if (
+      (typeof id !== "string" && typeof id !== "number") ||
+      (typeof recordedAt !== "string") ||
+      (typeof method !== "string") ||
+      typeof row.type !== "string" ||
+      typeof description !== "string" ||
+      typeof row.status !== "string" ||
+      typeof row.amount !== "number" || !Number.isFinite(row.amount)
+    ) {
+      throw new Error(`Réponse API invalide : transaction ${index + 1} incomplète.`);
+    }
     return {
-      id: stringValue(row.id ?? row.transactionId, `transaction-${index + 1}`),
+      id: String(id),
       time: recordedAt,
-      type: stringValue(row.type),
-      desc: stringValue(row.description ?? row.desc),
-      amount: amount(row.amount),
+      type: row.type,
+      desc: description,
+      amount: row.amount,
       method: method === "orange_money" ? "om" : method === "mtn_momo" ? "mtn" : method === "credit_card" ? "card" : method,
-      status: stringValue(row.status, "ok"),
+      status: row.status,
       reference: typeof row.reference === "string" ? row.reference : undefined,
       reservationId: typeof row.reservationId === "string" ? row.reservationId : undefined,
       guestName: typeof row.guestName === "string" ? row.guestName : undefined,
@@ -80,9 +100,9 @@ function normalizeTransactions(value: unknown): TransactionsList {
   });
   return {
     data,
-    total: amount(root.total ?? nested.total) || data.length,
-    page: amount(root.page ?? nested.page) || 1,
-    limit: amount(root.limit ?? nested.limit) || data.length,
+    total: totalValue as number,
+    page: pageValue as number,
+    limit: limitValue as number,
   };
 }
 

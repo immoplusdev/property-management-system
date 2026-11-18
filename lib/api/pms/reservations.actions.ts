@@ -28,11 +28,6 @@ const record = (value: unknown): Record<string, unknown> =>
   value && typeof value === "object" ? value as Record<string, unknown> : {};
 const text = (value: unknown, fallback = ""): string =>
   typeof value === "string" || typeof value === "number" ? String(value) : fallback;
-const number = (value: unknown, fallback = 0): number => {
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
 /** Convert the backend's nested reservation DTO to the flat shape used by PMS views. */
 function normalizeBooking(value: unknown): Booking {
   const raw = record(value);
@@ -45,32 +40,49 @@ function normalizeBooking(value: unknown): Booking {
   const roomType = record(raw.roomType);
   const checkin = text(raw.checkInDate ?? raw.checkin ?? raw.checkIn);
   const checkout = text(raw.checkOutDate ?? raw.checkout ?? raw.checkOut);
-  const calculatedNights = checkin && checkout
-    ? number(Math.round((Date.parse(checkout) - Date.parse(checkin)) / 86_400_000))
-    : 0;
-  const nights = number(raw.nights, Math.max(0, calculatedNights));
-  const id = text(raw.id ?? raw.reservationId ?? raw.reference, "unknown");
+  const calculatedNights = checkin && checkout && Number.isFinite(Date.parse(checkin)) && Number.isFinite(Date.parse(checkout))
+    ? Math.round((Date.parse(checkout) - Date.parse(checkin)) / 86_400_000)
+    : undefined;
+  const nightsValue = raw.nights ?? calculatedNights;
+  const idValue = raw.id ?? raw.reservationId;
+  const status = raw.status;
+  const amountValue = raw.totalAmount ?? raw.amount ?? raw.totalEstimate;
+  const paidValue = raw.paidAmount ?? raw.paid;
+  if (
+    (typeof idValue !== "string" && typeof idValue !== "number") ||
+    !guestName || !checkin || !checkout ||
+    typeof status !== "string" ||
+    !["pending", "confirmed", "checked_in", "checking_out", "checked_out", "cancelled"].includes(status) ||
+    typeof nightsValue !== "number" || !Number.isFinite(nightsValue) ||
+    typeof amountValue !== "number" || !Number.isFinite(amountValue) ||
+    typeof paidValue !== "number" || !Number.isFinite(paidValue)
+  ) {
+    throw new Error("Réponse API invalide : réservation incomplète.");
+  }
+  const id = String(idValue);
   const sourceRef = text(raw.reference ?? raw.ref ?? raw.reservationNumber, id);
+  const guestId = guestRecord.id ?? raw.guestId;
+  const balance = raw.balance;
   return {
     id,
     ref: sourceRef,
-    guest: guestName || "Client",
-    guestId: text(guestRecord.id ?? raw.guestId),
+    guest: guestName,
+    guestId: typeof guestId === "string" ? guestId : undefined,
     room: text(room.number ?? raw.roomNumber, "—"),
     roomType: text(room.typeName ?? roomType.name ?? roomType.code ?? raw.roomTypeName, "—"),
     checkin,
     checkout,
-    nights,
-    status: text(raw.status, "pending") as Booking["status"],
-    amount: number(raw.totalAmount ?? raw.amount ?? raw.totalEstimate),
-    paid: number(raw.paidAmount ?? raw.paid),
+    nights: nightsValue,
+    status: status as Booking["status"],
+    amount: amountValue,
+    paid: paidValue,
     payment: text(raw.paymentMethod ?? raw.payment, "—"),
     source: text(raw.source, "—"),
-    adults: number(raw.adults),
-    children: number(raw.children),
-    balance: number(raw.balance, Math.max(0, number(raw.totalAmount ?? raw.amount) - number(raw.paidAmount ?? raw.paid))),
-    breakfastIncluded: Boolean(raw.breakfastIncluded),
-    specialRequests: text(raw.specialRequests),
+    adults: typeof raw.adults === "number" ? raw.adults : undefined,
+    children: typeof raw.children === "number" ? raw.children : undefined,
+    balance: typeof balance === "number" && Number.isFinite(balance) ? balance : undefined,
+    breakfastIncluded: typeof raw.breakfastIncluded === "boolean" ? raw.breakfastIncluded : undefined,
+    specialRequests: typeof raw.specialRequests === "string" ? raw.specialRequests : undefined,
   };
 }
 
@@ -78,11 +90,16 @@ function normalizeReservations(value: unknown): ReservationsList {
   const root = record(value);
   const nested = record(root.data);
   const rows = Array.isArray(root.data) ? root.data : Array.isArray(nested.data) ? nested.data : [];
+  const total = root.total ?? nested.total;
+  const page = root.page ?? nested.page;
+  const limit = root.limit ?? nested.limit;
+  if (!Array.isArray(root.data) && !Array.isArray(nested.data)) throw new Error("Réponse API invalide : liste des réservations absente.");
+  if (![total, page, limit].every(item => typeof item === "number" && Number.isFinite(item))) throw new Error("Réponse API invalide : pagination des réservations absente.");
   return {
     data: rows.map(normalizeBooking),
-    total: number(root.total ?? nested.total, rows.length),
-    page: number(root.page ?? nested.page, 1),
-    limit: number(root.limit ?? nested.limit, rows.length),
+    total: total as number,
+    page: page as number,
+    limit: limit as number,
   };
 }
 

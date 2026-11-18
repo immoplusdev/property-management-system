@@ -7,17 +7,17 @@ import { formatDate } from "../data";
 import type { Review } from "@/lib/api/pms/reviews.actions";
 import { useReviews, useReplyToReview, useSuggestReviewReply, useReviewSuggestion } from "@/lib/hooks/pms/useReviews";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
+import { ExportAction } from "@/components/pms/ExportAction";
 
 export function Reviews() {
   const [filter,   setFilter]   = useState("all");
-  const [period,   setPeriod]   = useState<"week"|"month"|"year">("month");
   const [search,   setSearch]   = useState("");
   const [replying, setReplying] = useState<string | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const suggestMut = useSuggestReviewReply();
   const replyMut   = useReplyToReview();
 
-  const { data, isLoading } = useReviews({ limit: 100 });
+  const { data, isLoading, error } = useReviews({ limit: 100 });
   const allReviews: Review[] = data?.data ?? [];
   const stats = data?.stats;
 
@@ -74,22 +74,11 @@ export function Reviews() {
         title="Avis clients"
         sub="Tous les avis sont collectés via l'app Immo Plus · contribue à la confiance de votre fiche dans le feed"
         actions={
-          <>
-            <div className="flex gap-0.5 bg-surface-2 p-0.75 rounded-[9px]">
-              {(["week", "month", "year"] as const).map(p => (
-                <button
-                  key={p}
-                  className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-medium ${period===p ? "bg-surface text-ink border border-border shadow-xs" : "text-ink-2"}`}
-                  onClick={() => setPeriod(p)}
-                >
-                  {p === "week" ? "Semaine" : p === "month" ? "Mois" : "Année"}
-                </button>
-              ))}
-            </div>
-            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export</Button>
-          </>
+          <ExportAction dataset="reviews" label="Export CSV" />
         }
       />
+
+      {error && <div role="alert" className="mb-4 text-sm text-danger">Impossible de charger les avis : {(error as Error).message}</div>}
 
       {/* Overview 2-col */}
       {isLoading ? (
@@ -104,31 +93,31 @@ export function Reviews() {
             <div className="relative">
               <div className="text-[11px] opacity-85 font-semibold tracking-wider uppercase">Note globale</div>
               <div className="flex items-baseline gap-1.5 mt-2">
-                <div className="text-[54px] font-extrabold tracking-[-0.03em] leading-none">{(stats?.averageRating ?? 0).toFixed(1)}</div>
+                <div className="text-[54px] font-extrabold tracking-[-0.03em] leading-none">{stats ? stats.averageRating.toFixed(1) : "—"}</div>
                 <div className="text-[18px] opacity-85">/5</div>
               </div>
               <div className="mt-2 flex gap-0.5">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Icon key={i} name="starFilled" size={18} color={i < Math.round(stats?.averageRating ?? 0) ? "var(--color-star)" : "rgba(255,255,255,0.25)"} />
+                  <Icon key={i} name="starFilled" size={18} color={stats && i < Math.round(stats.averageRating) ? "var(--color-star)" : "rgba(255,255,255,0.25)"} />
                 ))}
               </div>
               <div className="mt-3 text-[12.5px] opacity-90">
-                <strong>{stats?.totalReviews ?? allReviews.length} avis</strong> au total
+                <strong>{stats?.totalReviews ?? "—"} avis</strong> au total
               </div>
             </div>
           </div>
 
           {/* Distribution */}
           <div className="bg-surface border border-border rounded-[18px] p-5.5">
-            <SectionHead icon="barChart" title="Distribution des notes" sub={`${stats?.totalReviews ?? allReviews.length} avis cumulés`} />
-            {distribution.map(({ n, count }) => {
-              const total = stats?.totalReviews ?? 0;
+            <SectionHead icon="barChart" title="Distribution des notes" sub={`${stats?.totalReviews ?? "—"} avis cumulés`} />
+          {distribution.map(({ n, count }) => {
+              const total = stats?.totalReviews;
               const pct = total > 0 ? Math.round((count / total) * 100) : 0;
               return (
                 <div key={n} className="grid gap-2.5 items-center text-[12px] mb-1.5" style={{ gridTemplateColumns: "22px 1fr 32px" }}>
                   <span className="font-semibold text-[11px]">{n}★</span>
                   <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: pct+"%" }} />
+                  <div className="h-full bg-primary rounded-full" style={{ width: total ? pct+"%" : "0%" }} />
                   </div>
                   <span className="tabular-nums text-ink-3 text-[11px] text-right">{count}</span>
                 </div>
@@ -143,12 +132,12 @@ export function Reviews() {
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
           : <>
-              <KPICard value={(stats?.averageRating ?? 0).toFixed(1)} unit="/5" label="Note moyenne" sub="Avis collectés"
+              <KPICard value={stats ? stats.averageRating.toFixed(1) : "—"} unit="/5" label="Note moyenne" sub="Avis collectés"
                 icon="trendingUp" iconBg="var(--color-success-bg)" iconColor="var(--color-success)" />
-              <KPICard value={`${stats?.responseRate ?? 0}%`} label="Taux de réponse" sub="Cible : 95%"
+              <KPICard value={stats ? `${stats.responseRate}%` : "—"} label="Taux de réponse" sub="Réponses enregistrées"
                 icon="send" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)"
                 trend={`${allReviews.filter(r => !!r.response).length} répondus`} trendUp />
-              <KPICard value={stats?.totalReviews ?? allReviews.length} label="Total des avis" sub="Tous périodes confondus"
+              <KPICard value={stats?.totalReviews ?? "—"} label="Total des avis" sub="Tous périodes confondus"
                 icon="star" iconBg="var(--color-amber-bg)" iconColor="var(--color-amber)" />
               <KPICard value={needsReplyCount} label="Sans réponse" sub="À traiter sous 24h"
                 icon="bell" iconBg="var(--color-amber-bg)" iconColor="var(--color-amber)"
@@ -183,7 +172,7 @@ export function Reviews() {
       <div className="grid gap-3">
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48" />)
-          : list.map(r => (
+          : error ? null : list.map(r => (
               <ReviewCard
                 key={r.id}
                 review={r}

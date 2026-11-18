@@ -9,6 +9,7 @@ import type { BookingStatus } from "@/lib/types/pms";
 import { useReservations } from "@/lib/hooks/pms/useReservations";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
 import { useHotel } from "@/lib/pms/HotelContext";
+import { ExportAction } from "@/components/pms/ExportAction";
 
 export function Reservations() {
   const router = useRouter();
@@ -71,8 +72,8 @@ export function Reservations() {
         }
         actions={
           <>
-            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export CSV</Button>
-            <Button variant="primary" size="sm" onClick={() => go("checkin")}><Icon name="plus" size={14} /> Nouvelle résa</Button>
+            <ExportAction dataset="reservations" label="Export CSV" />
+            <Button variant="primary" size="sm" onClick={() => go("checkin")}><Icon name="arrowRight" size={14} /> Check-in</Button>
           </>
         }
       />
@@ -148,7 +149,7 @@ export function Reservations() {
             </thead>
             <tbody>
               {list.map(b => {
-                const balance = b.amount - b.paid;
+                const balance = b.balance;
                 return (
                   <tr
                     key={b.id}
@@ -192,14 +193,14 @@ export function Reservations() {
                     <td className="px-3.5 py-3.5 align-middle tabular-nums">
                       <strong>{formatFCFA(b.amount).replace(" FCFA","")}</strong>{" "}
                       <span className="text-[11.5px] text-ink-3">FCFA</span>
-                      {balance > 0 && (
+                      {balance !== undefined && balance > 0 && (
                         <div style={{ fontSize: 11, color: "var(--color-warn)" }}>Solde {formatFCFA(balance)}</div>
                       )}
                     </td>
                     <td className="px-3.5 py-3.5 align-middle"><PayBadge method={b.payment} /></td>
                     <td className="px-3.5 py-3.5 align-middle"><SourceBadge source={b.source} /></td>
                     <td className="px-3.5 py-3.5 align-middle">
-                      <Button variant="icon" size="md"><Icon name="chevronRight" size={14} /></Button>
+                      <Button variant="icon" size="md" aria-label={`Voir la réservation ${b.ref}`} onClick={() => router.push(`/pms/${hotel}/reservations/${b.id}`)}><Icon name="chevronRight" size={14} /></Button>
                     </td>
                   </tr>
                 );

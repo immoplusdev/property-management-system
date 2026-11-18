@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal, StatusPill, Icon, Button, toastPromise } from "../shared";
 import { cn } from "@/lib/utils/cn";
-import { ROOM_TYPES_PMS, STATUS_CONFIG, formatDate } from "../data";
+import { STATUS_CONFIG, formatDate } from "../data";
 import type { Room, RoomStatus } from "@/lib/types/pms";
 import { useUpdateRoomStatus } from "@/lib/hooks/pms/useRooms";
 
@@ -70,7 +70,7 @@ export function RoomDetailModal({ room: initialRoom }: { room: Room }) {
       )}
       <div className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px] mb-4">
         <span className="text-ink-3 text-[13px]">Type</span>
-        <strong>{ROOM_TYPES_PMS.find(t => t.code === room.type)?.name ?? room.type}</strong>
+        <strong>{room.typeName ?? room.roomType?.name ?? room.type}</strong>
       </div>
       {room.id && (
         <div>

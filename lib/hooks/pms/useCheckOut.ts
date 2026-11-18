@@ -30,6 +30,7 @@ export function usePerformCheckOut() {
     mutationFn: ({ reservationId, payload }: { reservationId: string; payload: CheckOutPayload }) =>
       performCheckOut(reservationId, payload).then(res => {
         if (!res.ok) throw new Error(res.error.message);
+        if (!res.data.success) throw new Error("Le serveur n'a pas confirmé le check-out.");
         return res.data;
       }),
     onSuccess: (_data, { reservationId }) => {

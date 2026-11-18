@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { SectionHead, StarRating, Icon, Button } from "../shared";
+import { SectionHead, StarRating, Icon } from "../shared";
 import { Tabs } from "@/components/ui/Tabs";
 import { Pill } from "@/components/ui/Pill";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -86,8 +86,8 @@ export function ClientDetail({ client }: { client: Guest }) {
         {/* Info */}
         {tab === "info" && (
           <div className="grid grid-cols-2 gap-2">
-            <DetailRow label="Téléphone (WhatsApp)" value={client.phone} action={<Button variant="soft" size="sm"><Icon name="send" size={13} /> Message</Button>} />
-            <DetailRow label="Email" value={client.email} valueClass="text-[13px]" action={<Button variant="icon" size="md"><Icon name="mail" size={14} /></Button>} />
+            <DetailRow label="Téléphone" value={client.phone} />
+            <DetailRow label="Email" value={client.email} valueClass="text-[13px]" />
             <DetailRow label="Pays / Nationalité" value={client.nationality} />
             {client.isBlacklisted && client.blacklistReason && (
               <div className="col-span-2 p-4 bg-red-50 border border-red-200 rounded-[14px] text-[13px] text-red-700">
@@ -209,13 +209,6 @@ export function ClientDetail({ client }: { client: Guest }) {
         )}
       </div>
 
-      <div className="flex items-center justify-between mt-4">
-        <Button variant="ghost" size="sm"><Icon name="trash" size={13} /> Supprimer</Button>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm"><Icon name="send" size={13} /> WhatsApp</Button>
-          <Button variant="primary" size="sm"><Icon name="plus" size={13} /> Nouvelle résa</Button>
-        </div>
-      </div>
     </div>
   );
 }

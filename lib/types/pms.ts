@@ -12,6 +12,9 @@ export interface Room {
   id?: string;
   num: string;
   type: string;
+  typeName?: string;
+  basePrice?: number;
+  roomType?: { id?: string; code?: string; name?: string; basePrice?: number };
   floor: number;
   status: RoomStatus;
   guest?: string;
@@ -32,8 +35,12 @@ export interface RoomType {
   id?: string;
   code: string;
   name: string;
-  price: number;
-  color: string;
+  price?: number;
+  basePrice?: number;
+  color?: string;
+  roomCount?: number;
+  amenities?: string[];
+  active?: boolean;
 }
 
 // ─── Reservation ──────────────────────────────────────────────────────────────
@@ -50,7 +57,7 @@ export interface Booking {
   id: string;
   ref: string;
   guest: string;
-  guestId: string;
+  guestId?: string;
   room: string;
   roomType: string;
   checkin: string;

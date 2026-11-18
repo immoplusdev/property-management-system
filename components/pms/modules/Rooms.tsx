@@ -5,14 +5,13 @@ import { PMSHeader } from "../PMSHeader";
 import { StatusPill, Icon, Button, Skeleton } from "../shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { cn } from "@/lib/utils/cn";
-import { ROOM_TYPES_PMS, STATUS_CONFIG, formatFCFA, formatDate } from "../data";
+import { STATUS_CONFIG, formatFCFA, formatDate } from "../data";
 import type { Room } from "@/lib/types/pms";
 import { useRooms } from "@/lib/hooks/pms/useRooms";
 import { useHotel } from "@/lib/pms/HotelContext";
 
 function RoomTile({ room, onClick }: { room: Room; onClick: () => void }) {
-  const type = ROOM_TYPES_PMS.find(t => t.code === room.type);
-  const sc   = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.free;
+  const sc   = STATUS_CONFIG[room.status] ?? { label: room.status, color: "var(--color-ink-3)", bg: "var(--color-surface-2)" };
   return (
     <div
       className="rounded-xl px-3.5 pt-3.5 pb-3 bg-surface border border-border cursor-pointer transition-all duration-120 relative min-h-29 flex flex-col hover:border-ink-3"
@@ -20,7 +19,7 @@ function RoomTile({ room, onClick }: { room: Room; onClick: () => void }) {
     >
       <span className="absolute top-3.5 left-3.5 w-1.5 h-1.5 rounded-full" style={{ background: sc.color }} />
       <div className="text-[26px] font-semibold tracking-[-0.04em] leading-none text-ink pl-3.5">{room.num}</div>
-      <div className="text-[11px] text-ink-3 mt-1 font-medium pl-3.5">{type?.name ?? room.type}</div>
+      <div className="text-[11px] text-ink-3 mt-1 font-medium pl-3.5">{room.typeName ?? room.roomType?.name ?? room.type}</div>
       {room.guest && (
         <div className="text-[12px] mt-auto pt-2.5 font-medium text-ink overflow-hidden text-ellipsis whitespace-nowrap">{room.guest}</div>
       )}
@@ -155,7 +154,6 @@ export function Rooms() {
             </thead>
             <tbody>
               {filtered.map(r => {
-                const type = ROOM_TYPES_PMS.find(t => t.code === r.type);
                 return (
                   <tr
                     key={r.num}
@@ -169,7 +167,7 @@ export function Rooms() {
                     <td className="px-3.5 py-3.5 align-middle">{r.guest ?? <span className="text-ink-3">—</span>}</td>
                     <td className="px-3.5 py-3.5 align-middle tabular-nums">{r.checkout ? formatDate(r.checkout) : <span className="text-ink-3">—</span>}</td>
                     <td className="px-3.5 py-3.5 align-middle tabular-nums">
-                      <strong>{type ? formatFCFA(type.price).replace(" FCFA","") : "—"}</strong>{" "}
+                      <strong>{typeof (r.basePrice ?? r.roomType?.basePrice) === "number" ? formatFCFA(r.basePrice ?? r.roomType?.basePrice).replace(" FCFA","") : "—"}</strong>{" "}
                       <span className="text-[11.5px] text-ink-3">FCFA</span>
                     </td>
                     <td className="px-3.5 py-3.5 align-middle">

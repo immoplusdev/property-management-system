@@ -4,6 +4,7 @@ import {
   getRequests,
   createRequest,
   updateRequestStatus,
+  notifyRequestWhatsApp,
   type CreateRequestPayload,
   type RequestStatus,
 } from "@/lib/api/pms/requests.actions";
@@ -36,6 +37,15 @@ export function useCreateRequest() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: requestKeys.all() });
     },
+  });
+}
+
+export function useNotifyRequestWhatsApp() {
+  return useMutation({
+    mutationFn: (id: string) => notifyRequestWhatsApp(id).then(result => {
+      if (!result.ok) throw new Error(result.error.message);
+      return result.data;
+    }),
   });
 }
 

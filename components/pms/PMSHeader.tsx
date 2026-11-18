@@ -83,9 +83,6 @@ export function PMSHeader({ title, sub, actions, search = true, searchPlaceholde
           </div>
         )}
         {actions}
-        <Button variant="icon" size="md" aria-label="Notifications">
-          <Icon name="bell" size={15} />
-        </Button>
       </div>
     </div>
   );
