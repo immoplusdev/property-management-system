@@ -60,7 +60,7 @@ export function useUpdateRoomStatus() {
 export function useBlockRoom() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { from: string; to: string; reason?: string } }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: { fromDate: string; toDate: string; reason: string; notes?: string } }) =>
       blockRoom(id, payload).then(res => {
         if (!res.ok) throw new Error(res.error.message);
         return res.data;
