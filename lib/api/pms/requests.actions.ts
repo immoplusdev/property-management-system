@@ -55,6 +55,26 @@ export interface UpdateRequestStatusResult {
   updatedAt: string;
 }
 
+export interface NotifyRequestWhatsAppResult {
+  notificationId: string;
+  status: "queued" | "sent";
+  requestId: string;
+}
+
+export async function notifyRequestWhatsApp(id: string): Promise<ActionResult<NotifyRequestWhatsAppResult>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<NotifyRequestWhatsAppResult>(`/pms/requests/${id}/notify-whatsapp`, {
+      method: "POST",
+      json: {},
+      accessToken,
+      headers: { "Idempotency-Key": crypto.randomUUID() },
+    });
+    return { ok: true, data };
+  } catch (err) { return { ok: false, error: toFormError(err) }; }
+}
+
 export async function getRequests(params?: {
   status?: string;
   type?: string;

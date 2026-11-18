@@ -6,9 +6,11 @@ import { Pill } from "@/components/ui/Pill";
 import { formatFCFA, formatDate, type Booking } from "../data";
 import { useReservations } from "@/lib/hooks/pms/useReservations";
 import { useCheckOutInvoice, usePerformCheckOut } from "@/lib/hooks/pms/useCheckOut";
-import type { Invoice } from "@/lib/api/pms/checkout.actions";
+import { emailCheckOutInvoice, type Invoice } from "@/lib/api/pms/checkout.actions";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
 import { getInvoicePdf } from "@/lib/api/pms/folio.actions";
+import { useAddFolioItem, useReservationFolio } from "@/lib/hooks/pms/useFolio";
+import { Input } from "@/components/ui/Input";
 
 const STEPS = ["Vérification", "Règlement", "Départ"];
 
@@ -20,10 +22,15 @@ export function CheckOut() {
   const [selected, setSelected] = useState<Booking | null>(null);
   const [verifications, setVerifications] = useState({ roomInspected: false, keyReturned: false, valuablesChecked: false });
   const [notes, setNotes] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [extraForm, setExtraForm] = useState({ label: "", category: "", quantity: "1", unitPriceHt: "", tvaRate: "" });
 
   const checkedInQ = useReservations({ status: "checked_in", limit: 100 });
   const selectedInvoiceQ = useCheckOutInvoice(selected?.id ?? "", !!selected);
-  const invoiceBalance = selectedInvoiceQ.data?.balanceDue ?? selectedInvoiceQ.data?.balance ?? (selected ? selected.amount - selected.paid : 0);
+  const folioQ = useReservationFolio(selected?.id ?? "", !!selected);
+  const addFolioItem = useAddFolioItem();
+  const invoiceBalance = selectedInvoiceQ.data?.balanceDue ?? selectedInvoiceQ.data?.balance;
   const performCO = usePerformCheckOut();
   
   const allCheckedIn = checkedInQ.data?.data ?? [];
@@ -64,6 +71,52 @@ export function CheckOut() {
     }
   }
 
+  async function handleEmailInvoice() {
+    if (!selected || emailBusy) return;
+    setEmailBusy(true);
+    try {
+      const result = await emailCheckOutInvoice(selected.id);
+      if (!result.ok) throw new Error(result.error.message);
+      if (result.data.status !== "sent") throw new Error("Le serveur n'a pas confirmé l'envoi de la facture.");
+      showToast("Facture envoyée à l'adresse email enregistrée pour le client.", "check");
+    } catch (error) {
+      showToast((error as Error).message || "Impossible d'envoyer la facture par email.", "x");
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  async function handleAddFolioItem() {
+    if (!selected || !extraForm.label.trim()) return;
+    const quantity = Number(extraForm.quantity);
+    const unitPriceHt = Number(extraForm.unitPriceHt);
+    const tvaRate = Number(extraForm.tvaRate);
+    if (![quantity, unitPriceHt, tvaRate].every(Number.isFinite) || quantity <= 0 || unitPriceHt < 0 || tvaRate < 0) {
+      showToast("Vérifiez la quantité, le prix HT et le taux de TVA.", "x");
+      return;
+    }
+    try {
+      await toastPromise(addFolioItem.mutateAsync({
+        reservationId: selected.id,
+        payload: {
+          type: "extra",
+          category: extraForm.category.trim() || undefined,
+          label: extraForm.label.trim(),
+          quantity,
+          unitPriceHt,
+          tvaRate,
+          occurredAt: new Date().toISOString(),
+        },
+      }), {
+        loading: "Ajout de la ligne au folio…",
+        success: "Extra ajouté au folio par le serveur",
+        error: error => (error as Error)?.message || "Impossible d'ajouter l'extra",
+      });
+      setExtraOpen(false);
+      setExtraForm({ label: "", category: "", quantity: "1", unitPriceHt: "", tvaRate: "" });
+    } catch { /* toast déjà affiché */ }
+  }
+
   return (
     <div className="animate-pms-fade-up">
       <PMSHeader
@@ -74,9 +127,7 @@ export function CheckOut() {
             : `${departures.length} départ${departures.length !== 1 ? "s" : ""} aujourd'hui · ${checkedIn.length} clients en cours de séjour`
         }
         search={false}
-        actions={
-          <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export</Button>
-        }
+        actions={null}
       />
 
       <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1.5fr" }}>
@@ -87,6 +138,8 @@ export function CheckOut() {
             <div className="grid gap-2">
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
             </div>
+          ) : checkedInQ.isError ? (
+            <div role="alert" className="py-8 text-center text-[13px] text-danger">Impossible de charger les départs : {(checkedInQ.error as Error).message}</div>
           ) : departures.length === 0 ? (
             <div className="py-8 text-center text-ink-3 text-[13px]">Aucun départ aujourd&apos;hui</div>
           ) : (
@@ -164,14 +217,13 @@ export function CheckOut() {
                   </div>
 
                   <div className="grid gap-2">
-                    <CheckItem checked label="Identité vérifiée au check-in" />
-                    <CheckItem checked={selected.paid >= selected.amount} label="Acompte versé" />
-                    <CheckItem checked={!selectedInvoiceQ.isLoading && invoiceBalance <= 0} label="Solde soldé" />
+                    <CheckItem checked={!selectedInvoiceQ.isLoading && !selectedInvoiceQ.isError && invoiceBalance === 0} label="Solde soldé selon la facture API" />
+                    <CheckItem checked={!selectedInvoiceQ.isLoading && invoiceBalance === 0} label="Solde soldé" />
                     <CheckItem checked={verifications.valuablesChecked} label="Objets de valeur vérifiés" />
                   </div>
                   <p className="text-[11px] text-ink-3 mt-2">Le solde doit être nul et les trois contrôles de départ doivent être attestés avant la clôture.</p>
 
-                  <Button variant="primary" size="sm" className="w-full mt-4" onClick={() => setStep(1)}>
+                  <Button variant="primary" size="sm" className="w-full mt-4" disabled={selectedInvoiceQ.isLoading || selectedInvoiceQ.isError || invoiceBalance === undefined} onClick={() => setStep(1)}>
                     Passer au règlement <Icon name="arrowRight" size={14} />
                   </Button>
                 </div>
@@ -180,10 +232,38 @@ export function CheckOut() {
               {/* Step 1 — Règlement */}
               {step === 1 && (
                 <div>
-                  <InvoicePanel reservationId={selected.id} booking={selected} />
+                  <InvoicePanel invoice={selectedInvoiceQ.data} loading={selectedInvoiceQ.isLoading} error={selectedInvoiceQ.error} />
+                  <div className="mt-3 rounded-[12px] border border-border p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <strong className="text-[13px]">Lignes du folio</strong>
+                      <Button variant="soft" size="sm" onClick={() => setExtraOpen(value => !value)}>Ajouter un extra</Button>
+                    </div>
+                    {folioQ.isLoading ? <Skeleton className="h-10 mt-3" /> : folioQ.isError ? (
+                      <div role="alert" className="mt-3 text-[12px] text-danger">Impossible de charger le folio : {(folioQ.error as Error).message}</div>
+                    ) : (
+                      <div className="mt-2 grid gap-2">
+                        {folioQ.data?.items.length ? folioQ.data.items.map(item => (
+                          <div key={item.id} className="flex justify-between gap-3 text-[12px]">
+                            <span>{item.label} × {item.quantity}</span><strong>{formatFCFA(item.amountTtc)}</strong>
+                          </div>
+                        )) : <div className="text-[12px] text-ink-3">Aucun extra enregistré.</div>}
+                        <div className="flex justify-between border-t border-border pt-2 text-[12px] font-semibold"><span>Solde du folio (API)</span><span>{formatFCFA(folioQ.data?.balanceDue)}</span></div>
+                      </div>
+                    )}
+                    {extraOpen && <div className="mt-3 grid gap-2">
+                      <Input label="Description" value={extraForm.label} onChange={event => setExtraForm(form => ({ ...form, label: event.target.value }))} />
+                      <Input label="Catégorie (facultative)" value={extraForm.category} onChange={event => setExtraForm(form => ({ ...form, category: event.target.value }))} />
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input label="Quantité" type="number" min="1" value={extraForm.quantity} onChange={event => setExtraForm(form => ({ ...form, quantity: event.target.value }))} />
+                        <Input label="Prix unitaire HT" type="number" min="0" value={extraForm.unitPriceHt} onChange={event => setExtraForm(form => ({ ...form, unitPriceHt: event.target.value }))} />
+                        <Input label="TVA (%)" type="number" min="0" value={extraForm.tvaRate} onChange={event => setExtraForm(form => ({ ...form, tvaRate: event.target.value }))} />
+                      </div>
+                      <Button variant="primary" size="sm" disabled={addFolioItem.isPending || folioQ.isError} onClick={handleAddFolioItem}>{addFolioItem.isPending ? "Ajout…" : "Ajouter au folio"}</Button>
+                    </div>}
+                  </div>
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <Button variant="ghost" size="sm" onClick={handleInvoicePdf}><Icon name="download" size={13} /> Facture PDF</Button>
-                    <Button variant="primary" size="sm" disabled={selectedInvoiceQ.isLoading || invoiceBalance > 0} onClick={() => setStep(2)}>
+                    <Button variant="primary" size="sm" disabled={selectedInvoiceQ.isLoading || selectedInvoiceQ.isError || invoiceBalance !== 0} onClick={() => setStep(2)}>
                       Valider <Icon name="arrowRight" size={14} />
                     </Button>
                   </div>
@@ -219,13 +299,13 @@ export function CheckOut() {
                   <div className="grid gap-2">
                     <Button
                       variant="primary" size="sm" className="w-full"
-                      disabled={performCO.isPending || selectedInvoiceQ.isLoading || invoiceBalance > 0 || !verifications.roomInspected || !verifications.keyReturned || !verifications.valuablesChecked}
+                      disabled={performCO.isPending || selectedInvoiceQ.isLoading || selectedInvoiceQ.isError || invoiceBalance !== 0 || !verifications.roomInspected || !verifications.keyReturned || !verifications.valuablesChecked}
                       onClick={handleComplete}
                     >
                       <Icon name="check" size={14} /> {performCO.isPending ? "Traitement…" : "Confirmer le check-out"}
                     </Button>
-                    <Button variant="ghost" size="sm" className="w-full">
-                      <Icon name="send" size={13} /> Envoyer facture par email
+                    <Button variant="ghost" size="sm" className="w-full" disabled={!selected || performCO.isPending || emailBusy} onClick={handleEmailInvoice}>
+                      <Icon name="send" size={13} /> {emailBusy ? "Envoi…" : "Envoyer facture par email"}
                     </Button>
                   </div>
                 </div>
@@ -277,58 +357,28 @@ function DepartureRow({ booking: b, onSelect, dim, active }: { booking: Booking;
   );
 }
 
-function InvoicePanel({ reservationId, booking: b }: { reservationId: string; booking: Booking }) {
-  const { data: invoice, isLoading } = useCheckOutInvoice(reservationId, true);
-
-  if (isLoading) return <div className="grid gap-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>;
-
-  if (invoice) return <InvoiceFromAPI invoice={invoice} />;
-
-  // Fallback: use booking data
-  const balance = b.amount - b.paid;
-  return (
-    <div className="bg-surface-2 rounded-[12px] p-4">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <div className="font-bold text-[14px]">{b.guest}</div>
-          <div className="text-[12px] text-ink-3">Chambre {b.room} · {formatDate(b.checkin)} → {formatDate(b.checkout)}</div>
-        </div>
-        <div className="text-[11px] text-ink-3">{b.ref}</div>
-      </div>
-      <div className="grid gap-1.5 text-[13px]">
-        <div className="flex justify-between">
-          <span className="text-ink-2">{b.nights} nuit{b.nights > 1 ? "s" : ""} × {formatFCFA(Math.round(b.amount / b.nights))}</span>
-          <span className="font-semibold">{formatFCFA(b.amount)}</span>
-        </div>
-        <div className="flex justify-between text-ink-3">
-          <span>Acompte versé</span>
-          <span>− {formatFCFA(b.paid)}</span>
-        </div>
-        <div className="h-px bg-border my-1" />
-        <div className="flex justify-between font-bold text-[14px]">
-          <span>Solde à régler</span>
-          <span className={balance > 0 ? "text-warn" : "text-success"}>{formatFCFA(balance)}</span>
-        </div>
-      </div>
-    </div>
-  );
+function InvoicePanel({ invoice, loading, error }: { invoice?: Invoice; loading: boolean; error: Error | null }) {
+  if (loading) return <div className="grid gap-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>;
+  if (error) return <div role="alert" className="rounded-[12px] bg-danger/5 p-4 text-sm text-danger">Impossible de charger la facture : {error.message}</div>;
+  if (!invoice) return <div role="alert" className="rounded-[12px] bg-warn/5 p-4 text-sm text-warn">La réponse de facturation est absente.</div>;
+  return <InvoiceFromAPI invoice={invoice} />;
 }
 
 function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
   if (!inv.guest || !inv.room || !inv.checkInDate || !inv.checkOutDate) {
-    const balance = inv.balanceDue ?? 0;
+    const balance = inv.balanceDue ?? inv.balance;
     return <div className="bg-surface-2 rounded-[12px] p-4 grid gap-2 text-[13px]">
-      <div className="flex justify-between"><span>Total HT</span><strong>{formatFCFA(inv.folio?.totalHt ?? 0)}</strong></div>
-      <div className="flex justify-between"><span>Taxes</span><strong>{formatFCFA(inv.folio?.taxTotal ?? 0)}</strong></div>
-      <div className="flex justify-between"><span>Total TTC</span><strong>{formatFCFA(inv.folio?.totalTtc ?? 0)}</strong></div>
-      <div className="flex justify-between"><span>Encaissements confirmés</span><strong>{formatFCFA(inv.payments?.confirmedTotal ?? 0)}</strong></div>
+      <div className="flex justify-between"><span>Total HT</span><strong>{formatFCFA(inv.folio?.totalHt)}</strong></div>
+      <div className="flex justify-between"><span>Taxes</span><strong>{formatFCFA(inv.folio?.taxTotal)}</strong></div>
+      <div className="flex justify-between"><span>Total TTC</span><strong>{formatFCFA(inv.folio?.totalTtc)}</strong></div>
+      <div className="flex justify-between"><span>Encaissements confirmés</span><strong>{formatFCFA(inv.payments?.confirmedTotal)}</strong></div>
       <div className="h-px bg-border" />
       <div className="flex justify-between font-bold"><span>Solde à régler</span><strong className={balance > 0 ? "text-warn" : "text-success"}>{formatFCFA(balance)}</strong></div>
-      <div className="text-[11px] text-ink-3">Facture : {inv.invoiceStatus ?? "pending"}</div>
+      <div className="text-[11px] text-ink-3">Facture : {inv.invoiceStatus ?? "Inconnu"}</div>
     </div>;
   }
   const guestName = `${inv.guest.firstName} ${inv.guest.lastName}`;
-  const nights = inv.nights ?? 0;
+  const nights = inv.nights;
   return (
     <div className="bg-surface-2 rounded-[12px] p-4">
       <div className="flex justify-between items-start mb-3">
@@ -339,7 +389,7 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
       </div>
       <div className="grid gap-1.5 text-[13px]">
         <div className="flex justify-between">
-          <span className="text-ink-2">{nights} nuit{nights > 1 ? "s" : ""} · {inv.room.typeName}</span>
+          <span className="text-ink-2">{nights ?? "—"} nuit{(nights ?? 0) > 1 ? "s" : ""} · {inv.room.typeName}</span>
           <span className="font-semibold">{formatFCFA(inv.roomTotal)}</span>
         </div>
         {(inv.extras ?? []).map((extra, i) => (
@@ -350,12 +400,12 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
         ))}
         <div className="flex justify-between text-ink-3">
           <span>Acompte versé</span>
-          <span>− {formatFCFA(inv.paidAmount ?? 0)}</span>
+          <span>− {formatFCFA(inv.paidAmount)}</span>
         </div>
         <div className="h-px bg-border my-1" />
         <div className="flex justify-between font-bold text-[14px]">
           <span>Solde à régler</span>
-          <span className={(inv.balance ?? 0) > 0 ? "text-warn" : "text-success"}>{formatFCFA(inv.balance ?? 0)}</span>
+          <span className={(inv.balance ?? inv.balanceDue ?? 0) > 0 ? "text-warn" : "text-success"}>{formatFCFA(inv.balance ?? inv.balanceDue)}</span>
         </div>
       </div>
     </div>

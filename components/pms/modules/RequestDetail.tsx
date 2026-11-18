@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
 import { Pill, Icon, Button, toastPromise, showToast } from "../shared";
 import { REQUEST_TYPES, formatDate } from "../data";
-import { useUpdateRequestStatus } from "@/lib/hooks/pms/useRequests";
+import { useNotifyRequestWhatsApp, useUpdateRequestStatus } from "@/lib/hooks/pms/useRequests";
 import type { AppRequest, RequestStatus } from "@/lib/api/pms/requests.actions";
 import { useHotel } from "@/lib/pms/HotelContext";
 
@@ -20,6 +20,7 @@ export function RequestDetail({ request }: { request: AppRequest }) {
   const router = useRouter();
   const hotel = useHotel();
   const updateStatus = useUpdateRequestStatus();
+  const notifyWhatsApp = useNotifyRequestWhatsApp();
   const typeMeta = REQUEST_TYPES[request.type] ?? { label: request.type, icon: "list", color: "ink" };
   const statusMeta = STATUS_META[request.status] ?? { label: request.status, kind: "muted" };
 
@@ -33,6 +34,16 @@ export function RequestDetail({ request }: { request: AppRequest }) {
         loading: "Mise à jour…",
         success: `Demande ${labels[status] ?? "mise à jour"}`,
         error: (e) => (e as Error)?.message || "Erreur lors de la mise à jour",
+      });
+    } catch { /* toast déjà affiché */ }
+  }
+
+  async function handleNotifyWhatsApp() {
+    try {
+      await toastPromise(notifyWhatsApp.mutateAsync(request.id), {
+        loading: "Mise en file de la notification WhatsApp…",
+        success: "Notification WhatsApp prise en charge par le serveur",
+        error: error => (error as Error)?.message || "Échec de l'envoi WhatsApp",
       });
     } catch { /* toast déjà affiché */ }
   }
@@ -51,7 +62,7 @@ export function RequestDetail({ request }: { request: AppRequest }) {
           <>
             {request.status === "pending" && (
               <>
-                <Button variant="ghost" size="sm" onClick={() => showToast("Message WhatsApp envoyé", "check")}>
+                <Button variant="ghost" size="sm" disabled={notifyWhatsApp.isPending} onClick={handleNotifyWhatsApp}>
                   <Icon name="send" size={13} /> WhatsApp client
                 </Button>
                 <Button variant="primary" size="sm" disabled={updateStatus.isPending} onClick={() => handleUpdateStatus("in_progress")}>

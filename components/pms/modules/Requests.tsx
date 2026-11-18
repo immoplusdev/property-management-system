@@ -7,9 +7,10 @@ import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { REQUEST_TYPES, formatDate } from "../data";
-import { useRequests, useUpdateRequestStatus, useCreateRequest } from "@/lib/hooks/pms/useRequests";
+import { useRequests, useUpdateRequestStatus, useCreateRequest, useNotifyRequestWhatsApp } from "@/lib/hooks/pms/useRequests";
 import type { RequestStatus } from "@/lib/api/pms/requests.actions";
 import { useHotel } from "@/lib/pms/HotelContext";
+import { ExportAction } from "@/components/pms/ExportAction";
 
 const STATUS_META: Record<RequestStatus, { label: string; kind: string }> = {
   pending:     { label: "En attente", kind: "warn"    },
@@ -34,9 +35,10 @@ export function Requests() {
     paymentMethod: "cash",
   });
 
-  const { data, isLoading } = useRequests({ limit: 100 });
+  const { data, isLoading, error } = useRequests({ limit: 100 });
   const updateStatus  = useUpdateRequestStatus();
   const createRequest = useCreateRequest();
+  const notifyWhatsApp = useNotifyRequestWhatsApp();
 
   const allRequests = data?.data ?? [];
 
@@ -97,6 +99,16 @@ export function Requests() {
     } catch { /* toast déjà affiché */ }
   }
 
+  async function handleNotifyWhatsApp(id: string) {
+    try {
+      await toastPromise(notifyWhatsApp.mutateAsync(id), {
+        loading: "Mise en file de la notification WhatsApp…",
+        success: "Notification WhatsApp prise en charge par le serveur",
+        error: error => (error as Error)?.message || "Échec de l'envoi WhatsApp",
+      });
+    } catch { /* toast déjà affiché */ }
+  }
+
   return (
     <div className="animate-pms-fade-up">
       <PMSHeader
@@ -104,7 +116,7 @@ export function Requests() {
         sub="Toutes les demandes envoyées via l'app Immo Plus · mises à jour en temps réel"
         actions={
           <>
-            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export</Button>
+            <ExportAction dataset="requests" label="Export CSV" />
             <Button variant="primary" size="sm" onClick={() => setManualOpen(true)}><Icon name="plus" size={14} /> Demande manuelle</Button>
           </>
         }
@@ -115,19 +127,21 @@ export function Requests() {
         {isLoading
           ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24" />)
           : <>
-              <KPICard value={allRequests.length} label="Total aujourd'hui"
+              <KPICard value={allRequests.length} label="Demandes chargées"
                 icon="list" iconBg="var(--color-surface-2)" iconColor="var(--color-ink-2)" />
               <KPICard value={pending.length} label="En attente" sub="À traiter maintenant"
                 icon="clock" iconBg="var(--color-warn-bg)" iconColor="var(--color-warn)" />
               <KPICard value={inProgress.length} label="En cours" sub="Pris en charge par l'équipe"
                 icon="refresh" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)" />
-              <KPICard value={completed.length} label="Terminés" sub="Ce jour"
+              <KPICard value={completed.length} label="Terminées" sub="Dans les résultats chargés"
                 icon="check" iconBg="var(--color-success-bg)" iconColor="var(--color-success)" />
               <KPICard value={cancelled.length} label="Annulées" sub="Non exécutées"
                 icon="x" iconBg="var(--color-surface-2)" iconColor="var(--color-ink-3)" />
             </>
         }
       </div>
+
+      {error && <div role="alert" className="mb-4 text-sm text-danger">Impossible de charger les demandes : {(error as Error).message}</div>}
 
       {/* Filter bar */}
       <div className="bg-surface border border-border rounded-[18px] p-3.5 mb-3.5">
@@ -152,7 +166,7 @@ export function Requests() {
       <div className="grid gap-2.5">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)
-          : list.map(req => {
+          : error ? null : list.map(req => {
               const typeMeta   = REQUEST_TYPES[req.type] ?? { label: req.type, icon: "list", color: "ink" };
               const statusMeta = STATUS_META[req.status] ?? { label: req.status, kind: "muted" };
               return (
@@ -192,7 +206,7 @@ export function Requests() {
                           onClick={() => handleUpdateStatus(req.id, "in_progress")}>
                           <Icon name="check" size={13} /> Prendre en charge
                         </Button>
-                        <Button variant="ghost" size="sm" style={{ minWidth: 130 }} onClick={() => showToast("Message WhatsApp envoyé", "check")}>
+                        <Button variant="ghost" size="sm" style={{ minWidth: 130 }} disabled={notifyWhatsApp.isPending} onClick={() => handleNotifyWhatsApp(req.id)}>
                           <Icon name="send" size={13} /> WhatsApp client
                         </Button>
                       </>
@@ -204,7 +218,7 @@ export function Requests() {
                           onClick={() => handleUpdateStatus(req.id, "completed")}>
                           <Icon name="check" size={13} /> Marquer terminé
                         </Button>
-                        <Button variant="ghost" size="sm" style={{ minWidth: 130 }}>
+                        <Button variant="ghost" size="sm" style={{ minWidth: 130 }} disabled={notifyWhatsApp.isPending} onClick={() => handleNotifyWhatsApp(req.id)}>
                           <Icon name="send" size={13} /> Mise à jour client
                         </Button>
                       </>
@@ -217,7 +231,7 @@ export function Requests() {
             })
         }
 
-        {!isLoading && list.length === 0 && (
+        {!isLoading && !error && list.length === 0 && (
           <EmptyState icon="list" title="Aucune demande trouvée" sub="Modifiez les filtres ou attendez de nouvelles demandes de l'app" />
         )}
       </div>

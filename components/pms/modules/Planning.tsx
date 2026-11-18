@@ -2,8 +2,8 @@
 import React, { useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, showToast, Icon, Button, Skeleton } from "../shared";
-import { ROOM_TYPES_PMS, STATUS_CONFIG } from "../data";
+import { SectionHead, Icon, Button, Skeleton } from "../shared";
+import { STATUS_CONFIG } from "../data";
 import { usePlanning } from "@/lib/hooks/pms/usePlanning";
 import type { PlanningRoom } from "@/lib/api/pms/planning.actions";
 import { isBlockedSlot } from "@/lib/utils/planning";
@@ -71,7 +71,7 @@ export function Planning({ hotelName }: { hotelName: string }) {
   const from   = toISO(days[0]);
   const to     = toISO(days[6]);
 
-  const { data, isLoading } = usePlanning(from, to);
+  const { data, isLoading, error } = usePlanning(from, to);
   const rooms: PlanningRoom[] = data?.rooms ?? [];
 
   const weekLabel = useMemo(() => {
@@ -98,7 +98,13 @@ export function Planning({ hotelName }: { hotelName: string }) {
     return { startFr, widthFr: endFr - startFr, rl: start < weekStart ? 0 : 7, rr: end > weekEnd ? 0 : 7 };
   }
 
-  const OCC = [68, 72, 78, 82, 88, 95, 78];
+  const occupiedByDay = days.map(day => {
+    const occupied = rooms.filter(room => room.slots.some(slot => {
+      if (isBlockedSlot(slot)) return false;
+      return slot.checkInDate <= toISO(day) && slot.checkOutDate > toISO(day);
+    })).length;
+    return rooms.length ? Math.round((occupied / rooms.length) * 100) : null;
+  });
 
   return (
     <div className="animate-pms-fade-up">
@@ -108,19 +114,16 @@ export function Planning({ hotelName }: { hotelName: string }) {
         search={false}
         actions={
           <>
-            <div className="flex gap-0.5 bg-surface-2 p-0.75 rounded-[9px]">
-              {["Semaine","2 semaines","Mois"].map((label, i) => (
-                <button key={label} className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-medium ${i===0 ? "bg-surface text-ink border border-border shadow-xs" : "text-ink-2"}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            <span className="px-3 py-1.5 rounded-[7px] text-[12.5px] font-medium bg-surface-2">Semaine</span>
             <Button variant="ghost" size="sm" onClick={() => goToWeek(addDays(monday, -7))}><Icon name="chevronLeft" size={14} /></Button>
             <Button variant="ghost" size="sm" onClick={goToday}>Aujourd&apos;hui</Button>
             <Button variant="ghost" size="sm" onClick={() => goToWeek(addDays(monday, 7))}><Icon name="chevronRight" size={14} /></Button>
           </>
         }
       />
+
+      {error && <div role="alert" className="mb-4 text-sm text-danger">Impossible de charger le planning : {(error as Error).message}</div>}
+
 
       {/* Week label + legend */}
       <div className="flex justify-between items-center mb-3.5">
@@ -162,7 +165,6 @@ export function Planning({ hotelName }: { hotelName: string }) {
           <div className="py-12 text-center text-ink-3 text-[13px]">Aucune chambre disponible pour cette période</div>
         ) : (
           rooms.map(room => {
-            const typeInfo = room.typeName ? ROOM_TYPES_PMS.find(t => t.code === room.typeName.slice(0,3).toUpperCase()) : undefined;
             const sc = STATUS_CONFIG.free;
 
             return (
@@ -176,7 +178,7 @@ export function Planning({ hotelName }: { hotelName: string }) {
                     {room.number}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[12px] font-semibold leading-tight">{typeInfo?.code ?? room.typeName?.slice(0,3).toUpperCase() ?? "—"} · Ét.{room.floor}</div>
+                    <div className="text-[12px] font-semibold leading-tight">{room.typeName || "—"} · Ét.{room.floor}</div>
                     <div className="text-[10.5px] text-ink-3 overflow-hidden text-ellipsis whitespace-nowrap">
                       {room.typeName?.split(" ").slice(0, 2).join(" ") ?? "—"}
                     </div>
@@ -197,7 +199,6 @@ export function Planning({ hotelName }: { hotelName: string }) {
                   if (widthFr <= 0) return null;
                   const s     = blocked ? STATUS_STYLES.blocked : (STATUS_STYLES[slot.status] ?? STATUS_STYLES.confirmed);
                   const label = blocked ? slot.reason : (slot.guestName || "—");
-                  const toastMsg = `${label} · Ch. ${room.number}`;
                   // Le backend renvoie parfois `reservationId`/`blockId` à `null` — on ne peut
                   // pas s'y fier seul pour l'unicité de la clé, d'où le repli sur l'index.
                   const slotKey = (blocked ? slot.blockId : slot.reservationId) ?? `${room.id}-${slotIndex}`;
@@ -214,7 +215,6 @@ export function Planning({ hotelName }: { hotelName: string }) {
                         color: s.color,
                         borderLeft: `3px solid ${s.border}`,
                       }}
-                      onClick={() => showToast(toastMsg, "bell")}
                     >
                       <div className="font-semibold leading-tight tracking-[-0.01em]">{label}</div>
                       <div className="text-[10.5px] opacity-70 mt-0.5">{blocked ? "Bloqué" : (room.typeName?.slice(0, 3) ?? "—")}</div>
@@ -233,14 +233,14 @@ export function Planning({ hotelName }: { hotelName: string }) {
         <div className="bg-surface border border-border rounded-[18px] p-5.5">
           <SectionHead icon="trendingUp" title="Tendance d'occupation" sub={weekLabel} />
           <div className="flex items-end gap-1.25 h-24 mt-3.5">
-            {OCC.map((v, i) => {
+            {occupiedByDay.map((v, i) => {
               const isToday = isCurrentWeek && i === new Date().getDay() - 1;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-0.75">
-                  <div className={`text-[9.5px] font-semibold ${isToday ? "text-primary" : "text-ink-3"}`}>{v}%</div>
+                  <div className={`text-[9.5px] font-semibold ${isToday ? "text-primary" : "text-ink-3"}`}>{v === null ? "—" : `${v}%`}</div>
                   <div
                     className="w-full max-w-7 rounded-t-sm"
-                    style={{ height: Math.round(v * 0.62), background: isToday ? "var(--color-primary)" : "var(--color-primary-100)" }}
+                    style={{ height: v === null ? 0 : Math.round(v * 0.62), background: isToday ? "var(--color-primary)" : "var(--color-primary-100)" }}
                   />
                   <div className={`text-[10px] ${isToday ? "text-primary font-semibold" : "text-ink-3"}`}>{days[i].getDate()}</div>
                 </div>
@@ -253,37 +253,14 @@ export function Planning({ hotelName }: { hotelName: string }) {
         <div className="bg-surface border border-border rounded-[18px] p-5.5">
           <SectionHead icon="bell" title="Alertes" sub="Éléments à traiter" />
           <div className="flex flex-col">
-            {[
-              { bg:"var(--color-warn-bg)",    cl:"var(--color-warn)",    msg:"Chambres non attribuées cette semaine" },
-              { bg:"var(--color-danger-bg)",  cl:"var(--color-danger)",  msg:"Vérifiez les chambres hors service"    },
-              { bg:"var(--color-primary-50)", cl:"var(--color-primary)", msg:"Pic d'occupation prévu en fin de semaine" },
-            ].map((a, i) => (
-              <div key={i} className="flex items-center gap-3 py-3 border-b border-border-soft last:border-b-0">
-                <div className="w-7.5 h-7.5 rounded-[9px] grid place-items-center shrink-0" style={{ background: a.bg, color: a.cl }}>
-                  <Icon name="info" size={14} />
-                </div>
-                <div className="text-[12.5px] text-ink-2 leading-[1.4]">{a.msg}</div>
-              </div>
-            ))}
+            {isLoading ? <Skeleton className="h-24" /> : <div className="grid gap-2 mt-3">
+              <div className="flex justify-between text-[12.5px]"><span>Chambres planifiées</span><strong>{rooms.length}</strong></div>
+              <div className="flex justify-between text-[12.5px]"><span>Séjours affichés</span><strong>{rooms.reduce((count, room) => count + room.slots.filter(slot => !isBlockedSlot(slot)).length, 0)}</strong></div>
+              <div className="flex justify-between text-[12.5px]"><span>Périodes bloquées</span><strong>{rooms.reduce((count, room) => count + room.slots.filter(isBlockedSlot).length, 0)}</strong></div>
+            </div>}
           </div>
         </div>
 
-        {/* Quick actions */}
-        <div className="bg-surface border border-border rounded-[18px] p-5.5">
-          <SectionHead icon="sparkles" title="Actions rapides" />
-          <div className="grid gap-2">
-            {[
-              { icon:"plus",     label:"Bloquer une période"           },
-              { icon:"refresh",  label:"Synchroniser Booking.com"      },
-              { icon:"download", label:"Exporter la semaine PDF"        },
-              { icon:"users",    label:"Planning du personnel"         },
-            ].map(a => (
-              <Button key={a.label} variant="soft" size="sm" className="justify-start" onClick={() => showToast(a.label, "check")}>
-                <Icon name={a.icon} size={14} /> {a.label}
-              </Button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

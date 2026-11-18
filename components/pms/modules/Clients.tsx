@@ -8,6 +8,7 @@ import { formatDate, type Guest } from "../data";
 import { useGuests } from "@/lib/hooks/pms/useGuests";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
 import { useHotel } from "@/lib/pms/HotelContext";
+import { ExportAction } from "@/components/pms/ExportAction";
 
 const avatarColor = (g: Guest) => AV_COLORS[(String(g.firstName ?? "?").charCodeAt(0) || 0) % AV_COLORS.length];
 const fullName = (g: Guest) => `${g.firstName ?? ""} ${g.lastName ?? ""}`.trim() || "Client";
@@ -34,7 +35,7 @@ export function Clients() {
   const setFilter = (v: string) => updateParams({ filter: v });
   const setSearch = (v: string) => updateParams({ q: v });
 
-  const { data, isLoading } = useGuests({ limit: 100 });
+  const { data, isLoading, error } = useGuests({ limit: 100 });
   const allGuests: Guest[] = data?.data ?? [];
 
   const list = useMemo(() => {
@@ -63,8 +64,7 @@ export function Clients() {
         }
         actions={
           <>
-            <Button variant="ghost" size="sm"><Icon name="download" size={14} /> Export CRM</Button>
-            <Button variant="primary" size="sm"><Icon name="plus" size={14} /> Nouveau client</Button>
+            <ExportAction dataset="guests" label="Export CRM" />
           </>
         }
       />
@@ -99,6 +99,8 @@ export function Clients() {
         <div className="grid grid-cols-3 gap-3">
           {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-36" />)}
         </div>
+      ) : error ? (
+        <div role="alert" className="py-12 text-center text-sm text-danger">Impossible de charger les clients : {(error as Error).message}</div>
       ) : (
         <div className="grid grid-cols-3 gap-3">
           {list.map(c => (

@@ -13,7 +13,7 @@ export function ReservationDetail({ booking }: { booking: Booking }) {
   const hotel = useHotel();
   const go = (id: "checkin" | "checkout") => router.push(`/pms/${hotel}/${id}`);
   const cancelMut = useCancelReservation();
-  const balance = booking.amount - booking.paid;
+  const balance = booking.balance;
 
   async function handleCancel() {
     if (!confirm(`Annuler la réservation ${booking.ref} ?`)) return;
@@ -85,7 +85,7 @@ export function ReservationDetail({ booking }: { booking: Booking }) {
             </div>
           ))}
         </div>
-        {balance > 0 && (
+        {balance !== undefined && balance > 0 && (
           <div className="p-3 rounded-[10px] font-medium text-[13px]" style={{ background: "var(--color-warn-bg)", color: "var(--color-warn)" }}>
             Solde restant : {formatFCFA(balance)}
           </div>

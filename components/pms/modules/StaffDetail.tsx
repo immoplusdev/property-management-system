@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { Icon, Button, Skeleton, toastPromise, showToast } from "../shared";
+import { Icon, Button, Skeleton, toastPromise } from "../shared";
 import { Pill } from "@/components/ui/Pill";
 import { useRevokeStaff } from "@/lib/hooks/pms/useStaff";
 import type { StaffMember, StaffRole } from "@/lib/api/pms/staff.actions";
@@ -48,11 +48,6 @@ export function StaffDetail({ member }: { member: StaffMember }) {
         search={false}
         actions={
           <>
-            {member.status === "pending" && (
-              <Button variant="ghost" size="sm" onClick={() => showToast("Invitation renvoyée", "check")}>
-                <Icon name="send" size={13} /> Renvoyer l&apos;invitation
-              </Button>
-            )}
             {member.role !== "director" && (
               <Button variant="ghost" size="sm" onClick={handleRevoke} disabled={revokeM.isPending}>
                 <Icon name="trash" size={13} /> {revokeM.isPending ? "Révocation…" : "Révoquer l'accès"}

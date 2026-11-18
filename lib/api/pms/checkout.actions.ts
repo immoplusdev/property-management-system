@@ -50,6 +50,23 @@ export interface CheckOutResult {
   checkedOutAt: string;
 }
 
+export interface InvoiceEmailResult {
+  reservationId: string;
+  status: "sent";
+}
+
+export async function emailCheckOutInvoice(reservationId: string): Promise<ActionResult<InvoiceEmailResult>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<InvoiceEmailResult>(`/pms/checkout/${reservationId}/invoice/email`, {
+      method: "POST", json: {}, accessToken,
+      headers: { "Idempotency-Key": crypto.randomUUID() },
+    });
+    return { ok: true, data };
+  } catch (err) { return { ok: false, error: toFormError(err) }; }
+}
+
 export async function getCheckOutInvoice(reservationId: string): Promise<ActionResult<Invoice>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };

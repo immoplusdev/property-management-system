@@ -129,11 +129,11 @@ export async function getDashboardPaymentMix(): Promise<ActionResult<DashboardPa
   }
 }
 
-export async function exportDailyReport(): Promise<ActionResult<{ success: boolean; jobId: string; message: string }>> {
+export async function exportDailyReport(): Promise<ActionResult<{ exportId: string; status: "queued" | "processing" }>> {
   const accessToken = await token();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<{ success: boolean; jobId: string; message: string }>(
+    const data = await backendFetch<{ exportId: string; status: "queued" | "processing" }>(
       "/pms/dashboard/export",
       { method: "POST", accessToken }
     );

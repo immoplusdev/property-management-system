@@ -13,6 +13,39 @@ export interface FolioSummary {
   invoiceStatus: "pending" | "ready" | "failed";
 }
 
+export interface FolioItem {
+  id: string;
+  type: "extra" | "discount" | "city_tax";
+  category?: string;
+  label: string;
+  quantity: number;
+  unitPriceHt: number;
+  taxAmount: number;
+  amountTtc: number;
+  occurredAt: string;
+}
+
+export interface ReservationFolio {
+  reservationId: string;
+  currency?: "XOF";
+  items: FolioItem[];
+  folio?: FolioSummary["folio"];
+  payments?: FolioSummary["payments"];
+  balanceDue: number;
+}
+
+export async function getReservationFolio(reservationId: string): Promise<ActionResult<ReservationFolio>> {
+  const accessToken = await token();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<ReservationFolio>(`/pms/reservations/${reservationId}/folio`, { accessToken });
+    if (!Array.isArray(data.items) || typeof data.balanceDue !== "number" || !Number.isFinite(data.balanceDue)) {
+      throw new Error("Réponse API invalide : folio incomplet.");
+    }
+    return { ok: true, data };
+  } catch (err) { return { ok: false, error: toFormError(err) }; }
+}
+
 export async function addStayPayment(reservationId: string, payload: { amount: number; paymentMethod: "cash" | "wave" | "orange_money" | "mtn_momo" | "moov_money"; reference?: string; description?: string }): Promise<ActionResult<{ transactionId: string; status: string; amount: number; currency: "XOF"; balanceDue: number }>> {
   const accessToken = await token();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };

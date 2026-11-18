@@ -10,7 +10,7 @@ export function ReservationDetailModal({ booking }: { booking: Booking }) {
   const router = useRouter();
   const hotel = useHotel();
   const cancelMut = useCancelReservation();
-  const balance = booking.amount - booking.paid;
+  const balance = booking.balance;
 
   function close() {
     router.back();
@@ -86,7 +86,7 @@ export function ReservationDetailModal({ booking }: { booking: Booking }) {
           </div>
         ))}
       </div>
-      {balance > 0 && (
+      {balance !== undefined && balance > 0 && (
         <div className="p-3 rounded-[10px] font-medium text-[13px]" style={{ background: "var(--color-warn-bg)", color: "var(--color-warn)" }}>
           Solde restant : {formatFCFA(balance)}
         </div>

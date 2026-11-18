@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { SectionHead, Icon, showToast, toastPromise, Button, Skeleton } from "../shared";
+import { SectionHead, Icon, toastPromise, Button, Skeleton } from "../shared";
 import { Pill } from "@/components/ui/Pill";
 import { Modal } from "@/components/ui/Modal";
 import { useStaff, useInviteStaff, useRevokeStaff } from "@/lib/hooks/pms/useStaff";
@@ -160,11 +160,6 @@ export function Staff() {
                     <td className="px-4 py-3.5 text-ink-3">—</td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5 justify-end">
-                        {m.status === "pending" && (
-                          <Button variant="ghost" size="sm" onClick={() => showToast("Invitation renvoyée", "check")}>
-                            <Icon name="send" size={13} /> Renvoyer
-                          </Button>
-                        )}
                         {m.role !== "director" && (
                           <Button variant="ghost" size="sm" onClick={() => setRevokeTarget(m)}>
                             <Icon name="trash" size={13} />

@@ -1,6 +1,8 @@
 "use client";
 import { PaymentMethodIcon } from "../PaymentMethodIcon";
 import React, { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
 import { SectionHead, Icon, showToast, Button } from "../shared";
 import { Pill } from "@/components/ui/Pill";
@@ -11,29 +13,176 @@ import { useRooms } from "@/lib/hooks/pms/useRooms";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
 import { useWalkIn } from "@/lib/hooks/pms/useCheckIn";
 import { checkAvailability } from "@/lib/api/pms/rooms.actions";
+import { addStayPayment } from "@/lib/api/pms/folio.actions";
+import { completeCheckIn, startCheckIn, updateCheckInIdentity } from "@/lib/api/pms/checkin.actions";
+import { uploadFile } from "@/lib/api/files/files.client";
+import { DashboardExportAction } from "@/components/pms/DashboardExportAction";
+import { useHotel } from "@/lib/pms/HotelContext";
+import { useReservationFolio } from "@/lib/hooks/pms/useFolio";
 
-const STEPS_IN  = ["Identification","Chambre","Paiement","Confirmation"];
-const STEPS_OUT = ["Vérification","Règlement","Départ"];
+const STEPS_IN  = ["Identification","Identité","Paiement","Confirmation"];
 
-type StepTarget = "checkin" | "checkout" | "walkin";
+type StepTarget = "checkin" | "walkin";
 
 export function CheckIn() {
+  const router = useRouter();
+  const hotel = useHotel();
+  const queryClient = useQueryClient();
   const [mode, setMode]     = useState<StepTarget>("checkin");
   const [step, setStep]     = useState(0);
+  const [reservationSearch, setReservationSearch] = useState("");
+  const [selectedReservation, setSelectedReservation] = useState<Booking | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"wave" | "orange_money" | "mtn_momo" | "cash">("cash");
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [checkInBusy, setCheckInBusy] = useState(false);
+  const [checkInStarted, setCheckInStarted] = useState(false);
+  const [identityBusy, setIdentityBusy] = useState(false);
+  const [identityFrontId, setIdentityFrontId] = useState("");
+  const [identityBackId, setIdentityBackId] = useState("");
+  const [identityVerified, setIdentityVerified] = useState(false);
+  const [checkInCompleted, setCheckInCompleted] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [serverBalanceDue, setServerBalanceDue] = useState<number | null>(null);
+  const [paymentTransactionId, setPaymentTransactionId] = useState<string | null>(null);
   const [walkin, setWalkin] = useState(false);
   const [walkinForm, setWalkinForm] = useState({ firstName: "", lastName: "", phone: "", nationality: "CI", idCardNumber: "", checkOutDate: "", adults: "1", children: "0", amount: "0", paymentMethod: "cash" as "cash" | "orange_money" | "wave" | "mtn_momo" | "moov_money", reference: "" });
   const [walkinRoomId, setWalkinRoomId] = useState("");
   const walkInMutation = useWalkIn();
 
-  const STEPS = mode === "checkout" ? STEPS_OUT : STEPS_IN;
+  const STEPS = STEPS_IN;
 
-  const arrivalsQ   = useReservations({ status: "confirmed",     limit: 10 });
-  const departuresQ = useReservations({ status: "checking_out",  limit: 10 });
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Abidjan", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const arrivalsQ   = useReservations({ status: "confirmed", fromDate: todayStr, toDate: todayStr, limit: 100 });
+  const departuresQ = useReservations({ status: "checking_out", fromDate: todayStr, toDate: todayStr, limit: 100 });
   const roomsQ      = useRooms({ status: "free" });
+  const folioQ      = useReservationFolio(selectedReservation?.id ?? "", !!selectedReservation);
 
-  const arrivals   = (arrivalsQ.data?.data   ?? []).slice(0, 5);
-  const departures = (departuresQ.data?.data ?? []).slice(0, 5);
-  const availRooms = (roomsQ.data?.rooms     ?? []).slice(0, 8);
+  const arrivals   = (arrivalsQ.data?.data ?? []).filter(b =>
+    `${b.guest} ${b.ref}`.toLowerCase().includes(reservationSearch.trim().toLowerCase())
+  );
+  const departures = departuresQ.data?.data ?? [];
+  const availRooms = roomsQ.data?.rooms ?? [];
+  const reservationTotal = folioQ.data?.folio?.totalTtc;
+  const amountAlreadyPaid = folioQ.data?.payments?.confirmedTotal;
+  const balanceDue = folioQ.data?.balanceDue;
+  const currentBalanceDue = serverBalanceDue ?? balanceDue;
+  const hasValidReservationAmount = typeof balanceDue === "number" && Number.isFinite(balanceDue) && balanceDue >= 0;
+  const isPaymentConfirmed = paymentStatus === "already_paid" || (!!paymentStatus && ["confirmed", "succeeded", "success", "paid", "completed"].includes(paymentStatus.toLowerCase()));
+  const isPaymentPending = !!paymentStatus && paymentStatus !== "already_paid" && !isPaymentConfirmed;
+
+  async function handleStartCheckIn(booking: Booking) {
+    if (checkInBusy) return;
+    setCheckInBusy(true);
+    try {
+      const result = await startCheckIn(booking.id);
+      if (!result.ok) throw new Error(result.error.message);
+      setSelectedReservation(booking);
+      setCheckInStarted(true);
+      setIdentityFrontId("");
+      setIdentityBackId("");
+      setIdentityVerified(false);
+      setPaymentStatus(null);
+      setServerBalanceDue(null);
+      setPaymentTransactionId(null);
+      setCheckInCompleted(false);
+      setStep(1);
+      showToast("Check-in démarré. Vérifiez l'identité du client.", "check");
+    } catch (error) {
+      showToast((error as Error).message || "Impossible de démarrer le check-in.", "x");
+    } finally {
+      setCheckInBusy(false);
+    }
+  }
+
+  async function uploadIdentity(file: File | undefined, side: "front" | "back") {
+    if (!file) return;
+    setIdentityBusy(true);
+    try {
+      const uploaded = await uploadFile(file);
+      if (!uploaded?.id) throw new Error("Le serveur n'a pas retourné l'identifiant du document.");
+      if (side === "front") setIdentityFrontId(uploaded.id);
+      else setIdentityBackId(uploaded.id);
+    } catch (error) {
+      showToast((error as Error).message || "Échec du téléversement de la pièce d'identité.", "x");
+    } finally {
+      setIdentityBusy(false);
+    }
+  }
+
+  async function handleVerifyIdentity() {
+    if (!selectedReservation || !identityFrontId || !identityBackId || identityBusy) return;
+    setIdentityBusy(true);
+    try {
+      const result = await updateCheckInIdentity(selectedReservation.id, {
+        idCardFrontId: identityFrontId,
+        idCardBackId: identityBackId,
+        identityVerified: true,
+      });
+      if (!result.ok) throw new Error(result.error.message);
+      if (!result.data.success) throw new Error("Le serveur n'a pas confirmé la vérification de l'identité.");
+      setIdentityVerified(true);
+      setStep(2);
+      showToast("Identité validée par le serveur.", "check");
+    } catch (error) {
+      showToast((error as Error).message || "Impossible de valider l'identité.", "x");
+    } finally {
+      setIdentityBusy(false);
+    }
+  }
+
+  async function handleCompleteCheckIn() {
+    if (!selectedReservation || !checkInStarted || !identityVerified || !isPaymentConfirmed || checkInBusy) return;
+    setCheckInBusy(true);
+    try {
+      const result = await completeCheckIn(selectedReservation.id);
+      if (!result.ok) throw new Error(result.error.message);
+      setCheckInCompleted(true);
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      showToast("Check-in finalisé par le serveur.", "check");
+    } catch (error) {
+      showToast((error as Error).message || "Le check-in n'a pas pu être finalisé.", "x");
+    } finally {
+      setCheckInBusy(false);
+    }
+  }
+
+  async function collectBalance() {
+    if (!selectedReservation || paymentBusy) return;
+    if (balanceDue === 0) {
+      setPaymentStatus("already_paid");
+      setServerBalanceDue(0);
+      setPaymentTransactionId(null);
+      setStep(3);
+      return;
+    }
+    setPaymentBusy(true);
+    try {
+      const result = await addStayPayment(selectedReservation.id, {
+        amount: balanceDue,
+        paymentMethod,
+        description: `Solde encaissé au check-in — ${selectedReservation.ref}`,
+      });
+      if (!result.ok) throw new Error(result.error.message);
+      if (typeof result.data.status !== "string" || !result.data.status) throw new Error("Réponse API invalide : statut du paiement absent.");
+      if (typeof result.data.balanceDue !== "number" || !Number.isFinite(result.data.balanceDue)) throw new Error("Réponse API invalide : solde après paiement absent.");
+      setPaymentStatus(result.data.status);
+      setServerBalanceDue(result.data.balanceDue);
+      setPaymentTransactionId(result.data.transactionId || null);
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["folio", selectedReservation.id] });
+      const pending = !["confirmed", "succeeded", "success", "paid", "completed"].includes(result.data.status.toLowerCase());
+      setStep(3);
+      showToast(
+        pending ? "Paiement en attente de confirmation" : "Paiement enregistré",
+        pending ? "info" : "check",
+      );
+    } catch (error) {
+      showToast((error as Error).message || "Le paiement n’a pas pu être enregistré", "x");
+    } finally {
+      setPaymentBusy(false);
+    }
+  }
 
   async function submitWalkIn() {
     if (!walkinRoomId || !walkinForm.firstName.trim() || !walkinForm.lastName.trim() || !walkinForm.phone.trim() || !walkinForm.idCardNumber.trim() || !walkinForm.checkOutDate) return;
@@ -66,15 +215,17 @@ export function CheckIn() {
         actions={
           <>
             <div className="flex gap-0.5 bg-surface-2 p-0.75 rounded-[9px]">
-              {(["checkin","checkout","walkin"] as StepTarget[]).map(m => (
+              {(["checkin","walkin"] as StepTarget[]).map(m => (
                 <button
                   key={m}
                   className={`px-3 py-1.5 rounded-[7px] text-[12.5px] font-medium ${mode===m ? "bg-surface text-ink border border-border shadow-xs" : "text-ink-2"}`}
-                  onClick={() => { setMode(m); setStep(0); }}
+                  disabled={checkInStarted && !checkInCompleted}
+                  onClick={() => { setMode(m); setStep(0); setSelectedReservation(null); setPaymentStatus(null); setCheckInStarted(false); setIdentityVerified(false); setCheckInCompleted(false); }}
                 >
-                  {m==="checkin" ? "Arrivées" : m==="checkout" ? "Départs" : "Walk-in"}
+                  {m==="checkin" ? "Arrivées" : "Walk-in"}
                 </button>
               ))}
+              <button className="px-3 py-1.5 rounded-[7px] text-[12.5px] font-medium text-ink-2" onClick={() => router.push(`/pms/${hotel}/checkout`)}>Départs</button>
             </div>
           </>
         }
@@ -104,7 +255,7 @@ export function CheckIn() {
                   <React.Fragment key={s}>
                     <button
                       className="flex items-center gap-2 cursor-pointer"
-                      onClick={() => i <= step && setStep(i)}
+                      onClick={() => i <= step && (!checkInStarted || i > 0) && setStep(i)}
                     >
                       <div className={`w-7.5 h-7.5 rounded-full grid place-items-center text-[12px] font-bold shrink-0 transition-colors ${i < step ? "bg-success text-white" : i === step ? "bg-primary text-white" : "bg-surface-2 text-ink-3"}`}>
                         {i < step ? <Icon name="check" size={13} /> : i + 1}
@@ -126,11 +277,12 @@ export function CheckIn() {
                       <SectionHead icon="user" title="Identification du client" sub="Entrez le nom ou la référence de réservation" />
                       <div className="h-12 bg-surface border border-border rounded-[10px] px-4 flex items-center gap-3 mt-4 focus-within:border-primary">
                         <Icon name="eye" size={16} color="var(--color-ink-3)" />
-                        <input className="flex-1 text-[14px] outline-none bg-transparent placeholder:text-ink-4" placeholder="Nom, prénom ou référence RES-2026-…" />
+                        <input className="flex-1 text-[14px] outline-none bg-transparent placeholder:text-ink-4" placeholder="Nom, prénom ou référence RES-2026-…" value={reservationSearch} onChange={event => setReservationSearch(event.target.value)} />
                       </div>
                       <div className="mt-3.5 grid gap-2">
+                        {arrivalsQ.isError && <div role="alert" className="text-[12px] text-danger">Impossible de charger les arrivées : {(arrivalsQ.error as Error).message}</div>}
                         {arrivals.map(b => (
-                          <div key={b.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-primary cursor-pointer transition-all duration-120" onClick={() => setStep(1)}>
+                          <button type="button" key={b.id} disabled={checkInBusy} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-primary cursor-pointer transition-all duration-120 disabled:opacity-60" onClick={() => handleStartCheckIn(b)}>
                             <div className="w-9.5 h-9.5 rounded-full inline-grid place-items-center text-white font-semibold text-[13px] shrink-0"
                               style={{ background: AV_COLORS[b.guest.charCodeAt(0) % 8] }}>
                               {b.guest.split(" ").map((x: string) => x[0]).join("").slice(0,2)}
@@ -143,26 +295,30 @@ export function CheckIn() {
                               <div className="text-[12.5px] font-semibold">{formatFCFA(b.amount)}</div>
                               <Pill kind={b.paid >= b.amount ? "success" : "warn"} dot>{b.paid >= b.amount ? "Payé" : "Acompte"}</Pill>
                             </div>
-                          </div>
+                          </button>
                         ))}
+                        {!arrivalsQ.isError && arrivals.length === 0 && <div className="py-5 text-center text-[13px] text-ink-3">Aucune réservation confirmée correspondante.</div>}
                       </div>
                     </div>
                   )}
                   {step === 1 && (
                     <div>
-                      <SectionHead icon="bed" title="Attribution de chambre" sub="Sélectionnez une chambre disponible" />
-                      <div className="grid gap-2.5 mt-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))" }}>
-                        {availRooms.map(r => (
-                          <div key={r.num} className="rounded-xl p-3.5 border-2 border-dashed border-border hover:border-primary cursor-pointer text-center transition-all duration-120 group" onClick={() => setStep(2)}>
-                            <div className="text-[22px] font-semibold tracking-[-0.03em] group-hover:text-primary">{r.num}</div>
-                            <div className="text-[11px] text-ink-3 mt-0.5">{r.type} · Ét.{r.floor}</div>
-                            <div className="mt-1.5 text-[10.5px] font-semibold text-success">Disponible</div>
-                          </div>
-                        ))}
+                      <SectionHead icon="user" title="Vérification de l'identité" sub="Téléversez le recto et le verso de la pièce, puis confirmez leur vérification" />
+                      <div className="grid gap-3 mt-4">
+                        <label className="grid gap-1 text-[12px] text-ink-2">Recto de la pièce d'identité
+                          <input type="file" accept="image/*,application/pdf" disabled={identityBusy} onChange={event => uploadIdentity(event.target.files?.[0], "front")} />
+                          <span className="text-[11px] text-ink-3">{identityFrontId ? "Document envoyé" : "Document non envoyé"}</span>
+                        </label>
+                        <label className="grid gap-1 text-[12px] text-ink-2">Verso de la pièce d'identité
+                          <input type="file" accept="image/*,application/pdf" disabled={identityBusy} onChange={event => uploadIdentity(event.target.files?.[0], "back")} />
+                          <span className="text-[11px] text-ink-3">{identityBackId ? "Document envoyé" : "Document non envoyé"}</span>
+                        </label>
                       </div>
                       <div className="flex justify-between mt-5.5">
                         <Button variant="ghost" onClick={() => setStep(0)}><Icon name="chevronLeft" size={14} /> Retour</Button>
-                        <Button variant="primary" onClick={() => setStep(2)}>Continuer <Icon name="chevronRight" size={14} /></Button>
+                        <Button variant="primary" disabled={identityBusy || !identityFrontId || !identityBackId} onClick={handleVerifyIdentity}>
+                          {identityBusy ? "Validation…" : "Valider l'identité"} <Icon name="chevronRight" size={14} />
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -171,9 +327,9 @@ export function CheckIn() {
                       <SectionHead icon="creditCard" title="Paiement & solde" sub="Vérifiez et encaissez le solde restant" />
                       <div className="mt-4 grid gap-2.5">
                         {[
-                          { label:"Montant total",     value:"135 000 FCFA", color:"var(--color-ink)"     },
-                          { label:"Acompte versé",     value:"67 500 FCFA",  color:"var(--color-success)" },
-                          { label:"Solde à encaisser", value:"67 500 FCFA",  color:"var(--color-warn)"    },
+                          { label:"Montant total",     value:formatFCFA(reservationTotal), color:"var(--color-ink)"     },
+                          { label:"Déjà versé",        value:formatFCFA(amountAlreadyPaid), color:"var(--color-success)" },
+                        { label:"Solde à encaisser", value:formatFCFA(balanceDue), color:"var(--color-warn)"    },
                         ].map(r => (
                           <div key={r.label} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px]">
                             <span className="text-ink-2 text-[13px]">{r.label}</span>
@@ -181,14 +337,16 @@ export function CheckIn() {
                           </div>
                         ))}
                       </div>
+                      {folioQ.isError && <div role="alert" className="mt-2 text-[12px] text-danger">Impossible de charger le folio : {(folioQ.error as Error).message}</div>}
                       <div className="mt-4">
                         <div className="text-[12px] font-semibold mb-2.5 text-ink-2">Mode de paiement du solde</div>
                         <div className="flex gap-2 flex-wrap">
-                          {(["wave","om","mtn","cash"] as const).map(method => {
-                            const labels = { wave: "Wave", om: "Orange Money", mtn: "Moov", cash: "Espèces" };
+                          {(["wave","orange_money","mtn_momo","cash"] as const).map(method => {
+                            const labels = { wave: "Wave", orange_money: "Orange Money", mtn_momo: "Moov", cash: "Espèces" };
+                            const iconMethod = method === "orange_money" ? "om" : method === "mtn_momo" ? "mtn" : method;
                             return (
-                              <button key={method} className="flex items-center gap-2 px-3 py-2 rounded-[9px] border border-border hover:border-primary hover:bg-primary-50 transition-all">
-                                <PaymentMethodIcon method={method} size="sm" />
+                              <button type="button" key={method} aria-pressed={paymentMethod === method} onClick={() => setPaymentMethod(method)} className={`flex items-center gap-2 px-3 py-2 rounded-[9px] border transition-all ${paymentMethod === method ? "border-primary bg-primary-50" : "border-border hover:border-primary hover:bg-primary-50"}`}>
+                                <PaymentMethodIcon method={iconMethod} size="sm" />
                                 <span className="text-[12.5px]">{labels[method]}</span>
                               </button>
                             );
@@ -197,91 +355,32 @@ export function CheckIn() {
                       </div>
                       <div className="flex justify-between mt-5.5">
                         <Button variant="ghost" onClick={() => setStep(1)}><Icon name="chevronLeft" size={14} /> Retour</Button>
-                        <Button variant="primary" onClick={() => setStep(3)}>Encaisser & Continuer <Icon name="chevronRight" size={14} /></Button>
+                        <Button variant="primary" disabled={!selectedReservation || !identityVerified || !hasValidReservationAmount || folioQ.isLoading || folioQ.isError || paymentBusy} onClick={balanceDue !== 0 ? collectBalance : () => { setPaymentStatus("already_paid"); setStep(3); }}>
+                          {paymentBusy ? "Enregistrement…" : balanceDue !== 0 ? "Encaisser & Continuer" : "Continuer sans solde"} <Icon name="chevronRight" size={14} />
+                        </Button>
                       </div>
                     </div>
                   )}
                   {step === 3 && (
                     <div className="text-center py-8">
-                      <div className="w-16 h-16 rounded-full bg-success/10 grid place-items-center mx-auto mb-4">
-                        <Icon name="check" size={32} color="var(--color-success)" />
+                      <div className={`w-16 h-16 rounded-full grid place-items-center mx-auto mb-4 ${checkInCompleted ? "bg-success/10" : isPaymentPending ? "bg-warn/10" : "bg-surface-2"}`}>
+                        <Icon name={checkInCompleted ? "check" : isPaymentPending ? "clock" : "user"} size={32} color={checkInCompleted ? "var(--color-success)" : isPaymentPending ? "var(--color-warn)" : "var(--color-ink-3)"} />
                       </div>
-                      <div className="text-[22px] font-bold tracking-[-0.02em] mb-2">Check-in confirmé</div>
-                      <div className="text-[14px] text-ink-2 mb-5.5">Chambre 205 attribuée · Clé remise · Reçu SMS envoyé</div>
+                      <div className="text-[22px] font-bold tracking-[-0.02em] mb-2">
+                        {checkInCompleted ? "Check-in confirmé" : isPaymentPending ? "Paiement en attente" : "Prêt à finaliser le check-in"}
+                      </div>
+                      <div className="text-[14px] text-ink-2">{selectedReservation?.ref} · Solde : {formatFCFA(currentBalanceDue)}</div>
+                      {paymentTransactionId && <div className="text-[11px] text-ink-3 mt-1">Transaction : {paymentTransactionId}</div>}
+                      <div className="text-[12px] text-ink-3 mt-3 mb-5.5">{checkInCompleted ? "Le serveur a confirmé la finalisation du check-in." : isPaymentPending ? "Le paiement doit être confirmé par le prestataire avant la finalisation." : "L'identité est validée. Finalisez le check-in pour enregistrer l'arrivée."}</div>
                       <div className="flex gap-2 justify-center">
-                        <Button variant="ghost" onClick={() => setStep(0)}><Icon name="printer" size={14} /> Imprimer fiche</Button>
-                        <Button variant="primary" onClick={() => { setStep(0); showToast("Nouveau check-in prêt", "check"); }}>
-                          Nouveau check-in
-                        </Button>
+                        {!checkInCompleted ? <Button variant="primary" disabled={!isPaymentConfirmed || currentBalanceDue !== 0 || checkInBusy} onClick={handleCompleteCheckIn}>{checkInBusy ? "Finalisation…" : "Finaliser le check-in"}</Button> :
+                          <Button variant="primary" onClick={() => { setStep(0); setSelectedReservation(null); setPaymentStatus(null); setPaymentTransactionId(null); setCheckInStarted(false); setIdentityVerified(false); setCheckInCompleted(false); }}>Nouveau check-in</Button>}
                       </div>
                     </div>
                   )}
                 </>
               )}
 
-              {/* Check-out steps */}
-              {mode === "checkout" && (
-                <>
-                  {step === 0 && (
-                    <div>
-                      <SectionHead icon="arrowLeft" title="Sélectionnez le client" sub="Départs du jour" />
-                      <div className="mt-3.5 grid gap-2">
-                        {departures.map(b => (
-                          <div key={b.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-primary cursor-pointer transition-all duration-120" onClick={() => setStep(1)}>
-                            <div className="w-9.5 h-9.5 rounded-full inline-grid place-items-center text-white font-semibold text-[13px] shrink-0"
-                              style={{ background: AV_COLORS[b.guest.charCodeAt(0) % 8] }}>
-                              {b.guest.split(" ").map((x: string) => x[0]).join("").slice(0,2)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-[13.5px]">{b.guest}</div>
-                              <div className="text-[11.5px] text-ink-3">Ch. {b.room} · {b.nights} nuit{b.nights>1?"s":""} · {formatDate(b.checkout)}</div>
-                            </div>
-                            <Icon name="chevronRight" size={14} color="var(--color-ink-3)" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {step === 1 && (
-                    <div>
-                      <SectionHead icon="list" title="Vérification de la chambre" sub="Extras, mini-bar, dommages éventuels" />
-                      <div className="mt-4 grid gap-2">
-                        {[
-                          { label:"Mini-bar",      note:"2 boissons consommées", extra:"3 500 FCFA" },
-                          { label:"Blanchisserie", note:"3 pièces",              extra:"5 000 FCFA" },
-                          { label:"Room service",  note:"Aucune commande",       extra: null         },
-                        ].map(item => (
-                          <div key={item.label} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px]">
-                            <div>
-                              <div className="font-medium text-[13px]">{item.label}</div>
-                              <div className="text-[11.5px] text-ink-3">{item.note}</div>
-                            </div>
-                            {item.extra
-                              ? <strong className="text-[13px]" style={{ color:"var(--color-warn)" }}>{item.extra}</strong>
-                              : <Pill kind="success" dot>Rien</Pill>}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex justify-between mt-5.5">
-                        <Button variant="ghost" onClick={() => setStep(0)}><Icon name="chevronLeft" size={14} /> Retour</Button>
-                        <Button variant="primary" onClick={() => setStep(2)}>Facturer extras <Icon name="chevronRight" size={14} /></Button>
-                      </div>
-                    </div>
-                  )}
-                  {step === 2 && (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 rounded-full bg-success/10 grid place-items-center mx-auto mb-4">
-                        <Icon name="check" size={32} color="var(--color-success)" />
-                      </div>
-                      <div className="text-[22px] font-bold tracking-[-0.02em] mb-2">Départ confirmé</div>
-                      <div className="text-[14px] text-ink-2 mb-5.5">Chambre libérée · Facture envoyée par SMS · Avis app demandé</div>
-                      <Button variant="primary" onClick={() => { setStep(0); showToast("Départ enregistré", "check"); }}>
-                        Nouveau départ
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
             </div>
           )}
 
@@ -312,7 +411,6 @@ export function CheckIn() {
               {[
                 { label:"Arrivées prévues",     value:arrivals.length,   bg:"var(--color-primary-50)", cl:"var(--color-primary)" },
                 { label:"Départs prévus",       value:departures.length, bg:"var(--color-warn-bg)",    cl:"var(--color-warn)"    },
-                { label:"Walk-ins du jour",     value:3,                 bg:"var(--color-teal-bg)",    cl:"var(--color-teal)"    },
                 { label:"Chambres disponibles", value:availRooms.length, bg:"var(--color-success-bg)", cl:"var(--color-success)" },
               ].map(s => (
                 <div key={s.label} className="flex items-center justify-between px-3.5 py-3 rounded-[10px]" style={{ background: s.bg }}>
@@ -324,8 +422,8 @@ export function CheckIn() {
           </div>
 
           <div className="bg-surface border border-border rounded-[18px] p-5.5">
-            <SectionHead icon="list" title="Départs à venir" sub="Dans les 2 prochaines heures" />
-            {departures.slice(0, 3).map(b => (
+            <SectionHead icon="list" title="Départs prévus" sub={`${departures.length} départs à traiter`} />
+            {departuresQ.isError ? <div role="alert" className="text-[12px] text-danger">Impossible de charger les départs : {(departuresQ.error as Error).message}</div> : departures.slice(0, 3).map(b => (
               <div key={b.id} className="flex items-center gap-2.5 py-2.5 border-b border-border-soft last:border-b-0">
                 <div className="w-1.75 h-1.75 rounded-full shrink-0" style={{ background: "var(--color-warn)" }} />
                 <div className="flex-1 min-w-0">
@@ -339,15 +437,7 @@ export function CheckIn() {
           <div className="bg-surface border border-border rounded-[18px] p-5.5">
             <SectionHead icon="sparkles" title="Raccourcis" />
             <div className="grid gap-2">
-              {[
-                { icon:"printer",  label:"Imprimer liste arrivées" },
-                { icon:"send",     label:"SMS rappel clients"       },
-                { icon:"download", label:"Rapport journée PDF"      },
-              ].map(a => (
-                <Button key={a.label} variant="soft" size="sm" className="justify-start" onClick={() => showToast(a.label, "check")}>
-                  <Icon name={a.icon} size={14} /> {a.label}
-                </Button>
-              ))}
+              <DashboardExportAction />
             </div>
           </div>
         </div>
