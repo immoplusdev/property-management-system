@@ -328,6 +328,7 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
     </div>;
   }
   const guestName = `${inv.guest.firstName} ${inv.guest.lastName}`;
+  const nights = inv.nights ?? 0;
   return (
     <div className="bg-surface-2 rounded-[12px] p-4">
       <div className="flex justify-between items-start mb-3">
@@ -338,7 +339,7 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
       </div>
       <div className="grid gap-1.5 text-[13px]">
         <div className="flex justify-between">
-          <span className="text-ink-2">{inv.nights} nuit{inv.nights > 1 ? "s" : ""} · {inv.room.typeName}</span>
+          <span className="text-ink-2">{nights} nuit{nights > 1 ? "s" : ""} · {inv.room.typeName}</span>
           <span className="font-semibold">{formatFCFA(inv.roomTotal)}</span>
         </div>
         {(inv.extras ?? []).map((extra, i) => (
