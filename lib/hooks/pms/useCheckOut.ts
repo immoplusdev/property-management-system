@@ -27,7 +27,7 @@ export function useCheckOutInvoice(reservationId: string, enabled = true) {
 export function usePerformCheckOut() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ reservationId, payload }: { reservationId: string; payload?: CheckOutPayload }) =>
+    mutationFn: ({ reservationId, payload }: { reservationId: string; payload: CheckOutPayload }) =>
       performCheckOut(reservationId, payload).then(res => {
         if (!res.ok) throw new Error(res.error.message);
         return res.data;

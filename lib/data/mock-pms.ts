@@ -214,10 +214,14 @@ export const STATUS_CONFIG: Record<RoomStatus, StatusConfig> = {
 export const ARRIVALS_TODAY  = BOOKINGS.filter(b => b.checkin  === TODAY);
 export const DEPARTURES_TODAY = BOOKINGS.filter(b => b.checkout === TODAY);
 
-export function formatFCFA(n: number): string {
-  return Number(n).toLocaleString("fr-FR") + " FCFA";
+export function formatFCFA(n: number | null | undefined): string {
+  const amount = typeof n === "number" && Number.isFinite(n) ? n : 0;
+  return amount.toLocaleString("fr-FR") + " FCFA";
 }
 
-export function formatDate(d: string): string {
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(new Date(d));
+export function formatDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(date);
 }

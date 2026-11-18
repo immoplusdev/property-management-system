@@ -6,38 +6,43 @@ import { toFormError, type FormError } from "@/lib/api/errors";
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: FormError };
 
 export interface WalkInPayload {
+  roomId: string;
+  checkOutDate: string;
+  adults: number;
+  children: number;
   guest: {
     firstName: string;
     lastName: string;
     phone: string;
-    email?: string;
-    nationality?: string;
+    nationality: string;
+    idCardNumber: string;
   };
-  roomId: string;
-  roomTypeId: string;
-  roomRate: number;
-  checkInDate: string;
-  checkOutDate: string;
-  adults?: number;
-  children?: number;
-  paymentMethod: string;
-  amountPaid: number;
-  breakfastIncluded?: boolean;
+  payment: {
+    amount: number;
+    paymentMethod: "cash" | "orange_money" | "wave" | "mtn_momo" | "moov_money";
+    reference?: string;
+  };
 }
 
 export interface CheckInIdentityPayload {
   idCardFrontId: string;
   idCardBackId: string;
   signatureFileId?: string;
+  identityVerified: true;
 }
 
 export interface CheckInResult {
-  success: boolean;
   reservationId: string;
+  reference?: string;
+  room?: { id: string; number: string; status: string };
+  stay?: { checkInDate: string; checkOutDate: string; nights: number };
+  pricing?: { nightlyRate: number; totalTtc: number };
+  payment?: { transactionId: string; status: string; confirmedAmount: number };
+  balanceDue?: number;
   status: string;
-  roomNumber: string;
-  checkedInAt: string;
-  checkOutDate: string;
+  checkinId?: string;
+  roomStatus?: string;
+  keyHandedAt?: string;
 }
 
 export async function startWalkIn(
@@ -50,6 +55,7 @@ export async function startWalkIn(
       method: "POST",
       json: payload,
       accessToken,
+      headers: { "Idempotency-Key": crypto.randomUUID() },
     });
     return { ok: true, data };
   } catch (err) {
@@ -59,13 +65,13 @@ export async function startWalkIn(
 
 export async function startCheckIn(
   reservationId: string
-): Promise<ActionResult<{ sessionId: string; steps: string[] }>> {
+): Promise<ActionResult<{ checkinId: string; status: "in_progress"; balanceDue: number }>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<{ sessionId: string; steps: string[] }>(
+    const data = await backendFetch<{ checkinId: string; status: "in_progress"; balanceDue: number }>(
       `/pms/checkin/${reservationId}/start`,
-      { method: "POST", accessToken }
+      { method: "POST", json: {}, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() } }
     );
     return { ok: true, data };
   } catch (err) {
@@ -82,7 +88,7 @@ export async function updateCheckInIdentity(
   try {
     const data = await backendFetch<{ success: boolean }>(
       `/pms/checkin/${reservationId}/identity`,
-      { method: "PATCH", json: payload, accessToken }
+      { method: "PATCH", json: payload, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() } }
     );
     return { ok: true, data };
   } catch (err) {
@@ -98,7 +104,7 @@ export async function completeCheckIn(
   try {
     const data = await backendFetch<CheckInResult>(
       `/pms/checkin/${reservationId}/complete`,
-      { method: "POST", accessToken }
+      { method: "POST", json: {}, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() } }
     );
     return { ok: true, data };
   } catch (err) {

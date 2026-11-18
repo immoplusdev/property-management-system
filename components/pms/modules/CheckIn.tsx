@@ -9,6 +9,8 @@ import { formatFCFA, formatDate, type Booking } from "../data";
 import { useReservations } from "@/lib/hooks/pms/useReservations";
 import { useRooms } from "@/lib/hooks/pms/useRooms";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
+import { useWalkIn } from "@/lib/hooks/pms/useCheckIn";
+import { checkAvailability } from "@/lib/api/pms/rooms.actions";
 
 const STEPS_IN  = ["Identification","Chambre","Paiement","Confirmation"];
 const STEPS_OUT = ["Vérification","Règlement","Départ"];
@@ -19,6 +21,9 @@ export function CheckIn() {
   const [mode, setMode]     = useState<StepTarget>("checkin");
   const [step, setStep]     = useState(0);
   const [walkin, setWalkin] = useState(false);
+  const [walkinForm, setWalkinForm] = useState({ firstName: "", lastName: "", phone: "", nationality: "CI", idCardNumber: "", checkOutDate: "", adults: "1", children: "0", amount: "0", paymentMethod: "cash" as "cash" | "orange_money" | "wave" | "mtn_momo" | "moov_money", reference: "" });
+  const [walkinRoomId, setWalkinRoomId] = useState("");
+  const walkInMutation = useWalkIn();
 
   const STEPS = mode === "checkout" ? STEPS_OUT : STEPS_IN;
 
@@ -29,6 +34,28 @@ export function CheckIn() {
   const arrivals   = (arrivalsQ.data?.data   ?? []).slice(0, 5);
   const departures = (departuresQ.data?.data ?? []).slice(0, 5);
   const availRooms = (roomsQ.data?.rooms     ?? []).slice(0, 8);
+
+  async function submitWalkIn() {
+    if (!walkinRoomId || !walkinForm.firstName.trim() || !walkinForm.lastName.trim() || !walkinForm.phone.trim() || !walkinForm.idCardNumber.trim() || !walkinForm.checkOutDate) return;
+    try {
+      const checkInDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Abidjan", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const availability = await checkAvailability({ checkInDate, checkOutDate: walkinForm.checkOutDate, roomId: walkinRoomId });
+      if (!availability.ok) throw new Error(availability.error.message);
+      if (!availability.data.available) throw new Error(availability.data.reasons?.join(" · ") || "Cette chambre n’est pas disponible sur ces dates.");
+      await walkInMutation.mutateAsync({
+        roomId: walkinRoomId,
+        checkOutDate: walkinForm.checkOutDate,
+        adults: Number(walkinForm.adults),
+        children: Number(walkinForm.children),
+        guest: { firstName: walkinForm.firstName.trim(), lastName: walkinForm.lastName.trim(), phone: walkinForm.phone.trim(), nationality: walkinForm.nationality, idCardNumber: walkinForm.idCardNumber.trim() },
+        payment: { amount: Number(walkinForm.amount), paymentMethod: walkinForm.paymentMethod, ...(walkinForm.reference.trim() ? { reference: walkinForm.reference.trim() } : {}) },
+      });
+      setWalkin(false);
+      showToast("Walk-in enregistré. Le tarif et la durée sont calculés par l’hôtel.", "check");
+    } catch (error) {
+      showToast((error as Error).message || "Impossible d’enregistrer le walk-in", "x");
+    }
+  }
 
   return (
     <div className="animate-pms-fade-up">
@@ -335,38 +362,45 @@ export function CheckIn() {
           footer={
             <>
               <Button variant="ghost" onClick={() => setWalkin(false)}>Annuler</Button>
-              <Button variant="primary" onClick={() => { setWalkin(false); showToast("Walk-in enregistré", "check"); }}>
-                <Icon name="check" size={14} /> Confirmer
+              <Button variant="primary" disabled={walkInMutation.isPending || !walkinRoomId || !walkinForm.firstName || !walkinForm.lastName || !walkinForm.phone || !walkinForm.idCardNumber || !walkinForm.checkOutDate} onClick={submitWalkIn}>
+                <Icon name="check" size={14} /> {walkInMutation.isPending ? "Enregistrement…" : "Enregistrer le séjour"}
               </Button>
             </>
           }
         >
           <div className="grid gap-3">
             {[
-              { label:"Nom complet",     ph:"Ex: Kouamé Aya Bernadette", type:"text"   },
-              { label:"Téléphone",       ph:"+225 07 XX XX XX XX",       type:"tel"    },
-              { label:"Nombre de nuits", ph:"1",                         type:"number" },
+              { label:"Prénom", key:"firstName", ph:"Amadou", type:"text" },
+              { label:"Nom", key:"lastName", ph:"Bakayoko", type:"text" },
+              { label:"Téléphone", key:"phone", ph:"+225 07 XX XX XX XX", type:"tel" },
+              { label:"Nationalité (code pays)", key:"nationality", ph:"CI", type:"text" },
+              { label:"Numéro de pièce d’identité", key:"idCardNumber", ph:"CI-00928172", type:"text" },
+              { label:"Date de départ", key:"checkOutDate", ph:"", type:"date" },
+              { label:"Adultes", key:"adults", ph:"1", type:"number" },
+              { label:"Enfants", key:"children", ph:"0", type:"number" },
+              { label:"Acompte reçu (XOF)", key:"amount", ph:"0", type:"number" },
+              { label:"Référence de paiement (facultative)", key:"reference", ph:"Référence PSP", type:"text" },
             ].map(f => (
               <div key={f.label}>
                 <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">{f.label}</label>
-                <input type={f.type} placeholder={f.ph} className="w-full h-10.5 bg-surface border border-border rounded-[9px] px-3 text-[13.5px] text-ink outline-none focus:border-primary placeholder:text-ink-4" />
+                <input type={f.type} min={f.type === "number" ? 0 : undefined} value={walkinForm[f.key as keyof typeof walkinForm]} placeholder={f.ph} onChange={e => setWalkinForm(v => ({ ...v, [f.key]: e.target.value }))} className="w-full h-10.5 bg-surface border border-border rounded-[9px] px-3 text-[13.5px] text-ink outline-none focus:border-primary placeholder:text-ink-4" />
               </div>
             ))}
             <div>
               <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">Chambre</label>
               <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
                 {availRooms.slice(0, 8).map(r => (
-                  <button key={r.num} className="px-2.5 py-2 rounded-[9px] border border-dashed border-border text-[12.5px] hover:border-primary hover:text-primary font-semibold">{r.num}</button>
+                  <button type="button" key={r.id ?? r.num} onClick={() => r.id && setWalkinRoomId(r.id)} className={`px-2.5 py-2 rounded-[9px] border text-[12.5px] font-semibold ${walkinRoomId === r.id ? "border-primary bg-primary-50 text-primary" : "border-dashed border-border hover:border-primary hover:text-primary"}`}>{r.num} · {r.type}</button>
                 ))}
               </div>
             </div>
             <div>
               <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">Paiement</label>
               <div className="flex gap-2 flex-wrap">
-                {(["wave","om","mtn","cash","card"] as const).map(method => {
-                  const labels = { wave: "Wave", om: "Orange Money", mtn: "Moov", cash: "Espèces", card: "Carte" };
+                {(["wave","om","mtn","cash"] as const).map(method => {
+                  const labels = { wave: "Wave", om: "Orange Money", mtn: "Moov", cash: "Espèces" };
                   return (
-                    <button key={method} className="flex items-center gap-2 px-3 py-1.5 rounded-[9px] border border-border hover:border-primary hover:bg-primary-50 transition-all">
+                    <button type="button" key={method} onClick={() => setWalkinForm(v => ({ ...v, paymentMethod: method === "om" ? "orange_money" : method === "mtn" ? "mtn_momo" : method }))} className={`flex items-center gap-2 px-3 py-1.5 rounded-[9px] border transition-all ${walkinForm.paymentMethod === (method === "om" ? "orange_money" : method === "mtn" ? "mtn_momo" : method) ? "border-primary bg-primary-50" : "border-border hover:border-primary hover:bg-primary-50"}`}>
                       <PaymentMethodIcon method={method} size="sm" />
                       <span className="text-[12.5px]">{labels[method]}</span>
                     </button>
@@ -374,6 +408,7 @@ export function CheckIn() {
                 })}
               </div>
             </div>
+            <p className="text-[11.5px] text-ink-3">Le tarif, le nombre de nuits et le solde sont calculés par le serveur. Les paiements Mobile Money restent en attente de confirmation du fournisseur.</p>
           </div>
         </Modal>
       )}

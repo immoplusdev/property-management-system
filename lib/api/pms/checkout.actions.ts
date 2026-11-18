@@ -13,23 +13,28 @@ export interface InvoiceExtra {
 
 /** Response of `GET /pms/checkout/:reservationId/invoice` — see dimension.md §6.1. */
 export interface Invoice {
-  reservationId: string;
-  guest: { firstName: string; lastName: string };
-  room: { number: string; typeName: string };
-  checkInDate: string;
-  checkOutDate: string;
-  nights: number;
-  roomRate: number;
-  roomTotal: number;
-  extras: InvoiceExtra[];
-  extrasTotal: number;
-  grandTotal: number;
-  paidAmount: number;
-  balance: number;
+  reservationId?: string;
+  guest?: { firstName: string; lastName: string };
+  room?: { number: string; typeName: string };
+  checkInDate?: string;
+  checkOutDate?: string;
+  nights?: number;
+  roomRate?: number;
+  roomTotal?: number;
+  extras?: InvoiceExtra[];
+  extrasTotal?: number;
+  grandTotal?: number;
+  paidAmount?: number;
+  balance?: number;
+  folio?: { totalHt: number; taxTotal: number; totalTtc: number };
+  payments?: { confirmedTotal: number; refundedTotal: number };
+  balanceDue?: number;
+  invoiceStatus?: "pending" | "ready" | "failed";
 }
 
 /** Request body of `POST /pms/checkout/:reservationId` — see dimension.md §6.2. */
 export interface CheckOutPayload {
+  verifications: { roomInspected: boolean; keyReturned: boolean; valuablesChecked: boolean };
   notes?: string;
 }
 
@@ -58,15 +63,16 @@ export async function getCheckOutInvoice(reservationId: string): Promise<ActionR
 
 export async function performCheckOut(
   reservationId: string,
-  payload?: CheckOutPayload
+  payload: CheckOutPayload
 ): Promise<ActionResult<CheckOutResult>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
     const data = await backendFetch<CheckOutResult>(`/pms/checkout/${reservationId}`, {
       method: "POST",
-      json: payload ?? {},
+      json: payload,
       accessToken,
+      headers: { "Idempotency-Key": crypto.randomUUID() },
     });
     return { ok: true, data };
   } catch (err) {

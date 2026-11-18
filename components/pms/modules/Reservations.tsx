@@ -43,8 +43,8 @@ export function Reservations() {
     let res = allBookings;
     if (filter !== "all") res = res.filter(b => b.status === (filter as BookingStatus));
     if (search) res = res.filter(b =>
-      b.guest.toLowerCase().includes(search.toLowerCase()) ||
-      b.ref.toLowerCase().includes(search.toLowerCase())
+      String(b.guest ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      String(b.ref ?? b.id ?? "").toLowerCase().includes(search.toLowerCase())
     );
     if (payFilter !== "all") res = res.filter(b => b.payment === payFilter);
     return res;
@@ -157,14 +157,14 @@ export function Reservations() {
                   >
                     <td className="px-3.5 py-3.5 align-middle">
                       <code style={{ fontSize: 11, color: "var(--color-ink-2)", fontFamily: "var(--font-mono)" }}>
-                        {b.ref.replace("RES-","").slice(0, 12)}
+                        {String(b.ref ?? b.id ?? "—").replace("RES-","").slice(0, 12)}
                       </code>
                     </td>
                     <td className="px-3.5 py-3.5 align-middle">
                       <div className="flex items-center gap-2.5">
                         <div
                           className="w-7.5 h-7.5 rounded-full inline-grid place-items-center text-white font-semibold text-[11px] shrink-0"
-                          style={{ background: AV_COLORS[b.guest.charCodeAt(0) % 8] }}
+                          style={{ background: AV_COLORS[String(b.guest ?? "?").charCodeAt(0) % 8] }}
                         >
                           {b.guest.split(" ").map((x: string) => x[0]).join("").slice(0, 2).toUpperCase()}
                         </div>
