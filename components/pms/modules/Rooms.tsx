@@ -161,7 +161,7 @@ export function Rooms() {
                     onClick={() => openRoom(r)}
                   >
                     <td className="px-3.5 py-3.5 align-middle"><strong className="text-[15px]">{r.num}</strong></td>
-                    <td className="px-3.5 py-3.5 align-middle">{type?.name}</td>
+                    <td className="px-3.5 py-3.5 align-middle">{r.typeName ?? r.roomType?.name ?? r.type}</td>
                     <td className="px-3.5 py-3.5 align-middle">{r.floor}</td>
                     <td className="px-3.5 py-3.5 align-middle"><StatusPill status={r.status} /></td>
                     <td className="px-3.5 py-3.5 align-middle">{r.guest ?? <span className="text-ink-3">—</span>}</td>

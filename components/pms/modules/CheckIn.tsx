@@ -149,6 +149,7 @@ export function CheckIn() {
 
   async function collectBalance() {
     if (!selectedReservation || paymentBusy) return;
+    if (typeof balanceDue !== "number" || !Number.isFinite(balanceDue) || balanceDue < 0) return;
     if (balanceDue === 0) {
       setPaymentStatus("already_paid");
       setServerBalanceDue(0);

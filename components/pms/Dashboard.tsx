@@ -207,7 +207,7 @@ export function Dashboard({ user }: Props) {
                       </td>
                       <td className="px-3.5 py-3.5 align-middle tabular-nums text-ink-3">{time}</td>
                       <td className="px-3.5 py-3.5 align-middle">
-                        {balance !== null
+                        {balance != null
                           ? balance > 0
                           ? <span style={{ color: "var(--color-warn)", fontWeight: 600 }}>{formatFCFA(balance)}</span>
                             : <span style={{ color: "var(--color-success)", fontWeight: 500 }}>Soldé</span>

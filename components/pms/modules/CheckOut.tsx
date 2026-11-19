@@ -373,7 +373,7 @@ function InvoiceFromAPI({ invoice: inv }: { invoice: Invoice }) {
       <div className="flex justify-between"><span>Total TTC</span><strong>{formatFCFA(inv.folio?.totalTtc)}</strong></div>
       <div className="flex justify-between"><span>Encaissements confirmés</span><strong>{formatFCFA(inv.payments?.confirmedTotal)}</strong></div>
       <div className="h-px bg-border" />
-      <div className="flex justify-between font-bold"><span>Solde à régler</span><strong className={balance > 0 ? "text-warn" : "text-success"}>{formatFCFA(balance)}</strong></div>
+      <div className="flex justify-between font-bold"><span>Solde à régler</span><strong className={balance == null ? "" : balance > 0 ? "text-warn" : "text-success"}>{balance == null ? "—" : formatFCFA(balance)}</strong></div>
       <div className="text-[11px] text-ink-3">Facture : {inv.invoiceStatus ?? "Inconnu"}</div>
     </div>;
   }
