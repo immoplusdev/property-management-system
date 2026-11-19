@@ -8,7 +8,6 @@
 
 export type SocialLoginCommandSource = typeof SocialLoginCommandSource[keyof typeof SocialLoginCommandSource];
 
-
 export const SocialLoginCommandSource = {
   customer_app: 'customer_app',
   pro_app: 'pro_app',
