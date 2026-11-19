@@ -11,11 +11,11 @@ const schema = z.object({
   API_URL: z.string().url().transform((u) => u.replace(/\/+$/, "")),
   AUTH_SOURCE: z
     .enum(["customer_app", "pro_app", "admin_app"])
-    .default("pro_app"),
+    .default("customer_app"),
 });
 
-// ── Force AUTH_SOURCE to pro_app (hardcoded for reliability) ──
-const AUTH_SOURCE_OVERRIDE = "pro_app";
+// ── Force AUTH_SOURCE to customer_app (hardcoded for reliability) ──
+const AUTH_SOURCE_OVERRIDE = "customer_app";
 
 const parsed = schema.safeParse({
   API_URL: process.env.API_URL,
@@ -31,5 +31,5 @@ if (!parsed.success) {
 
 export const env = {
   ...parsed.data,
-  AUTH_SOURCE: AUTH_SOURCE_OVERRIDE, // Always use pro_app
+  AUTH_SOURCE: AUTH_SOURCE_OVERRIDE, // Always use customer_app
 };

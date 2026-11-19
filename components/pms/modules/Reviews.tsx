@@ -111,7 +111,7 @@ export function Reviews() {
           <div className="bg-surface border border-border rounded-[18px] p-5.5">
             <SectionHead icon="barChart" title="Distribution des notes" sub={`${stats?.totalReviews ?? "—"} avis cumulés`} />
           {distribution.map(({ n, count }) => {
-              const total = stats?.totalReviews;
+              const total = stats?.totalReviews ?? 0;
               const pct = total > 0 ? Math.round((count / total) * 100) : 0;
               return (
                 <div key={n} className="grid gap-2.5 items-center text-[12px] mb-1.5" style={{ gridTemplateColumns: "22px 1fr 32px" }}>
