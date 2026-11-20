@@ -12,13 +12,13 @@ export interface DashboardKPIs {
   occupiedRooms: number;
   totalRooms: number;
   todayRevenue: number;
-  monthRevenue: number;
-  arrivalsToday: number;
-  departuresToday: number;
-  inHouseGuests: number;
-  pendingReservations: number;
-  averageDailyRate: number;
-  revPAR: number;
+  monthRevenue?: number;
+  arrivalsToday?: number;
+  departuresToday?: number;
+  inHouseGuests?: number;
+  pendingReservations?: number;
+  averageDailyRate?: number;
+  revPAR?: number;
 }
 
 export interface DashboardRooms {
@@ -78,8 +78,32 @@ export async function getDashboardKPIs(date?: string): Promise<ActionResult<Dash
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
     const qs = date ? `?date=${date}` : "";
-    const data = await backendFetch<DashboardKPIs>(`/pms/dashboard/kpis${qs}`, { accessToken });
-    return { ok: true, data };
+    const response = await backendFetch<unknown>(`/pms/dashboard/kpis${qs}`, { accessToken });
+    const raw = response && typeof response === "object" ? response as Record<string, unknown> : {};
+    const number = (value: unknown): number | undefined =>
+      typeof value === "number" && Number.isFinite(value) ? value : undefined;
+    const todayRevenue = number(raw.todayRevenue ?? raw.revenueToday);
+    const occupancyRate = number(raw.occupancyRate);
+    const occupiedRooms = number(raw.occupiedRooms);
+    const totalRooms = number(raw.totalRooms);
+    if (typeof raw.date !== "string" || todayRevenue === undefined || occupancyRate === undefined || occupiedRooms === undefined || totalRooms === undefined) {
+      throw new Error("Réponse API invalide : indicateurs du tableau de bord incomplets.");
+    }
+    return { ok: true, data: {
+      date: raw.date,
+      todayRevenue,
+      occupancyRate,
+      occupiedRooms,
+      totalRooms,
+      availableRooms: number(raw.availableRooms) ?? Math.max(0, totalRooms - occupiedRooms),
+      monthRevenue: number(raw.monthRevenue),
+      arrivalsToday: number(raw.arrivalsToday),
+      departuresToday: number(raw.departuresToday),
+      inHouseGuests: number(raw.inHouseGuests),
+      pendingReservations: number(raw.pendingReservations),
+      averageDailyRate: number(raw.averageDailyRate),
+      revPAR: number(raw.revPAR),
+    } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
@@ -111,8 +135,16 @@ export async function getDashboardActivity(limit = 10): Promise<ActionResult<Das
   const accessToken = await token();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<DashboardActivity>(`/pms/dashboard/activity?limit=${limit}`, { accessToken });
-    return { ok: true, data };
+    const response = await backendFetch<unknown>(`/pms/dashboard/activity?limit=${limit}`, { accessToken });
+    const rows = Array.isArray(response) ? response : response && typeof response === "object" && "activities" in response ? response.activities : undefined;
+    if (!Array.isArray(rows)) throw new Error("Réponse API invalide : activité absente.");
+    return { ok: true, data: { activities: rows.map((item: Record<string, unknown>) => ({
+      id: String(item.id ?? ""),
+      type: String(item.type ?? ""),
+      description: String(item.description ?? ""),
+      performedBy: String(item.performedBy ?? ""),
+      timestamp: String(item.timestamp ?? item.createdAt ?? ""),
+    })) } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
@@ -122,11 +154,59 @@ export async function getDashboardPaymentMix(): Promise<ActionResult<DashboardPa
   const accessToken = await token();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<DashboardPaymentMix>("/pms/dashboard/payment-mix", { accessToken });
-    return { ok: true, data };
+    const response = await backendFetch<unknown>("/pms/dashboard/payment-mix", { accessToken });
+    const raw = response && typeof response === "object" ? response as Record<string, unknown> : {};
+    const rows = raw.breakdown ?? raw.mix;
+    if (!Array.isArray(rows)) throw new Error("Réponse API invalide : mix des paiements absent.");
+    return { ok: true, data: {
+      period: String(raw.period ?? "7 jours"),
+      total: Number(raw.total ?? raw.totalRevenue ?? 0),
+      breakdown: rows.map((item: Record<string, unknown>) => ({
+        method: String(item.method ?? "unknown"),
+        amount: Number(item.amount ?? 0),
+        percentage: Number(item.percentage ?? item.share ?? 0),
+        count: Number(item.count ?? 0),
+      })),
+    } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
+}
+
+export interface OccupancyDay {
+  date: string;
+  sellableRooms: number;
+  occupiedRooms: number;
+  occupancyRate: number;
+  isPeak: boolean;
+}
+
+export interface OperationalAlert {
+  code: string;
+  level: "critical" | "warning" | "info";
+  message: string;
+  reservationIds?: string[];
+  dates?: string[];
+}
+
+export async function getDashboardOccupancyStats(fromDate: string, toDate: string): Promise<ActionResult<{ dailyStats: OccupancyDay[]; averageOccupancyRate: number }>> {
+  const accessToken = await token();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ dailyStats: OccupancyDay[]; averageOccupancyRate: number }>(`/pms/dashboard/occupancy-stats?fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}`, { accessToken });
+    if (!Array.isArray(data.dailyStats)) throw new Error("Réponse API invalide : occupation absente.");
+    return { ok: true, data };
+  } catch (err) { return { ok: false, error: toFormError(err) }; }
+}
+
+export async function getDashboardOperationalAlerts(): Promise<ActionResult<{ alerts: OperationalAlert[] }>> {
+  const accessToken = await token();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ alerts: OperationalAlert[] }>("/pms/dashboard/operational-alerts", { accessToken });
+    if (!Array.isArray(data.alerts)) throw new Error("Réponse API invalide : alertes absentes.");
+    return { ok: true, data };
+  } catch (err) { return { ok: false, error: toFormError(err) }; }
 }
 
 export async function exportDailyReport(): Promise<ActionResult<{ exportId: string; status: "queued" | "processing" }>> {

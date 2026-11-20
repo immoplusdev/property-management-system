@@ -6,6 +6,7 @@ import {
   getHotelHours,
   updateHotelHours,
   updateNotificationSettings,
+  getNotificationSettings,
   type HotelSettings,
   type HotelHours,
   type NotificationSettings,
@@ -80,5 +81,17 @@ export function useUpdateNotificationSettings() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: settingsKeys.notifications() });
     },
+  });
+}
+
+export function useNotificationSettings() {
+  return useQuery({
+    queryKey: settingsKeys.notifications(),
+    queryFn: async () => {
+      const res = await getNotificationSettings();
+      if (!res.ok) throw new Error(res.error.message);
+      return res.data;
+    },
+    staleTime: 300_000,
   });
 }

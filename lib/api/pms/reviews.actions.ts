@@ -21,6 +21,7 @@ export interface Review {
   response: string | null;
   source: string;
   createdAt: string;
+  title?: string;
 }
 
 /** See dimension.md §12.1. */
@@ -57,6 +58,7 @@ export async function getReviews(params?: {
   limit?: number;
   minRating?: number;
   needsReply?: boolean;
+  guestId?: string;
 }): Promise<ActionResult<ReviewsList>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
@@ -66,9 +68,37 @@ export async function getReviews(params?: {
     if (params?.limit) qs.set("limit", String(params.limit));
     if (params?.minRating !== undefined) qs.set("minRating", String(params.minRating));
     if (params?.needsReply !== undefined) qs.set("needsReply", String(params.needsReply));
+    if (params?.guestId) qs.set("guestId", params.guestId);
     const query = qs.toString() ? `?${qs}` : "";
-    const data = await backendFetch<ReviewsList>(`/pms/reviews${query}`, { accessToken });
-    return { ok: true, data };
+    const response = await backendFetch<unknown>(`/pms/reviews${query}`, { accessToken });
+    const raw = response && typeof response === "object" ? response as Record<string, unknown> : {};
+    const nested = raw.reviews && typeof raw.reviews === "object" ? raw.reviews as Record<string, unknown> : {};
+    const rows = Array.isArray(raw.data) ? raw.data : nested.data;
+    if (!Array.isArray(rows)) throw new Error("Réponse API invalide : avis absents.");
+    const distribution = raw.distribution && typeof raw.distribution === "object" ? raw.distribution as Record<number, number> : {};
+    const data: Review[] = rows.map((item: Record<string, unknown>) => {
+      const guest = item.guest && typeof item.guest === "object" ? item.guest as ReviewGuest : { firstName: "Client", lastName: "", nationality: "" };
+      const reply = item.response && typeof item.response === "object" ? item.response as Record<string, unknown> : {};
+      return {
+        id: String(item.id ?? ""), guest,
+        rating: Number(item.rating ?? item.globalRating ?? 0),
+        comment: String(item.comment ?? item.body ?? ""),
+        response: typeof item.response === "string" ? item.response : typeof reply.body === "string" ? reply.body : null,
+        source: String(item.source ?? "app"),
+        createdAt: String(item.createdAt ?? ""),
+        title: typeof item.title === "string" ? item.title : undefined,
+      };
+    });
+    return { ok: true, data: {
+      data,
+      total: Number(raw.total ?? nested.total ?? data.length),
+      stats: {
+        averageRating: Number(raw.averageRating ?? raw.globalRating ?? 0),
+        totalReviews: Number(raw.totalReviews ?? raw.total ?? nested.total ?? data.length),
+        distribution,
+        responseRate: Number(raw.responseRate ?? 0),
+      },
+    } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
@@ -98,11 +128,11 @@ export async function suggestReviewReply(
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<SuggestReviewReplyResult>(
+    const data = await backendFetch<{ jobId: string }>(
       `/pms/reviews/${id}/response/suggest`,
       { method: "POST", accessToken }
     );
-    return { ok: true, data };
+    return { ok: true, data: { success: true, jobId: data.jobId, message: "Suggestion en cours de génération." } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }

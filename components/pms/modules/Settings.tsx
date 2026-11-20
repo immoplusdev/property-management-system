@@ -3,11 +3,16 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { PMSHeader } from "../PMSHeader";
 import { SectionHead, Icon, toastPromise, Button, Skeleton, Input } from "../shared";
-import { useHotelSettings, useUpdateHotelSettings } from "@/lib/hooks/pms/useSettings";
-import { useRoomTypes, useUpdateRoomType } from "@/lib/hooks/pms/useRoomTypes";
+import { useHotelSettings, useUpdateHotelSettings, useHotelHours, useUpdateHotelHours, useNotificationSettings, useUpdateNotificationSettings } from "@/lib/hooks/pms/useSettings";
 import type { HotelSettings } from "@/lib/api/pms/settings.actions";
 import { useHotel } from "@/lib/pms/HotelContext";
 import { SETTINGS_NAV, type SettingsSection } from "@/lib/pms/settingsNav";
+import { useBillingInvoices, useBillingUsage, usePmsCommissions } from "@/lib/hooks/pms/useBilling";
+import { formatFCFA, formatDate } from "../data";
+import { BillingInvoiceCard } from "./BillingInvoiceCard";
+import { IntegrationsPanel } from "./IntegrationsPanel";
+import { RoomTypeSettings } from "./RoomTypeSettings";
+import { ImportSettings } from "./ImportSettings";
 
 export function Settings({ section }: { section: SettingsSection }) {
   const hotel = useHotel();
@@ -15,13 +20,18 @@ export function Settings({ section }: { section: SettingsSection }) {
   // ── Hotel settings (section: hotel) ─────────────────────────────────────────
   const hotelQ     = useHotelSettings();
   const updateHotel = useUpdateHotelSettings();
-  const roomTypesQ = useRoomTypes(section === "rooms");
-  const updateRoomType = useUpdateRoomType();
-  const [editingRoomTypeId, setEditingRoomTypeId] = useState<string | null>(null);
-  const [roomTypePrice, setRoomTypePrice] = useState("");
+  const hoursQ = useHotelHours();
+  const updateHours = useUpdateHotelHours();
+  const notificationsQ = useNotificationSettings();
+  const billingUsageQ = useBillingUsage(section === "billing");
+  const billingInvoicesQ = useBillingInvoices(section === "billing");
+  const commissionsQ = usePmsCommissions(section === "billing");
+  const updateNotifications = useUpdateNotificationSettings();
   // Only the user's edits are stored; the displayed form is derived by merging
   // them over the fetched data at render time (no setState-in-effect sync).
   const [edits, setEdits] = useState<Partial<HotelSettings>>({});
+  const [hourEdits, setHourEdits] = useState<{ checkInTime?: string; checkOutTime?: string }>({});
+  const [notificationEdits, setNotificationEdits] = useState<{ whatsappBusinessNumber?: string; smsEnabled?: boolean; emailEnabled?: boolean }>({});
 
   const form: Partial<HotelSettings> = {
     name:    edits.name    ?? hotelQ.data?.name    ?? "",
@@ -48,21 +58,24 @@ export function Settings({ section }: { section: SettingsSection }) {
     } catch { /* toast déjà affiché */ }
   }
 
-  // ── Notification settings (saves via dedicated endpoint) ──────────────────
-  const isSaving = updateHotel.isPending || updateRoomType.isPending;
-
-  async function saveRoomTypePrice(id: string) {
-    const amount = Number(roomTypePrice);
-    if (!Number.isFinite(amount) || amount < 0) return;
+  async function saveHours() {
+    if (!Object.keys(hourEdits).length) return;
     try {
-      await toastPromise(updateRoomType.mutateAsync({ id, payload: { basePrice: amount } }), {
-        loading: "Mise à jour du tarif…",
-        success: "Tarif mis à jour",
-        error: error => (error as Error)?.message || "Erreur lors de la mise à jour",
-      });
-      setEditingRoomTypeId(null);
+      await toastPromise(updateHours.mutateAsync(hourEdits), { loading: "Sauvegarde des horaires…", success: "Horaires enregistrés", error: e => (e as Error).message });
+      setHourEdits({});
     } catch { /* toast déjà affiché */ }
   }
+
+  async function saveNotifications() {
+    if (!Object.keys(notificationEdits).length) return;
+    try {
+      await toastPromise(updateNotifications.mutateAsync(notificationEdits), { loading: "Sauvegarde des notifications…", success: "Notifications enregistrées", error: e => (e as Error).message });
+      setNotificationEdits({});
+    } catch { /* toast déjà affiché */ }
+  }
+
+  // ── Notification settings (saves via dedicated endpoint) ──────────────────
+  const isSaving = updateHotel.isPending || updateHours.isPending || updateNotifications.isPending;
 
   return (
     <div className="animate-pms-fade-up">
@@ -115,56 +128,19 @@ export function Settings({ section }: { section: SettingsSection }) {
                   <Input label="Adresse"                  value={form.address ?? ""} onChange={e => setField("address", e.target.value)} />
                   <Input label="Téléphone"                value={form.phone   ?? ""} onChange={e => setField("phone",   e.target.value)} type="tel" />
                   <Input label="Email"                    value={form.email   ?? ""} onChange={e => setField("email",   e.target.value)} type="email" />
-                  {hotelQ.data && (
-                    <>
-                      <Input label="Heure d'arrivée (check-in)"  value={hotelQ.data.checkInTime}  disabled />
-                      <Input label="Heure de départ (check-out)" value={hotelQ.data.checkOutTime} disabled />
-                    </>
-                  )}
+                  <SectionHead icon="clock" title="Horaires d'accueil" />
+                  {hoursQ.isError && <div role="alert" className="text-sm text-danger">{(hoursQ.error as Error).message}</div>}
+                  <Input label="Heure d'arrivée (check-in)" type="time" value={hourEdits.checkInTime ?? hoursQ.data?.checkInTime ?? ""} onChange={e => setHourEdits(current => ({ ...current, checkInTime: e.target.value }))} />
+                  <Input label="Heure de départ (check-out)" type="time" value={hourEdits.checkOutTime ?? hoursQ.data?.checkOutTime ?? ""} onChange={e => setHourEdits(current => ({ ...current, checkOutTime: e.target.value }))} />
+                  <Button variant="primary" size="sm" disabled={isSaving || !Object.keys(hourEdits).length} onClick={saveHours}>Enregistrer les horaires</Button>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── Room types ── */}
-          {section === "rooms" && (
-            <div>
-              <SectionHead icon="list" title="Types de chambre" sub="Configurez les tarifs et services inclus par type" />
-              {roomTypesQ.isLoading ? <Skeleton className="h-40 mt-3.5" /> : roomTypesQ.isError ? (
-                <div role="alert" className="mt-3.5 text-sm text-danger">{(roomTypesQ.error as Error).message}</div>
-              ) : roomTypesQ.data?.length ? <div className="grid gap-3 mt-3.5">
-                {roomTypesQ.data.map(t => (
-                  <div key={t.code} className="px-5.5 py-4.5 border border-border rounded-[14px] bg-surface flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-7.5 h-7.5 rounded-lg bg-primary-50 grid place-items-center text-primary font-bold text-[11px]">{t.code}</div>
-                        <div className="font-semibold">{t.name}</div>
-                        <div className="text-[11.5px] text-ink-3">{t.roomCount} chambres</div>
-                      </div>
-                      <div className="flex gap-1.5 flex-wrap mt-1">
-                        {(t.amenities ?? []).map(a => (
-                          <span key={a} className="text-[11px] px-2 py-0.5 rounded-full bg-surface-2 text-ink-3">{a}</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      {editingRoomTypeId === t.id ? (
-                        <div className="flex items-center gap-2">
-                          <Input aria-label={`Tarif ${t.name}`} type="number" min="0" value={roomTypePrice} onChange={event => setRoomTypePrice(event.target.value)} />
-                          <Button variant="primary" size="sm" disabled={updateRoomType.isPending} onClick={() => t.id && saveRoomTypePrice(t.id)}>Enregistrer</Button>
-                          <Button variant="ghost" size="sm" onClick={() => setEditingRoomTypeId(null)}>Annuler</Button>
-                        </div>
-                      ) : <>
-                        <div className="font-bold text-[16px]">{t.basePrice.toLocaleString("fr-FR")}</div>
-                        <div className="text-[11px] text-ink-3">{t.currency} / nuit</div>
-                        <Button variant="ghost" size="sm" className="mt-2" disabled={!t.id} onClick={() => { setEditingRoomTypeId(t.id ?? null); setRoomTypePrice(String(t.basePrice)); }}><Icon name="edit" size={12} /> Modifier</Button>
-                      </>}
-                    </div>
-                  </div>
-                ))}
-              </div> : <div className="mt-3.5 text-sm text-ink-3">Aucun type de chambre configuré.</div>}
-            </div>
-          )}
+          {section === "rooms" && <RoomTypeSettings section="rooms" />}
+          {section === "rates" && <RoomTypeSettings section="rates" />}
+          {section === "imports" && <ImportSettings />}
 
           {/* ── Payments ── */}
           {section === "payments" && (
@@ -177,7 +153,7 @@ export function Settings({ section }: { section: SettingsSection }) {
                   {[
                     { id: "wave", label: "Wave" },
                     { id: "orange_money", label: "Orange Money" },
-                    { id: "mtn_momo", label: "MTN Money" },
+                    { id: "mtn", label: "MTN Money" },
                     { id: "moov_money", label: "Moov Money" },
                     { id: "cash", label: "Espèces" },
                     { id: "credit_card", label: "Carte bancaire" },
@@ -202,7 +178,15 @@ export function Settings({ section }: { section: SettingsSection }) {
           {section === "notifs" && (
             <div>
               <SectionHead icon="bell" title="Notifications" sub="Préférences serveur" />
-              <p className="mt-3.5 text-sm text-ink-3">L'API PMS expose la modification des préférences, mais aucun endpoint de lecture documenté. Les interrupteurs sont masqués pour éviter d'afficher ou d'écraser des valeurs non vérifiées.</p>
+              {notificationsQ.isLoading ? <Skeleton className="h-32 mt-3.5" /> : notificationsQ.isError ? (
+                <div role="alert" className="mt-3.5 text-sm text-danger">{(notificationsQ.error as Error).message}</div>
+              ) : <div className="grid gap-4 mt-3.5">
+                <Input label="Numéro WhatsApp Business" type="tel" value={notificationEdits.whatsappBusinessNumber ?? notificationsQ.data?.whatsappBusinessNumber ?? ""} onChange={e => setNotificationEdits(current => ({ ...current, whatsappBusinessNumber: e.target.value }))} />
+                {([ ["smsEnabled", "Notifications SMS"], ["emailEnabled", "Notifications email"] ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center justify-between px-4 py-3 border border-border rounded-xl text-sm"><span>{label}</span><input type="checkbox" checked={notificationEdits[key] ?? notificationsQ.data?.[key] ?? false} onChange={e => setNotificationEdits(current => ({ ...current, [key]: e.target.checked }))} /></label>
+                ))}
+                <Button variant="primary" size="sm" disabled={isSaving || !Object.keys(notificationEdits).length} onClick={saveNotifications}>Enregistrer les notifications</Button>
+              </div>}
             </div>
           )}
 
@@ -216,14 +200,34 @@ export function Settings({ section }: { section: SettingsSection }) {
 
           {/* ── Channels ── */}
           {section === "channels" && (
-            <div>
-              <SectionHead icon="barChart" title="Canaux de distribution" sub="Gérez vos connectivités OTA" />
-              <p className="mt-3.5 text-sm text-ink-3">Aucune intégration OTA n'est configurée par l'API PMS actuellement.</p>
+            <IntegrationsPanel />
+          )}
+
+          {section === "team" && <div><SectionHead icon="users" title="Équipe & accès" /><p className="mt-3.5 text-sm text-ink-3">Gérez les invitations et les accès du personnel.</p><Link href={`/pms/${hotel}/staff`} className="inline-block mt-3 text-primary font-medium text-sm">Ouvrir le personnel →</Link></div>}
+
+          {section === "billing" && (
+            <div className="grid gap-5">
+              <SectionHead icon="fileText" title="Facturation Immo Plus" sub="Consommation et factures de votre hôtel" />
+              {(billingUsageQ.isError || billingInvoicesQ.isError) && <div role="alert" className="text-sm text-danger">{(billingUsageQ.error as Error | null)?.message ?? (billingInvoicesQ.error as Error | null)?.message}</div>}
+              {billingUsageQ.isLoading ? <Skeleton className="h-24" /> : billingUsageQ.data && <div className="grid grid-cols-3 gap-3">
+                <div className="p-4 border border-border rounded-xl"><div className="text-xs text-ink-3">Clients actifs · {billingUsageQ.data.period}</div><strong className="text-xl">{billingUsageQ.data.metrics.activeClients.raw}</strong></div>
+                <div className="p-4 border border-border rounded-xl"><div className="text-xs text-ink-3">Séjours terminés</div><strong className="text-xl">{billingUsageQ.data.metrics.completedStays.raw}</strong></div>
+                <div className="p-4 border border-border rounded-xl"><div className="text-xs text-ink-3">Abonnement HT</div><strong className="text-xl">{formatFCFA(billingUsageQ.data.subscriptionHt)}</strong></div>
+              </div>}
+              <SectionHead icon="list" title="Factures" />
+              {billingInvoicesQ.isLoading ? <Skeleton className="h-32" /> : billingInvoicesQ.data?.data.length ? <div className="grid gap-2">
+                {billingInvoicesQ.data.data.map(invoice => <BillingInvoiceCard key={invoice.invoiceId} invoice={invoice} />)}
+              </div> : <p className="text-sm text-ink-3">Aucune facture émise.</p>}
+              <SectionHead icon="moneyBill" title="Commissions" sub={commissionsQ.data?.period ?? "Mois en cours"} />
+              {commissionsQ.isLoading ? <Skeleton className="h-24" /> : commissionsQ.isError ? <div role="alert" className="text-sm text-danger">{(commissionsQ.error as Error).message}</div> : commissionsQ.data?.data.length ? <div className="grid gap-2">
+                {commissionsQ.data.data.map(commission => <div key={commission.commissionId} className="flex justify-between gap-3 p-3 border border-border rounded-lg text-sm"><div><strong>Réservation {commission.reservationId.slice(0, 8)}</strong><div className="text-xs text-ink-3">{commission.source} · {commission.ratePercent}% · {commission.status}</div></div><div className="text-right"><strong>{formatFCFA(commission.amountHt)}</strong><div className="text-xs text-ink-3">Avoirs {formatFCFA(commission.creditedHt)}</div></div></div>)}
+                <div className="text-right text-sm font-semibold">Total : {formatFCFA(commissionsQ.data.totalHt)}</div>
+              </div> : <p className="text-sm text-ink-3">Aucune commission ce mois.</p>}
             </div>
           )}
 
           {/* ── Fallback for unimplemented sections ── */}
-          {!["hotel","rooms","payments","notifs","app","channels"].includes(section) && (
+          {!["hotel","rooms","rates","payments","notifs","app","channels","billing","team"].includes(section) && (
             <div className="py-16 text-center text-ink-3">
               <Icon name="sparkles" size={28} color="var(--color-ink-4)" />
               <div className="mt-3 font-medium">Section bientôt disponible</div>

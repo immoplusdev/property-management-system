@@ -5,6 +5,7 @@ import { backendFetch } from "@/lib/api/server/http";
 import {
   setSessionCookies,
   clearSessionCookies,
+  clearHotelId,
   getRefreshToken,
 } from "@/lib/api/server/cookies";
 import { env } from "@/lib/config/env";
@@ -57,6 +58,7 @@ async function persistSession(
   envelope: WrapperResponseLoginCommandResponseDto,
 ): Promise<UserDto> {
   const data = envelope.data;
+  await clearHotelId();
   await setSessionCookies({
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,

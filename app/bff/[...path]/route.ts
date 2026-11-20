@@ -3,6 +3,7 @@ import { env } from "@/lib/config/env";
 import { getAccessToken } from "@/lib/api/server/cookies";
 import { refreshSession } from "@/lib/api/auth/auth.actions";
 import { logRequest } from "@/lib/logger";
+import { resolveHotelId } from "@/lib/api/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -37,19 +38,22 @@ async function proxy(req: NextRequest, segments: string[]): Promise<Response> {
 
   const done = logRequest({ source: "BFF", method: req.method, path: logPath, body: reqBodyLog });
 
-  const buildHeaders = (accessToken: string | undefined): Headers => {
+  const buildHeaders = async (accessToken: string | undefined): Promise<Headers> => {
     const headers = new Headers();
     req.headers.forEach((value, key) => {
       if (!STRIP_REQUEST_HEADERS.has(key.toLowerCase())) headers.set(key, value);
     });
     if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    if (path.startsWith("pms/") && !path.startsWith("pms/onboarding/") && accessToken) {
+      headers.set("x-hotel-id", await resolveHotelId(accessToken));
+    }
     return headers;
   };
 
   const send = async (accessToken: string | undefined): Promise<Response> =>
     fetch(target, {
       method: req.method,
-      headers: buildHeaders(accessToken),
+      headers: await buildHeaders(accessToken),
       body: bodyBuf ? Buffer.from(bodyBuf) : undefined,
       cache: "no-store",
       redirect: "manual",

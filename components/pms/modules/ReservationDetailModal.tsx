@@ -5,6 +5,7 @@ import { Modal, BookingStatusPill, PayBadge, AppBadge, SourceBadge, Icon, Button
 import { formatFCFA, formatDate, type Booking } from "../data";
 import { useCancelReservation } from "@/lib/hooks/pms/useReservations";
 import { useHotel } from "@/lib/pms/HotelContext";
+import { RefundReservationPanel } from "./RefundReservationPanel";
 
 export function ReservationDetailModal({ booking }: { booking: Booking }) {
   const router = useRouter();
@@ -21,9 +22,11 @@ export function ReservationDetailModal({ booking }: { booking: Booking }) {
   }
 
   async function handleCancel() {
-    if (!confirm(`Annuler la réservation ${booking.ref} ?`)) return;
+    const reason = window.prompt(`Motif d'annulation de la réservation ${booking.ref} :`);
+    if (!reason?.trim()) return;
+    if (!window.confirm(`Confirmer l'annulation de ${booking.ref} ?`)) return;
     try {
-      await toastPromise(cancelMut.mutateAsync(booking.id), {
+      await toastPromise(cancelMut.mutateAsync({ id: booking.id, reason: reason.trim() }), {
         loading: "Annulation en cours…",
         success: `Réservation ${booking.ref} annulée`,
         error: (e) => (e as Error)?.message || "Erreur lors de l'annulation",
@@ -91,6 +94,7 @@ export function ReservationDetailModal({ booking }: { booking: Booking }) {
           Solde restant : {formatFCFA(balance)}
         </div>
       )}
+      <RefundReservationPanel reservationId={booking.id} reference={booking.ref} paid={booking.paid} />
     </Modal>
   );
 }

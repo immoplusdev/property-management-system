@@ -19,7 +19,7 @@ export interface WalkInPayload {
   };
   payment: {
     amount: number;
-    paymentMethod: "cash" | "orange_money" | "wave" | "mtn_momo" | "moov_money";
+    paymentMethod: "cash" | "orange_money" | "wave" | "mtn" | "moov_money";
     reference?: string;
   };
 }
@@ -82,11 +82,11 @@ export async function startCheckIn(
 export async function updateCheckInIdentity(
   reservationId: string,
   payload: CheckInIdentityPayload
-): Promise<ActionResult<{ success: boolean }>> {
+): Promise<ActionResult<{ identityVerified: boolean }>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<{ success: boolean }>(
+    const data = await backendFetch<{ identityVerified: boolean }>(
       `/pms/checkin/${reservationId}/identity`,
       { method: "PATCH", json: payload, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() } }
     );

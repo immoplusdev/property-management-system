@@ -50,7 +50,10 @@ export type BookingStatus =
   | "confirmed"
   | "checked_in"
   | "checking_out"
+  | "departing"
   | "checked_out"
+  | "completed"
+  | "no_show"
   | "cancelled";
 
 export interface Booking {
@@ -103,6 +106,7 @@ export interface Guest {
   blacklistReason?: string | null;
   corporateName?: string | null;
   notes?: string;
+  preferences?: string[] | null;
   averageSpendPerStay?: number;
   stayHistory?: GuestStay[];
   // legacy optional fields kept for mock compat

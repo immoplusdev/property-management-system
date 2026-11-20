@@ -1,7 +1,8 @@
 export const SETTINGS_NAV = [
   { id:"hotel",    label:"Hôtel & identité",     icon:"bed"        },
   { id:"rooms",    label:"Types de chambre",      icon:"list"       },
-  { id:"rates",    label:"Tarifs & saisons",      icon:"moneyBill"  },
+  { id:"rates",    label:"Tarifs",                 icon:"moneyBill"  },
+  { id:"imports",  label:"Import de données",      icon:"download"   },
   { id:"channels", label:"Canaux de diffusion",   icon:"barChart"   },
   { id:"payments", label:"Paiements",             icon:"creditCard" },
   { id:"team",     label:"Équipe & accès",        icon:"users"      },

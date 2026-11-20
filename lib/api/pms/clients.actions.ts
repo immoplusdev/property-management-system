@@ -13,19 +13,44 @@ export interface GuestsList {
   limit: number;
 }
 
+export interface GuestDuplicateGroup {
+  matchType: "phone" | "email";
+  value: string;
+  guests: Pick<Guest, "id" | "firstName" | "lastName" | "phone" | "email" | "totalStays">[];
+}
+
+export async function getGuestDuplicates(): Promise<ActionResult<{ data: GuestDuplicateGroup[]; total: number }>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ data: GuestDuplicateGroup[]; total: number }>("/pms/guests/duplicates", { accessToken });
+    if (!Array.isArray(data.data)) throw new Error("Réponse API invalide : doublons absents.");
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: toFormError(err) };
+  }
+}
+
+export async function mergeGuests(payload: { primaryGuestId: string; duplicateGuestId: string; reason: string }): Promise<ActionResult<{ primaryGuestId: string; archivedGuestId: string }>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ primaryGuestId: string; archivedGuestId: string }>("/pms/guests/merge", {
+      method: "POST", json: payload, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() },
+    });
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: toFormError(err) };
+  }
+}
+
 export interface UpdateGuestPayload {
   type?: GuestType;
   notes?: string;
+  preferences?: string[];
   corporateName?: string | null;
   isBlacklisted?: boolean;
   blacklistReason?: string | null;
-}
-
-export interface UpdateGuestResult {
-  success: true;
-  guestId: string;
-  type: string;
-  updatedAt: string;
 }
 
 export async function getGuests(params?: {
@@ -64,11 +89,11 @@ export async function getGuest(id: string): Promise<ActionResult<Guest>> {
 export async function updateGuest(
   id: string,
   payload: UpdateGuestPayload
-): Promise<ActionResult<UpdateGuestResult>> {
+): Promise<ActionResult<Guest>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<UpdateGuestResult>(`/pms/guests/${id}`, {
+    const data = await backendFetch<Guest>(`/pms/guests/${id}`, {
       method: "PATCH",
       json: payload,
       accessToken,

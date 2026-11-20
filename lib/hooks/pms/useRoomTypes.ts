@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRoomTypes, updateRoomType, type RoomTypePayload } from "@/lib/api/pms/room-types.actions";
+import { createRoomType, getRoomTypes, updateRoomType, type RoomTypePayload } from "@/lib/api/pms/room-types.actions";
 
 export const roomTypeKeys = { all: () => ["room-types"] as const };
 
@@ -24,6 +24,17 @@ export function useUpdateRoomType() {
         if (!result.ok) throw new Error(result.error.message);
         return result.data;
       }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: roomTypeKeys.all() }),
+  });
+}
+
+export function useCreateRoomType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: RoomTypePayload) => createRoomType(payload).then(result => {
+      if (!result.ok) throw new Error(result.error.message);
+      return result.data;
+    }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: roomTypeKeys.all() }),
   });
 }

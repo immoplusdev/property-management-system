@@ -7,23 +7,27 @@ import { Logo } from "@/components/Logo";
 import { Icon } from "./shared";
 import { logout } from "@/lib/api/auth/auth.actions";
 import { useRooms } from "@/lib/hooks/pms/useRooms";
+import { useReservations } from "@/lib/hooks/pms/useReservations";
+import { useDashboardMovements } from "@/lib/hooks/pms/useDashboard";
+import { useRequests } from "@/lib/hooks/pms/useRequests";
+import { useReviews } from "@/lib/hooks/pms/useReviews";
 import type { UserDto } from "@/lib/api/generated/model";
 import { usePmsStatus } from "@/lib/pms/PmsStatusContext";
 import { useHotel } from "@/lib/pms/HotelContext";
 
 export const NAV = [
-  { id: "dashboard",    icon: "home",      label: "Tableau de bord",      badge: null,  section: "main",   fromApp: false },
-  { id: "rooms",        icon: "bed",       label: "Chambres",              badge: "35",  section: "main",   fromApp: false },
-  { id: "reservations", icon: "calendar",  label: "Réservations",          badge: "14",  section: "main",   fromApp: false },
-  { id: "checkin",      icon: "fileText",  label: "Check-in",               badge: "5",   section: "main",   fromApp: false },
-  { id: "checkout",     icon: "arrowRight",label: "Check-out",              badge: "3",   section: "main",   fromApp: false },
-  { id: "requests",     icon: "bell",      label: "Demandes clients",       badge: "3",   section: "main",   fromApp: true  },
-  { id: "planning",     icon: "grid",      label: "Planning",               badge: null,  section: "main",   fromApp: false },
-  { id: "finances",     icon: "moneyBill", label: "Finances",               badge: null,  section: "manage", fromApp: false },
-  { id: "clients",      icon: "users",     label: "Clients",                badge: null,  section: "manage", fromApp: false },
-  { id: "reviews",      icon: "star",      label: "Avis clients",           badge: "2",   section: "manage", fromApp: true  },
-  { id: "staff",        icon: "users",     label: "Personnel",              badge: null,  section: "manage", fromApp: false },
-  { id: "settings",     icon: "settings",  label: "Paramètres",             badge: null,  section: "manage", fromApp: false },
+  { id: "dashboard", icon: "home", label: "Tableau de bord", section: "main", fromApp: false },
+  { id: "rooms", icon: "bed", label: "Chambres", section: "main", fromApp: false },
+  { id: "reservations", icon: "calendar", label: "Réservations", section: "main", fromApp: false },
+  { id: "checkin", icon: "fileText", label: "Check-in", section: "main", fromApp: false },
+  { id: "checkout", icon: "arrowRight", label: "Check-out", section: "main", fromApp: false },
+  { id: "requests", icon: "bell", label: "Demandes clients", section: "main", fromApp: true },
+  { id: "planning", icon: "grid", label: "Planning", section: "main", fromApp: false },
+  { id: "finances", icon: "moneyBill", label: "Finances", section: "manage", fromApp: false },
+  { id: "clients", icon: "users", label: "Clients", section: "manage", fromApp: false },
+  { id: "reviews", icon: "star", label: "Avis clients", section: "manage", fromApp: true },
+  { id: "staff", icon: "users", label: "Personnel", section: "manage", fromApp: false },
+  { id: "settings", icon: "settings", label: "Paramètres", section: "manage", fromApp: false },
 ] as const;
 
 export type NavId = typeof NAV[number]["id"];
@@ -43,10 +47,14 @@ export function PMSSidebar({ user, hotelName }: Props) {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const { data: roomsData } = useRooms();
+  const { data: reservationsData } = useReservations({ limit: 100 });
+  const { data: movementsData } = useDashboardMovements();
+  const { data: requestsData } = useRequests({ status: "pending", limit: 1 });
+  const { data: reviewsData } = useReviews({ needsReply: true, limit: 1 });
   const rooms    = roomsData?.rooms ?? [];
   const occupied = rooms.filter(r => r.status === "occupied" || r.status === "departure").length;
-  const total    = rooms.length || 1;
-  const occupancy = Math.round((occupied / total) * 100);
+  const total    = rooms.length;
+  const occupancy = total > 0 ? Math.round((occupied / total) * 100) : 0;
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -58,6 +66,13 @@ export function PMSSidebar({ user, hotelName }: Props) {
   const renderNav = (section: "main" | "manage") =>
     NAV.filter(n => n.section === section).map(n => {
       const isActive = active === n.id;
+      const badge = n.id === "rooms" ? roomsData?.rooms.length
+        : n.id === "reservations" ? reservationsData?.total
+        : n.id === "checkin" ? movementsData?.arrivals.length
+        : n.id === "checkout" ? movementsData?.departures.length
+        : n.id === "requests" ? requestsData?.total
+        : n.id === "reviews" ? reviewsData?.total
+        : undefined;
       return (
         <Link
           key={n.id}
@@ -79,15 +94,15 @@ export function PMSSidebar({ user, hotelName }: Props) {
               title="Flux depuis l'app Immo Plus"
             />
           )}
-          {!collapsed && n.badge && (
+          {!collapsed && badge !== undefined && (
             <span className={cn(
               "ml-auto text-[10.5px] font-semibold px-1.75 py-px rounded-full min-w-[20px] text-center",
               isActive ? "bg-white/20 text-white" : "bg-surface-2 text-ink-2"
             )}>
-              {n.badge}
+              {badge}
             </span>
           )}
-          {collapsed && n.badge && (
+          {collapsed && badge !== undefined && (
             <span className={cn(
               "absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2",
               isActive ? "bg-white border-primary" : "bg-primary border-surface"
@@ -165,7 +180,7 @@ export function PMSSidebar({ user, hotelName }: Props) {
             <div className="mt-3 h-[3px] bg-border rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full" style={{ width: occupancy + "%" }} />
             </div>
-            <div className="text-[11px] text-ink-3 mt-[9px]">{occupied} / {total} chambres · objectif 75%</div>
+            <div className="text-[11px] text-ink-3 mt-[9px]">{roomsData ? `${occupied} / ${total} chambres` : "Données indisponibles"}</div>
           </div>
         ) : (
           <div

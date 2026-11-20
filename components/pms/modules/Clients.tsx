@@ -2,16 +2,17 @@
 import React, { useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { Icon, Button, Skeleton } from "../shared";
+import { Icon, Button, Skeleton, toastPromise } from "../shared";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { formatDate, type Guest } from "../data";
-import { useGuests } from "@/lib/hooks/pms/useGuests";
+import { useGuests, useGuestDuplicates, useMergeGuests } from "@/lib/hooks/pms/useGuests";
+import type { GuestDuplicateGroup } from "@/lib/api/pms/clients.actions";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
 import { useHotel } from "@/lib/pms/HotelContext";
 import { ExportAction } from "@/components/pms/ExportAction";
 
 const avatarColor = (g: Guest) => AV_COLORS[(String(g.firstName ?? "?").charCodeAt(0) || 0) % AV_COLORS.length];
-const fullName = (g: Guest) => `${g.firstName ?? ""} ${g.lastName ?? ""}`.trim() || "Client";
+const fullName = (g: Pick<Guest, "firstName" | "lastName">) => `${g.firstName ?? ""} ${g.lastName ?? ""}`.trim() || "Client";
 const initials = (g: Guest) => `${g.firstName?.[0] ?? ""}${g.lastName?.[0] ?? ""}`.toUpperCase() || "?";
 
 export function Clients() {
@@ -36,6 +37,7 @@ export function Clients() {
   const setSearch = (v: string) => updateParams({ q: v });
 
   const { data, isLoading, error } = useGuests({ limit: 100 });
+  const duplicatesQ = useGuestDuplicates();
   const allGuests: Guest[] = data?.data ?? [];
 
   const list = useMemo(() => {
@@ -68,6 +70,13 @@ export function Clients() {
           </>
         }
       />
+
+      {duplicatesQ.isError ? <div role="alert" className="mb-3 text-sm text-danger">Doublons : {(duplicatesQ.error as Error).message}</div> : duplicatesQ.data?.total ? (
+        <div className="mb-3.5 p-4 border border-amber/40 rounded-xl bg-amber/5">
+          <strong className="text-sm">{duplicatesQ.data.total} groupe{duplicatesQ.data.total > 1 ? "s" : ""} de doublons possibles</strong>
+          <div className="grid gap-2 mt-2">{duplicatesQ.data.data.map(group => <DuplicateGroupCard key={`${group.matchType}:${group.value}`} group={group} onOpen={id => router.push(`/pms/${hotel}/clients/${id}`)} />)}</div>
+        </div>
+      ) : null}
 
       {/* Filters */}
       <div className="bg-surface border border-border rounded-[18px] p-3.5 mb-3.5">
@@ -110,6 +119,35 @@ export function Clients() {
       )}
     </div>
   );
+}
+
+function DuplicateGroupCard({ group, onOpen }: { group: GuestDuplicateGroup; onOpen: (id: string) => void }) {
+  const [primaryId, setPrimaryId] = React.useState(group.guests[0]?.id ?? "");
+  const [duplicateId, setDuplicateId] = React.useState(group.guests[1]?.id ?? "");
+  const [reason, setReason] = React.useState("Doublon vérifié par la réception");
+  const merge = useMergeGuests();
+  const primary = group.guests.find(guest => guest.id === primaryId);
+  const duplicate = group.guests.find(guest => guest.id === duplicateId);
+
+  async function submit() {
+    if (!primary || !duplicate || primary.id === duplicate.id || reason.trim().length < 3) return;
+    if (!window.confirm(`Fusionner ${fullName(duplicate)} dans ${fullName(primary)} ? La fiche ${fullName(duplicate)} sera archivée.`)) return;
+    try {
+      await toastPromise(merge.mutateAsync({ primaryGuestId: primary.id, duplicateGuestId: duplicate.id, reason: reason.trim() }), {
+        loading: "Fusion des fiches…", success: "Fiches fusionnées", error: error => (error as Error).message,
+      });
+    } catch { /* toast déjà affiché */ }
+  }
+
+  return <div className="p-3 border border-border rounded-lg bg-surface text-xs text-ink-2">
+    <div className="mb-2">{group.matchType === "phone" ? "Téléphone" : "Email"} {group.value} : {group.guests.map((guest, index) => <React.Fragment key={guest.id}>{index > 0 && " · "}<button className="text-primary underline" onClick={() => onOpen(guest.id)}>{fullName(guest)}</button></React.Fragment>)}</div>
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="grid gap-1">Fiche conservée<select aria-label="Fiche conservée" className="border border-border rounded-md p-1.5 bg-surface" value={primaryId} onChange={e => setPrimaryId(e.target.value)}>{group.guests.map(guest => <option key={guest.id} value={guest.id}>{fullName(guest)} · {guest.id.slice(0, 8)}</option>)}</select></label>
+      <label className="grid gap-1">Fiche archivée<select aria-label="Fiche archivée" className="border border-border rounded-md p-1.5 bg-surface" value={duplicateId} onChange={e => setDuplicateId(e.target.value)}>{group.guests.map(guest => <option key={guest.id} value={guest.id}>{fullName(guest)} · {guest.id.slice(0, 8)}</option>)}</select></label>
+      <label className="grid gap-1 flex-1 min-w-48">Motif<input aria-label="Motif de fusion" className="border border-border rounded-md p-1.5 bg-surface" value={reason} onChange={e => setReason(e.target.value)} /></label>
+      <Button variant="primary" size="sm" disabled={merge.isPending || !primaryId || !duplicateId || primaryId === duplicateId || reason.trim().length < 3} onClick={submit}>Fusionner</Button>
+    </div>
+  </div>;
 }
 
 function ClientCard({ client, onClick }: { client: Guest; onClick: () => void }) {

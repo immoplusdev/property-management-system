@@ -7,20 +7,13 @@ import { Pill } from "@/components/ui/Pill";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatFCFA, formatDate, type Guest, type Review } from "../data";
 import { useReservations } from "@/lib/hooks/pms/useReservations";
+import { useReviews } from "@/lib/hooks/pms/useReviews";
 import { AV_COLORS } from "@/lib/utils/avatarColor";
+import { GuestPreferences } from "./GuestPreferences";
 
 const avatarColor = (g: Guest) => AV_COLORS[(String(g.firstName ?? "?").charCodeAt(0) || 0) % AV_COLORS.length];
 const fullName = (g: Guest) => `${g.firstName} ${g.lastName}`;
 const initials = (g: Guest) => `${g.firstName[0] ?? ""}${g.lastName[0] ?? ""}`.toUpperCase();
-
-const PREFERENCES: [boolean, string][] = [
-  [true,  "Chambre haut étage"],
-  [true,  "Vue lagune préférée"],
-  [false, "Lit jumeau"],
-  [true,  "Petit-déjeuner en chambre"],
-  [true,  "Ne pas déranger après 22h"],
-  [false, "Chambre fumeur"],
-];
 
 export function ClientDetailModal({ client }: { client: Guest }) {
   const router = useRouter();
@@ -29,9 +22,8 @@ export function ClientDetailModal({ client }: { client: Guest }) {
 
   const bookingsQ = useReservations({ guestId: client.id, limit: 20 });
   const clientBookings = bookingsQ.data?.data ?? [];
-  // Le backend n'expose pas (encore) d'endpoint d'avis par client
-  // (cf. PMS_CONCORDANCE.md). On affiche un état vide honnête plutôt que des mocks.
-  const clientReviews: Review[] = [];
+  const reviewsQ = useReviews({ guestId: client.id, limit: 50 });
+  const clientReviews: Review[] = (reviewsQ.data?.data ?? []).map(review => ({ ...review, date: formatDate(review.createdAt) }));
 
   function close() {
     router.back();
@@ -121,7 +113,6 @@ export function ClientDetailModal({ client }: { client: Guest }) {
                   <div className="font-bold text-[14px]">{client.corporateName}</div>
                   <div className="text-[11px] text-ink-3">Compte corporate · facturation centralisée</div>
                 </div>
-                <Pill kind="primary" dot>Contrat actif</Pill>
               </div>
             </div>
           )}
@@ -159,7 +150,7 @@ export function ClientDetailModal({ client }: { client: Guest }) {
       {/* Reviews */}
       {tab === "reviews" && (
         <div>
-          {clientReviews.length === 0 ? (
+          {reviewsQ.isError ? <div role="alert" className="text-sm text-danger">{(reviewsQ.error as Error).message}</div> : clientReviews.length === 0 ? (
             <EmptyState icon="star" title="Pas encore d&apos;avis posté" sub="Ce client n&apos;a pas encore évalué de séjour via l&apos;app Immo Plus" />
           ) : (
             <>
@@ -199,20 +190,7 @@ export function ClientDetailModal({ client }: { client: Guest }) {
       {/* Preferences */}
       {tab === "prefs" && (
         <div>
-          <SectionHead icon="star" title="Préférences" />
-          <div className="grid grid-cols-2 gap-2">
-            {PREFERENCES.map(([checked, label], i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-[9px] border ${checked ? "border-primary-100 bg-primary-50" : "border-border bg-surface"}`}
-              >
-                <div className={`w-4.5 h-4.5 rounded-[5px] shrink-0 grid place-items-center text-white border-[1.5px] ${checked ? "bg-ink border-ink" : "bg-white border-border-strong"}`}>
-                  {checked && <Icon name="check" size={12} />}
-                </div>
-                <span className="text-[13px] font-medium">{label}</span>
-              </div>
-            ))}
-          </div>
+          <GuestPreferences client={client} />
           {client.notes && (
             <>
               <div className="h-px bg-border-soft my-4" />

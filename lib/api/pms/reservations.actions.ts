@@ -15,6 +15,9 @@ export interface ReservationsListParams {
   toDate?: string;
   guestId?: string;
   search?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+  paymentMethod?: string;
 }
 
 export interface ReservationsList {
@@ -43,16 +46,17 @@ function normalizeBooking(value: unknown): Booking {
   const calculatedNights = checkin && checkout && Number.isFinite(Date.parse(checkin)) && Number.isFinite(Date.parse(checkout))
     ? Math.round((Date.parse(checkout) - Date.parse(checkin)) / 86_400_000)
     : undefined;
-  const nightsValue = raw.nights ?? calculatedNights;
+  const nightsValue = raw.numNights ?? raw.nights ?? calculatedNights;
   const idValue = raw.id ?? raw.reservationId;
   const status = raw.status;
   const amountValue = raw.totalAmount ?? raw.amount ?? raw.totalEstimate;
-  const paidValue = raw.paidAmount ?? raw.paid;
+  const paidValue = raw.paidAmount ?? raw.paid ??
+    (typeof amountValue === "number" && typeof raw.balanceDue === "number" ? amountValue - raw.balanceDue : raw.depositPaid);
   if (
     (typeof idValue !== "string" && typeof idValue !== "number") ||
-    !guestName || !checkin || !checkout ||
+    !checkin || !checkout ||
     typeof status !== "string" ||
-    !["pending", "confirmed", "checked_in", "checking_out", "checked_out", "cancelled"].includes(status) ||
+    !["pending", "confirmed", "checked_in", "checking_out", "departing", "checked_out", "completed", "no_show", "cancelled"].includes(status) ||
     typeof nightsValue !== "number" || !Number.isFinite(nightsValue) ||
     typeof amountValue !== "number" || !Number.isFinite(amountValue) ||
     typeof paidValue !== "number" || !Number.isFinite(paidValue)
@@ -62,11 +66,11 @@ function normalizeBooking(value: unknown): Booking {
   const id = String(idValue);
   const sourceRef = text(raw.reference ?? raw.ref ?? raw.reservationNumber, id);
   const guestId = guestRecord.id ?? raw.guestId;
-  const balance = raw.balance;
+  const balance = raw.balanceDue ?? raw.balance;
   return {
     id,
     ref: sourceRef,
-    guest: guestName,
+    guest: guestName || "Client inconnu",
     guestId: typeof guestId === "string" ? guestId : undefined,
     room: text(room.number ?? raw.roomNumber, "—"),
     roomType: text(room.typeName ?? roomType.name ?? roomType.code ?? raw.roomTypeName, "—"),
@@ -76,8 +80,8 @@ function normalizeBooking(value: unknown): Booking {
     status: status as Booking["status"],
     amount: amountValue,
     paid: paidValue,
-    payment: text(raw.paymentMethod ?? raw.payment, "—"),
-    source: text(raw.source, "—"),
+    payment: ({ orange_money: "om", mtn_momo: "mtn", credit_card: "card" } as Record<string, string>)[text(raw.paymentMethod ?? raw.payment)] ?? text(raw.paymentMethod ?? raw.payment, "—"),
+    source: ({ app: "App", corporate: "Corp" } as Record<string, string>)[text(raw.source)] ?? text(raw.source, "—"),
     adults: typeof raw.adults === "number" ? raw.adults : undefined,
     children: typeof raw.children === "number" ? raw.children : undefined,
     balance: typeof balance === "number" && Number.isFinite(balance) ? balance : undefined,
@@ -117,7 +121,7 @@ export interface CreateReservationPayload {
 
 export interface AddPaymentPayload {
   amount: number;
-  paymentMethod: "cash" | "wave" | "orange_money" | "mtn_momo" | "moov_money";
+  paymentMethod: "cash" | "wave" | "orange_money" | "mtn" | "moov_money";
   reference?: string;
   description?: string;
 }
@@ -137,6 +141,9 @@ export async function getReservations(
     if (params?.toDate) qs.set("toDate", params.toDate);
     if (params?.guestId) qs.set("guestId", params.guestId);
     if (params?.search) qs.set("search", params.search);
+    if (params?.checkInDate) qs.set("checkInDate", params.checkInDate);
+    if (params?.checkOutDate) qs.set("checkOutDate", params.checkOutDate);
+    if (params?.paymentMethod) qs.set("paymentMethod", params.paymentMethod);
     const query = qs.toString() ? `?${qs}` : "";
     const data = await backendFetch<unknown>(`/pms/reservations${query}`, { accessToken });
     return { ok: true, data: normalizeReservations(data) };
@@ -194,13 +201,15 @@ export async function addReservationPayment(
 }
 
 export async function cancelReservation(
-  id: string
-): Promise<ActionResult<{ success: boolean }>> {
+  id: string,
+  reason: string,
+): Promise<ActionResult<{ reservationId: string; status: string }>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<{ success: boolean }>(`/pms/reservations/${id}`, {
+    const data = await backendFetch<{ reservationId: string; status: string }>(`/pms/reservations/${id}`, {
       method: "DELETE",
+      json: { reason },
       accessToken,
       headers: { "Idempotency-Key": crypto.randomUUID() },
     });
@@ -208,4 +217,17 @@ export async function cancelReservation(
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
+}
+
+export type RefundPaymentMethod = "cash" | "wave" | "orange_money" | "mtn" | "moov_money" | "credit_card";
+
+export async function refundReservation(id: string, payload: { amount: number; paymentMethod: RefundPaymentMethod; reason: string; reference?: string; withFolioCredit: boolean }): Promise<ActionResult<{ refundId: string; status: string; amount: number; balanceDue: number }>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ refundId: string; status: string; amount: number; balanceDue: number }>(`/pms/reservations/${id}/refunds`, {
+      method: "POST", json: payload, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() },
+    });
+    return { ok: true, data };
+  } catch (err) { return { ok: false, error: toFormError(err) }; }
 }

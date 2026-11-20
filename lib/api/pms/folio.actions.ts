@@ -38,15 +38,16 @@ export async function getReservationFolio(reservationId: string): Promise<Action
   const accessToken = await token();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<ReservationFolio>(`/pms/reservations/${reservationId}/folio`, { accessToken });
+    const response = await backendFetch<ReservationFolio & { folio?: ReservationFolio["folio"] & { items?: FolioItem[] } }>(`/pms/reservations/${reservationId}/folio`, { accessToken });
+    const data = { ...response, items: response.items ?? response.folio?.items };
     if (!Array.isArray(data.items) || typeof data.balanceDue !== "number" || !Number.isFinite(data.balanceDue)) {
       throw new Error("Réponse API invalide : folio incomplet.");
     }
-    return { ok: true, data };
+    return { ok: true, data: data as ReservationFolio };
   } catch (err) { return { ok: false, error: toFormError(err) }; }
 }
 
-export async function addStayPayment(reservationId: string, payload: { amount: number; paymentMethod: "cash" | "wave" | "orange_money" | "mtn_momo" | "moov_money"; reference?: string; description?: string }): Promise<ActionResult<{ transactionId: string; status: string; amount: number; currency: "XOF"; balanceDue: number }>> {
+export async function addStayPayment(reservationId: string, payload: { amount: number; paymentMethod: "cash" | "wave" | "orange_money" | "mtn" | "moov_money"; reference?: string; description?: string }): Promise<ActionResult<{ transactionId: string; status: string; amount: number; currency: "XOF"; balanceDue: number }>> {
   const accessToken = await token();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {

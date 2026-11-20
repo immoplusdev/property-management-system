@@ -2,7 +2,45 @@ import "server-only";
 import { env } from "@/lib/config/env";
 import { apiErrorFromResponse, apiErrorFromThrown } from "@/lib/api/errors";
 import { logRequest } from "@/lib/logger";
-import { getHotelId } from "@/lib/api/server/cookies";
+import { getHotelId, setHotelId } from "@/lib/api/server/cookies";
+
+export async function resolveHotelId(accessToken: string): Promise<string> {
+  const cached = await getHotelId();
+  if (cached) return cached;
+  const headers = { Accept: "application/json", Authorization: `Bearer ${accessToken}` };
+  const memberships = await fetch(`${env.API_URL}/pms/context/hotels`, {
+    headers,
+    cache: "no-store",
+  });
+  if (!memberships.ok) throw await apiErrorFromResponse(memberships);
+  const membershipData: unknown = await memberships.json();
+  const available = membershipData && typeof membershipData === "object" && "data" in membershipData && Array.isArray(membershipData.data)
+    ? membershipData.data as Array<{ id?: unknown }>
+    : [];
+  if (available.length === 1 && typeof available[0].id === "string") {
+    await setHotelId(available[0].id);
+    return available[0].id;
+  }
+  const response = await fetch(`${env.API_URL}/pms/onboarding/progress`, {
+    headers,
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    if (available.length > 1) throw new Error("Plusieurs hôtels sont accessibles. Sélectionnez un établissement avant de continuer.");
+    throw await apiErrorFromResponse(response);
+  }
+  const progress: unknown = await response.json();
+  const hotelId = progress && typeof progress === "object" && "hotelId" in progress
+    ? progress.hotelId : undefined;
+  if (typeof hotelId !== "string" || !hotelId) {
+    throw new Error("Hôtel introuvable pour cette session.");
+  }
+  if (available.length > 1 && !available.some(item => item.id === hotelId)) {
+    throw new Error("Plusieurs hôtels sont accessibles. Sélectionnez un établissement avant de continuer.");
+  }
+  await setHotelId(hotelId);
+  return hotelId;
+}
 
 export interface BackendFetchInit extends Omit<RequestInit, "body"> {
   accessToken?: string;
@@ -20,7 +58,9 @@ export async function backendFetch<T = unknown>(
   const url  = `${env.API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   const done = logRequest({ source: "SRV", method, path, body: json });
 
-  const hotelId = await getHotelId();
+  const hotelId = path.startsWith("/pms/") && !path.startsWith("/pms/onboarding/") && accessToken
+    ? await resolveHotelId(accessToken)
+    : await getHotelId();
   const requestHeaders: Record<string, string> = {
     Accept: "application/json",
   };

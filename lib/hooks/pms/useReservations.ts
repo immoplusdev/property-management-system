@@ -6,6 +6,8 @@ import {
   createReservation,
   addReservationPayment,
   cancelReservation,
+  refundReservation,
+  type RefundPaymentMethod,
   type ReservationsListParams,
   type CreateReservationPayload,
   type AddPaymentPayload,
@@ -72,13 +74,30 @@ export function useAddPayment() {
 export function useCancelReservation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      cancelReservation(id).then(res => {
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      cancelReservation(id, reason).then(res => {
         if (!res.ok) throw new Error(res.error.message);
         return res.data;
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: reservationKeys.all() });
+    },
+  });
+}
+
+export function useRefundReservation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: { amount: number; paymentMethod: RefundPaymentMethod; reason: string; reference?: string; withFolioCredit: boolean } }) => {
+      const result = await refundReservation(id, payload);
+      if (!result.ok) throw new Error(result.error.message);
+      return result.data;
+    },
+    onSuccess: (_result, { id }) => {
+      qc.invalidateQueries({ queryKey: reservationKeys.all() });
+      qc.invalidateQueries({ queryKey: reservationKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: ["finances"] });
+      qc.invalidateQueries({ queryKey: ["folio", id] });
     },
   });
 }

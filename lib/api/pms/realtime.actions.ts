@@ -1,6 +1,6 @@
 "use server";
 import { getAccessToken, getHotelId, setHotelId } from "@/lib/api/server/cookies";
-import { getOnboardingProgress } from "@/lib/api/onboarding/onboarding.actions";
+import { resolveHotelId } from "@/lib/api/server/http";
 import { toFormError, type FormError } from "@/lib/api/errors";
 
 export type ActionResult<T = void> = { ok: true; data: T } | { ok: false; error: FormError };
@@ -17,18 +17,16 @@ export interface PmsRealtimeCredentials {
 /**
  * Resolve the active PMS hotelId for the current user and cache it in a cookie.
  *
- * Source of truth (per backend): `GET /pms/onboarding/progress` returns `hotelId`
- * from the onboarding session linked to the userId. We read the cached cookie
- * first, then fall back to the endpoint and persist the result so subsequent
- * requests (WebSocket handshake, etc.) don't refetch it.
+ * Resolve the hotel from active staff memberships, with onboarding progress
+ * as a fallback while the hotel is being created.
  */
 export async function getActiveHotelId(): Promise<string | null> {
   const cached = await getHotelId();
   if (cached) return cached;
 
   try {
-    const res = await getOnboardingProgress();
-    const id = res.ok ? res.data.hotelId : undefined;
+    const token = await getAccessToken();
+    const id = token ? await resolveHotelId(token) : undefined;
     if (id) {
       await setHotelId(id);
       return id;
