@@ -227,7 +227,7 @@ export function Settings({ section }: { section: SettingsSection }) {
           )}
 
           {/* ── Fallback for unimplemented sections ── */}
-          {!["hotel","rooms","rates","payments","notifs","app","channels","billing","team"].includes(section) && (
+          {!["hotel","rooms","rates","imports","payments","notifs","app","channels","billing","team"].includes(section) && (
             <div className="py-16 text-center text-ink-3">
               <Icon name="sparkles" size={28} color="var(--color-ink-4)" />
               <div className="mt-3 font-medium">Section bientôt disponible</div>

@@ -48,6 +48,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 function fmt(ts: string) {
+  if (/^\d{2}:\d{2}$/.test(ts)) return ts;
   return new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -184,9 +185,7 @@ export function Dashboard({ user }: Props) {
                 {movements.map((b, i) => {
                   const name  = b.guestName ?? "—";
                   const room  = b.roomNumber ?? "—";
-                  const time  = b.mvmt === "arrivee"
-                    ? (b.expectedTime ? fmt(b.expectedTime) : "14:00")
-                    : "12:00";
+                  const time = b.expectedTime ? fmt(b.expectedTime) : "—";
                   const balance = b.mvmt === "depart" ? b.balance : null;
                   return (
                     <tr key={i} className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2">
