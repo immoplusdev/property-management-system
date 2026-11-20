@@ -7,6 +7,7 @@ import { Pill } from "@/components/ui/Pill";
 import { formatFCFA } from "../data";
 import { useFinanceSummary, useTransactions } from "@/lib/hooks/pms/useFinances";
 import { ExportAction } from "@/components/pms/ExportAction";
+import { CashDeskSection } from "./CashDeskSection";
 
 const PAY_COLORS: Record<string, string> = {
   wave: "var(--color-pay-wave)", om: "var(--color-pay-om)", mtn: "var(--color-pay-mtn)",
@@ -22,25 +23,26 @@ export function Finances() {
   const s  = summaryQ.data;
   const txs = transactionsQ.data?.data ?? [];
 
-  // Compute payment mix from transaction list
+  // The summary aggregates the entire selected period; the transaction list is paginated.
   const byMethod = useMemo(() => {
-    if (!txs.length) return [];
-    const methods = [...new Set(txs.map(transaction => transaction.method))];
-    const labels: Record<string, string> = { wave:"Wave", om:"Orange Money", mtn:"MTN Money", card:"Carte bancaire", cash:"Espèces" };
+    const revenue = s?.revenueByMethod ?? {};
+    const methods = Object.keys(revenue);
+    if (!methods.length) return [];
+    const labels: Record<string, string> = { wave:"Wave", orange_money:"Orange Money", mtn:"MTN Money", mtn_momo:"MTN Money", moov_money:"Moov Money", credit_card:"Carte bancaire", cash:"Espèces" };
     const colors: Record<string, string> = PAY_COLORS;
-    const total = txs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const total = Object.values(revenue).reduce((sum, value) => sum + value, 0);
     return methods.map(id => {
-      const group = txs.filter(t => t.method === id && t.amount > 0);
-      const val   = group.reduce((s, t) => s + t.amount, 0);
-      return { id, label: labels[id] ?? id, value: val, color: colors[id] ?? "var(--color-ink-3)", pct: total > 0 ? Math.round((val/total)*100) : 0, count: group.length };
+      const val = revenue[id];
+      const color = id === "orange_money" ? PAY_COLORS.om : id === "mtn" || id === "mtn_momo" ? PAY_COLORS.mtn : id === "credit_card" ? PAY_COLORS.card : colors[id];
+      return { id, label: labels[id] ?? id, value: val, color: color ?? "var(--color-ink-3)", pct: total > 0 ? Math.round((val/total)*100) : 0, count: s?.transactionCountByMethod?.[id] };
     });
-  }, [txs]);
+  }, [s]);
 
   const totalRevenue = s?.totalRevenue;
   const changePct    = s?.revenueChange;
   const isLoading    = summaryQ.isLoading;
 
-  const mobileMoneyPct = byMethod.filter(m => ["wave","om","mtn"].includes(m.id)).reduce((s, m) => s + m.pct, 0);
+  const mobileMoneyPct = byMethod.filter(m => ["wave","orange_money","mtn","mtn_momo","moov_money"].includes(m.id)).reduce((s, m) => s + m.pct, 0);
 
   return (
     <div className="animate-pms-fade-up">
@@ -82,11 +84,11 @@ export function Finances() {
                 trendUp={changePct === undefined ? undefined : changePct >= 0}
               />
               <KPICard
-                value={txs.length ? `${mobileMoneyPct}%` : "—"} sub="Part mobile money"
+                value={byMethod.length ? `${mobileMoneyPct}%` : "—"} sub="Part mobile money"
                 icon="creditCard" iconBg="var(--color-primary-50)" iconColor="var(--color-primary)"
               />
               <KPICard
-                value={s ? `${(s.netRevenue/1000000).toFixed(1)}` : "—"} unit="M FCFA"
+                value={typeof s?.netRevenue === "number" ? `${(s.netRevenue/1000000).toFixed(1)}` : "—"} unit="M FCFA"
                 sub="Revenu net calculé par le serveur"
                 icon="award" iconBg="var(--color-teal-bg)" iconColor="var(--color-teal)"
               />
@@ -101,13 +103,13 @@ export function Finances() {
       <div className="grid grid-cols-3 gap-3.5 mb-3.5">
         {/* Payment mix */}
         <div className="bg-surface border border-border rounded-[18px] p-5.5">
-          <SectionHead icon="pieChart" title="Mix paiement" sub="Transactions ce mois" />
-          {transactionsQ.isLoading
+          <SectionHead icon="pieChart" title="Mix paiement" sub={`Transactions · ${period === "day" ? "aujourd'hui" : period === "week" ? "7 derniers jours" : "ce mois"}`} />
+          {summaryQ.isLoading
             ? <Skeleton className="h-40 mt-3" />
             : <>
                 <Donut
                   data={byMethod.filter(m => m.pct > 0).map(m => ({ label:m.label, value:m.pct, color:m.color }))}
-                  centerValue={txs.length ? `${mobileMoneyPct}%` : "—"}
+                  centerValue={byMethod.length ? `${mobileMoneyPct}%` : "—"}
                   centerLabel="Mobile money"
                 />
                 <div className="mt-3.5 grid gap-1.75">
@@ -115,7 +117,7 @@ export function Finances() {
                     <div key={m.id} className="flex items-center gap-2 text-[12px]">
                       <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: m.color }} />
                       <span className="flex-1 text-ink-2">{m.label}</span>
-                      <span className="text-ink-3">{m.count} tx</span>
+                      {m.count !== undefined && <span className="text-ink-3">{m.count} tx</span>}
                       <strong>{m.pct}%</strong>
                     </div>
                   ))}
@@ -127,15 +129,17 @@ export function Finances() {
 
         {/* Revenue breakdown */}
         <div className="bg-surface border border-border rounded-[18px] p-5.5">
-          <SectionHead icon="bed" title="Revenus par source" sub="Ce mois" />
+          <SectionHead icon="bed" title="Revenus par source" sub={period === "day" ? "Aujourd'hui" : period === "week" ? "7 derniers jours" : "Ce mois"} />
           {isLoading
             ? <Skeleton className="h-40 mt-3" />
-            : s && (() => {
+            : s?.revenueBySource ? (() => {
+                const source = s.revenueBySource;
+                const other = Object.entries(source).filter(([key]) => !["room", "restaurant", "spa"].includes(key)).reduce((sum, [, value]) => sum + value, 0);
                 const sources = [
-                  { type:"Hébergement",  value:s.occupancyRevenue,    color:"var(--color-cat-3)" },
-                  { type:"Restaurant",   value:s.restaurantRevenue,   color:"var(--color-cat-7)" },
-                  { type:"Spa & Loisirs",value:s.spaRevenue,          color:"var(--color-cat-2)" },
-                  { type:"Autres",       value:s.otherRevenue,        color:"var(--color-cat-4)" },
+                  { type:"Hébergement",  value:source.room ?? 0, color:"var(--color-cat-3)" },
+                  { type:"Restaurant",   value:source.restaurant ?? 0, color:"var(--color-cat-7)" },
+                  { type:"Spa & Loisirs",value:source.spa ?? 0, color:"var(--color-cat-2)" },
+                  { type:"Autres",       value:other, color:"var(--color-cat-4)" },
                 ];
                 const total = sources.reduce((sum, r) => sum + r.value, 0) || 1;
                 return sources.map(r => (
@@ -149,7 +153,7 @@ export function Finances() {
                     </div>
                   </div>
                 ));
-              })()
+              })() : <div className="text-[12px] text-ink-3">Répartition par source indisponible.</div>
           }
         </div>
 
@@ -161,9 +165,9 @@ export function Finances() {
             : <div className="grid gap-1.5">
                 {[
                   { label:"Revenu brut",      value:s ? formatFCFA(s.totalRevenue)  : "—", color:"var(--color-success)" },
-                  { label:"Remboursements",   value:s ? "−"+formatFCFA(s.refunds)   : "—", color:"var(--color-danger)"  },
-                  { label:"Soldes en attente",value:s ? formatFCFA(s.pendingBalance): "—", color:"var(--color-warn)"    },
-                  { label:"Revenu net",        value:s ? formatFCFA(s.netRevenue)    : "—", color:"var(--color-ink)"     },
+                  { label:"Remboursements",   value:typeof s?.refunds === "number" ? "−"+formatFCFA(s.refunds) : "—", color:"var(--color-danger)"  },
+                  { label:"Soldes en attente",value:formatFCFA(s?.pendingBalance), color:"var(--color-warn)"    },
+                  { label:"Revenu net",        value:formatFCFA(s?.netRevenue), color:"var(--color-ink)"     },
                 ].map(row => (
                   <div key={row.label} className="flex items-center justify-between px-4 py-3.5 border border-border rounded-[10px]">
                     <span className="text-ink-3 text-[13px]">{row.label}</span>
@@ -222,6 +226,7 @@ export function Finances() {
           </table>
         )}
       </div>
+      <CashDeskSection />
     </div>
   );
 }

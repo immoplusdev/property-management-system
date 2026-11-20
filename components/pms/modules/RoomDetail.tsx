@@ -28,7 +28,7 @@ export function RoomDetail({ room: initialRoom }: { room: Room }) {
         success: `Chambre ${room.num} → ${STATUS_CONFIG[newStatus]?.label ?? newStatus}`,
         error: (e) => (e as Error)?.message || "Erreur lors de la mise à jour",
       });
-      setRoom(updated);
+      setRoom(current => ({ ...current, status: updated.status }));
       setNewStatus("");
     } catch { /* toast déjà affiché */ }
   }

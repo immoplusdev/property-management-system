@@ -18,6 +18,7 @@ import { useRooms } from "@/lib/hooks/pms/useRooms";
 import { useRequests } from "@/lib/hooks/pms/useRequests";
 import { useHotel } from "@/lib/pms/HotelContext";
 import { DashboardExportAction } from "@/components/pms/DashboardExportAction";
+import { DashboardInsights } from "./DashboardInsights";
 
 interface Props {
   user: UserDto | null;
@@ -47,8 +48,12 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 function fmt(ts: string) {
+  if (/^\d{2}:\d{2}$/.test(ts)) return ts;
   return new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
+
+const hasNumber = (value: number | undefined): value is number =>
+  typeof value === "number" && Number.isFinite(value);
 
 const todayLabel = (() => {
   const d = new Date().toLocaleDateString("fr-FR", {
@@ -84,7 +89,7 @@ export function Dashboard({ user }: Props) {
   const mobilePct = useMemo(() => {
     const total = payBreakdown.reduce((s, p) => s + p.percentage, 0);
     const mobile = payBreakdown
-      .filter(p => ["wave","orange_money","mtn"].includes(p.method))
+      .filter(p => ["wave","orange_money","mtn","mtn_momo","moov_money"].includes(p.method))
       .reduce((s, p) => s + p.percentage, 0);
     return total > 0 ? Math.round(mobile) : 0;
   }, [payBreakdown]);
@@ -93,7 +98,7 @@ export function Dashboard({ user }: Props) {
     <div className="animate-pms-fade-up">
       <PMSHeader
         title={`Bonjour, ${firstName}`}
-        sub={`${todayLabel}${kpis ? ` · ${kpis.arrivalsToday} arrivées · ${kpis.departuresToday} départs prévus` : ""}`}
+        sub={`${todayLabel}${movQ.data ? ` · ${movQ.data.arrivals.length} arrivées · ${movQ.data.departures.length} départs prévus` : ""}`}
         actions={
           <>
             <DashboardExportAction />
@@ -125,28 +130,28 @@ export function Dashboard({ user }: Props) {
               unit="%"
               trend={kpis ? `${kpis.occupiedRooms}/${kpis.totalRooms} ch.` : ""}
               trendUp
-              sub={kpis ? `${kpis.availableRooms} libres · ${kpis.inHouseGuests} hôtes` : ""}
+              sub={kpis ? `${kpis.availableRooms} libres` : ""}
             />
             <KPICard
               label="Revenus du jour"
               value={kpis ? (kpis.todayRevenue / 1000).toFixed(0) : "—"}
               unit="k FCFA"
               trendUp
-              sub={kpis ? `${(kpis.monthRevenue / 1_000_000).toFixed(1)} M ce mois` : ""}
+              sub={kpis && hasNumber(kpis.monthRevenue) ? `${(kpis.monthRevenue / 1_000_000).toFixed(1)} M ce mois` : ""}
             />
             <KPICard
               label="RevPAR"
-              value={kpis ? (kpis.revPAR / 1000).toFixed(1) : "—"}
+              value={kpis && hasNumber(kpis.revPAR) ? (kpis.revPAR / 1000).toFixed(1) : "—"}
               unit="k FCFA"
               trendUp
               sub="Revenu / chambre disponible"
             />
             <KPICard
               label="ADR · prix moyen"
-              value={kpis ? (kpis.averageDailyRate / 1000).toFixed(0) : "—"}
+              value={kpis && hasNumber(kpis.averageDailyRate) ? (kpis.averageDailyRate / 1000).toFixed(0) : "—"}
               unit="k FCFA"
               trendUp
-              sub={kpis ? `${kpis.pendingReservations} résa en attente` : ""}
+              sub={kpis && hasNumber(kpis.pendingReservations) ? `${kpis.pendingReservations} résa en attente` : ""}
             />
           </>
         )}
@@ -180,9 +185,7 @@ export function Dashboard({ user }: Props) {
                 {movements.map((b, i) => {
                   const name  = b.guestName ?? "—";
                   const room  = b.roomNumber ?? "—";
-                  const time  = b.mvmt === "arrivee"
-                    ? (b.expectedTime ? fmt(b.expectedTime) : "14:00")
-                    : "12:00";
+                  const time = b.expectedTime ? fmt(b.expectedTime) : "—";
                   const balance = b.mvmt === "depart" ? b.balance : null;
                   return (
                     <tr key={i} className="[&_td]:border-b [&_td]:border-border-soft last:[&_td]:border-b-0 hover:[&_td]:bg-surface-2">
@@ -345,6 +348,8 @@ export function Dashboard({ user }: Props) {
         </div>
       </div>
 
+      <DashboardInsights />
+
       {/* Activity feed */}
       <div className="bg-surface border border-border rounded-[18px] p-5.5 mt-3.5">
         <SectionHead icon="clock" title="Activité récente" />
@@ -392,7 +397,7 @@ function RevenueChart({ kpis }: { kpis: DashboardKPIs | undefined }) {
     {
       label: "Revenus du jour",
       value: todayRev,
-      sub: `ADR ${(avgRate / 1000).toFixed(0)}k · RevPAR ${(revpar / 1000).toFixed(1)}k`,
+      sub: `${hasNumber(avgRate) ? `ADR ${(avgRate / 1000).toFixed(0)}k` : ""}${hasNumber(avgRate) && hasNumber(revpar) ? " · " : ""}${hasNumber(revpar) ? `RevPAR ${(revpar / 1000).toFixed(1)}k` : ""}`,
       accent: "var(--color-ink)",
     },
     {
@@ -403,7 +408,7 @@ function RevenueChart({ kpis }: { kpis: DashboardKPIs | undefined }) {
     },
   ];
 
-  const max = Math.max(todayRev, monthRev, 1);
+  const max = Math.max(todayRev, monthRev ?? 0, 1);
 
   return (
     <div className="grid grid-cols-2 gap-3 mt-1">
@@ -412,13 +417,13 @@ function RevenueChart({ kpis }: { kpis: DashboardKPIs | undefined }) {
           <div>
             <div className="text-[11.5px] text-ink-3 font-medium">{c.label}</div>
             <div className="font-extrabold text-[24px] tracking-[-0.02em] mt-1" style={{ color: c.accent }}>
-              {(c.value / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}
-              <span className="text-[12px] text-ink-3 font-semibold ml-1">k FCFA</span>
+              {hasNumber(c.value) ? (c.value / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) : "—"}
+              {hasNumber(c.value) && <span className="text-[12px] text-ink-3 font-semibold ml-1">k FCFA</span>}
             </div>
           </div>
           <div className="mt-3">
             <div className="h-1.5 rounded-full bg-border overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${Math.round((c.value / max) * 100)}%`, background: c.accent }} />
+              <div className="h-full rounded-full" style={{ width: `${Math.round(((c.value ?? 0) / max) * 100)}%`, background: c.accent }} />
             </div>
             <div className="text-[11px] text-ink-3 mt-1.5">{c.sub}</div>
           </div>

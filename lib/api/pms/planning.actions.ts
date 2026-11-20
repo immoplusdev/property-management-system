@@ -45,11 +45,46 @@ export async function getPlanning(from: string, to: string): Promise<ActionResul
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<PlanningData>(
+    const response = await backendFetch<unknown>(
       `/pms/planning?from=${from}&to=${to}`,
       { accessToken }
     );
-    return { ok: true, data };
+    const raw = response && typeof response === "object" ? response as Record<string, unknown> : {};
+    if (!Array.isArray(raw.rooms)) throw new Error("Réponse API invalide : planning absent.");
+    const rooms: PlanningRoom[] = raw.rooms.map((value: unknown) => {
+      const room = value && typeof value === "object" ? value as Record<string, unknown> : {};
+      const daily = Array.isArray(room.slots) ? room.slots : [];
+      const slots: PlanningBookingSlot[] = [];
+      for (const value of daily) {
+        const day = value && typeof value === "object" ? value as Record<string, unknown> : {};
+        if (typeof day.reservationId !== "string" || typeof day.date !== "string") continue;
+        const previous = slots[slots.length - 1];
+        const nextDate = new Date(`${day.date}T00:00:00Z`);
+        nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+        const checkOutDate = nextDate.toISOString().slice(0, 10);
+        if (previous?.reservationId === day.reservationId && previous.checkOutDate === day.date) {
+          previous.checkOutDate = checkOutDate;
+          previous.nights += 1;
+        } else {
+          slots.push({
+            reservationId: day.reservationId,
+            guestName: String(day.guestName ?? "—"),
+            checkInDate: day.date,
+            checkOutDate,
+            status: String(day.status ?? "confirmed"),
+            nights: 1,
+          });
+        }
+      }
+      return {
+        id: String(room.id ?? ""),
+        number: String(room.number ?? room.roomNumber ?? ""),
+        floor: Number(room.floor ?? 0),
+        typeName: String(room.typeName ?? room.roomTypeName ?? "—"),
+        slots,
+      };
+    });
+    return { ok: true, data: { from: String(raw.from ?? raw.fromDate ?? from), to: String(raw.to ?? raw.toDate ?? to), rooms } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }

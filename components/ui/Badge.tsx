@@ -39,7 +39,10 @@ const BOOKING_MAP: Record<string, { label: string; cls: string }> = {
   confirmed:    { label: "Confirmée",  cls: "bg-primary-50 text-primary" },
   checked_in:   { label: "Sur place",  cls: "bg-success-bg text-success" },
   checking_out: { label: "Départ",     cls: "bg-amber-bg text-amber" },
+  departing:    { label: "Départ",     cls: "bg-amber-bg text-amber" },
   checked_out:  { label: "Terminée",   cls: "bg-surface-2 text-ink-2" },
+  completed:    { label: "Terminée",   cls: "bg-surface-2 text-ink-2" },
+  no_show:      { label: "Non présent", cls: "bg-warn-bg text-warn" },
   cancelled:    { label: "Annulée",    cls: "bg-danger-bg text-danger" },
 };
 

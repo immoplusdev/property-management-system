@@ -312,7 +312,7 @@ export function Requests() {
                   onChange={e => setManualForm(f => ({ ...f, paymentMethod: e.target.value }))}
                   className="w-full h-10.5 bg-surface border border-border rounded-[9px] px-3 text-[13.5px] outline-none focus:border-primary"
                 >
-                  {["cash","wave","orange_money","mtn_money","card"].map(m => (
+                  {["cash","wave","orange_money","mtn","credit_card"].map(m => (
                     <option key={m} value={m}>{m.replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}</option>
                   ))}
                 </select>

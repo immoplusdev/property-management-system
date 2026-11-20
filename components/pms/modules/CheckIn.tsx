@@ -32,7 +32,7 @@ export function CheckIn() {
   const [step, setStep]     = useState(0);
   const [reservationSearch, setReservationSearch] = useState("");
   const [selectedReservation, setSelectedReservation] = useState<Booking | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"wave" | "orange_money" | "mtn_momo" | "cash">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"wave" | "orange_money" | "mtn" | "cash">("cash");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [checkInStarted, setCheckInStarted] = useState(false);
@@ -45,21 +45,19 @@ export function CheckIn() {
   const [serverBalanceDue, setServerBalanceDue] = useState<number | null>(null);
   const [paymentTransactionId, setPaymentTransactionId] = useState<string | null>(null);
   const [walkin, setWalkin] = useState(false);
-  const [walkinForm, setWalkinForm] = useState({ firstName: "", lastName: "", phone: "", nationality: "CI", idCardNumber: "", checkOutDate: "", adults: "1", children: "0", amount: "0", paymentMethod: "cash" as "cash" | "orange_money" | "wave" | "mtn_momo" | "moov_money", reference: "" });
+  const [walkinForm, setWalkinForm] = useState({ firstName: "", lastName: "", phone: "", nationality: "CI", idCardNumber: "", checkOutDate: "", adults: "1", children: "0", amount: "0", paymentMethod: "cash" as "cash" | "orange_money" | "wave" | "mtn" | "moov_money", reference: "" });
   const [walkinRoomId, setWalkinRoomId] = useState("");
   const walkInMutation = useWalkIn();
 
   const STEPS = STEPS_IN;
 
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Abidjan", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  const arrivalsQ   = useReservations({ status: "confirmed", fromDate: todayStr, toDate: todayStr, limit: 100 });
-  const departuresQ = useReservations({ status: "checking_out", fromDate: todayStr, toDate: todayStr, limit: 100 });
+  const arrivalsQ   = useReservations({ status: "confirmed", checkInDate: todayStr, search: reservationSearch.trim() || undefined, limit: 100 });
+  const departuresQ = useReservations({ status: "checked_in", checkOutDate: todayStr, limit: 100 });
   const roomsQ      = useRooms({ status: "free" });
   const folioQ      = useReservationFolio(selectedReservation?.id ?? "", !!selectedReservation);
 
-  const arrivals   = (arrivalsQ.data?.data ?? []).filter(b =>
-    `${b.guest} ${b.ref}`.toLowerCase().includes(reservationSearch.trim().toLowerCase())
-  );
+  const arrivals = arrivalsQ.data?.data ?? [];
   const departures = departuresQ.data?.data ?? [];
   const availRooms = roomsQ.data?.rooms ?? [];
   const reservationTotal = folioQ.data?.folio?.totalTtc;
@@ -119,7 +117,7 @@ export function CheckIn() {
         identityVerified: true,
       });
       if (!result.ok) throw new Error(result.error.message);
-      if (!result.data.success) throw new Error("Le serveur n'a pas confirmé la vérification de l'identité.");
+      if (!result.data.identityVerified) throw new Error("Le serveur n'a pas confirmé la vérification de l'identité.");
       setIdentityVerified(true);
       setStep(2);
       showToast("Identité validée par le serveur.", "check");
@@ -282,6 +280,7 @@ export function CheckIn() {
                       </div>
                       <div className="mt-3.5 grid gap-2">
                         {arrivalsQ.isError && <div role="alert" className="text-[12px] text-danger">Impossible de charger les arrivées : {(arrivalsQ.error as Error).message}</div>}
+                        {arrivalsQ.isLoading && <div className="py-5 text-center text-[13px] text-ink-3">Chargement des arrivées…</div>}
                         {arrivals.map(b => (
                           <button type="button" key={b.id} disabled={checkInBusy} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-primary cursor-pointer transition-all duration-120 disabled:opacity-60" onClick={() => handleStartCheckIn(b)}>
                             <div className="w-9.5 h-9.5 rounded-full inline-grid place-items-center text-white font-semibold text-[13px] shrink-0"
@@ -298,7 +297,7 @@ export function CheckIn() {
                             </div>
                           </button>
                         ))}
-                        {!arrivalsQ.isError && arrivals.length === 0 && <div className="py-5 text-center text-[13px] text-ink-3">Aucune réservation confirmée correspondante.</div>}
+                        {!arrivalsQ.isLoading && !arrivalsQ.isError && arrivals.length === 0 && <div className="py-5 text-center text-[13px] text-ink-3">Aucune réservation confirmée correspondante.</div>}
                       </div>
                     </div>
                   )}
@@ -342,9 +341,9 @@ export function CheckIn() {
                       <div className="mt-4">
                         <div className="text-[12px] font-semibold mb-2.5 text-ink-2">Mode de paiement du solde</div>
                         <div className="flex gap-2 flex-wrap">
-                          {(["wave","orange_money","mtn_momo","cash"] as const).map(method => {
-                            const labels = { wave: "Wave", orange_money: "Orange Money", mtn_momo: "Moov", cash: "Espèces" };
-                            const iconMethod = method === "orange_money" ? "om" : method === "mtn_momo" ? "mtn" : method;
+                          {(["wave","orange_money","mtn","cash"] as const).map(method => {
+                            const labels = { wave: "Wave", orange_money: "Orange Money", mtn: "MTN Money", cash: "Espèces" };
+                            const iconMethod = method === "orange_money" ? "om" : method === "mtn" ? "mtn" : method;
                             return (
                               <button type="button" key={method} aria-pressed={paymentMethod === method} onClick={() => setPaymentMethod(method)} className={`flex items-center gap-2 px-3 py-2 rounded-[9px] border transition-all ${paymentMethod === method ? "border-primary bg-primary-50" : "border-border hover:border-primary hover:bg-primary-50"}`}>
                                 <PaymentMethodIcon method={iconMethod} size="sm" />
@@ -489,9 +488,9 @@ export function CheckIn() {
               <label className="text-[12px] font-medium text-ink-2 mb-1.5 block">Paiement</label>
               <div className="flex gap-2 flex-wrap">
                 {(["wave","om","mtn","cash"] as const).map(method => {
-                  const labels = { wave: "Wave", om: "Orange Money", mtn: "Moov", cash: "Espèces" };
+                  const labels = { wave: "Wave", om: "Orange Money", mtn: "MTN Money", cash: "Espèces" };
                   return (
-                    <button type="button" key={method} onClick={() => setWalkinForm(v => ({ ...v, paymentMethod: method === "om" ? "orange_money" : method === "mtn" ? "mtn_momo" : method }))} className={`flex items-center gap-2 px-3 py-1.5 rounded-[9px] border transition-all ${walkinForm.paymentMethod === (method === "om" ? "orange_money" : method === "mtn" ? "mtn_momo" : method) ? "border-primary bg-primary-50" : "border-border hover:border-primary hover:bg-primary-50"}`}>
+                    <button type="button" key={method} onClick={() => setWalkinForm(v => ({ ...v, paymentMethod: method === "om" ? "orange_money" : method === "mtn" ? "mtn" : method }))} className={`flex items-center gap-2 px-3 py-1.5 rounded-[9px] border transition-all ${walkinForm.paymentMethod === (method === "om" ? "orange_money" : method === "mtn" ? "mtn" : method) ? "border-primary bg-primary-50" : "border-border hover:border-primary hover:bg-primary-50"}`}>
                       <PaymentMethodIcon method={method} size="sm" />
                       <span className="text-[12.5px]">{labels[method]}</span>
                     </button>

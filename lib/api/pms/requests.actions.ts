@@ -92,8 +92,24 @@ export async function getRequests(params?: {
     if (params?.page) qs.set("page", String(params.page));
     if (params?.limit) qs.set("limit", String(params.limit));
     const query = qs.toString() ? `?${qs}` : "";
-    const data = await backendFetch<RequestsList>(`/pms/requests${query}`, { accessToken });
-    return { ok: true, data };
+    const response = await backendFetch<unknown>(`/pms/requests${query}`, { accessToken });
+    const raw = response && typeof response === "object" ? response as Record<string, unknown> : {};
+    if (!Array.isArray(raw.data)) throw new Error("Réponse API invalide : demandes absentes.");
+    const data: AppRequest[] = raw.data.map((item: Record<string, unknown>) => ({
+      id: String(item.id ?? ""),
+      type: String(item.type ?? ""),
+      title: String(item.title ?? ""),
+      description: typeof item.description === "string" ? item.description : undefined,
+      amount: typeof item.amount === "number" ? item.amount : undefined,
+      paymentMethod: typeof item.paymentMethod === "string" ? item.paymentMethod : undefined,
+      status: String(item.status ?? "pending") as RequestStatus,
+      reservationId: String(item.reservationId ?? ""),
+      guestName: String(item.guestName ?? "Client inconnu"),
+      roomNumber: String(item.roomNumber ?? "—"),
+      assignedTo: typeof item.assignedTo === "string" ? item.assignedTo : null,
+      createdAt: String(item.createdAt ?? ""),
+    }));
+    return { ok: true, data: { data, total: Number(raw.total ?? data.length) } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }

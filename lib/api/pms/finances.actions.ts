@@ -10,15 +10,18 @@ export interface FinanceSummary {
   period: string;
   date: string;
   totalRevenue: number;
-  previousRevenue: number;
-  revenueChange: number;
-  occupancyRevenue: number;
-  restaurantRevenue: number;
-  spaRevenue: number;
-  otherRevenue: number;
-  pendingBalance: number;
-  refunds: number;
-  netRevenue: number;
+  previousRevenue?: number;
+  revenueChange?: number;
+  occupancyRevenue?: number;
+  restaurantRevenue?: number;
+  spaRevenue?: number;
+  otherRevenue?: number;
+  pendingBalance?: number;
+  refunds?: number;
+  netRevenue?: number;
+  revenueByMethod?: Record<string, number>;
+  transactionCountByMethod?: Record<string, number>;
+  revenueBySource?: Record<string, number>;
 }
 
 export interface TransactionsList {
@@ -35,23 +38,25 @@ const stringValue = (value: unknown, fallback = "—"): string =>
 
 function normalizeSummary(value: unknown): FinanceSummary {
   const raw = object(object(value).data ?? value);
-  const numericFields = ["totalRevenue", "previousRevenue", "revenueChange", "occupancyRevenue", "restaurantRevenue", "spaRevenue", "otherRevenue", "pendingBalance", "refunds", "netRevenue"] as const;
-  if (typeof raw.period !== "string" || typeof raw.date !== "string" || numericFields.some(key => typeof raw[key] !== "number" || !Number.isFinite(raw[key]))) {
+  if (typeof raw.period !== "string" || typeof (raw.date ?? raw.to) !== "string" || typeof raw.totalRevenue !== "number" || !Number.isFinite(raw.totalRevenue)) {
     throw new Error("Réponse API invalide : résumé financier incomplet.");
   }
   return {
     period: raw.period,
-    date: raw.date,
+    date: (raw.date ?? raw.to) as string,
     totalRevenue: raw.totalRevenue as number,
-    previousRevenue: raw.previousRevenue as number,
-    revenueChange: raw.revenueChange as number,
-    occupancyRevenue: raw.occupancyRevenue as number,
-    restaurantRevenue: raw.restaurantRevenue as number,
-    spaRevenue: raw.spaRevenue as number,
-    otherRevenue: raw.otherRevenue as number,
-    pendingBalance: raw.pendingBalance as number,
-    refunds: raw.refunds as number,
-    netRevenue: raw.netRevenue as number,
+    previousRevenue: raw.previousRevenue as number | undefined,
+    revenueChange: raw.revenueChange as number | undefined,
+    occupancyRevenue: raw.occupancyRevenue as number | undefined,
+    restaurantRevenue: raw.restaurantRevenue as number | undefined,
+    spaRevenue: raw.spaRevenue as number | undefined,
+    otherRevenue: raw.otherRevenue as number | undefined,
+    pendingBalance: raw.pendingBalance as number | undefined,
+    refunds: raw.refunds as number | undefined,
+    netRevenue: raw.netRevenue as number | undefined,
+    revenueByMethod: raw.revenueByMethod && typeof raw.revenueByMethod === "object" ? raw.revenueByMethod as Record<string, number> : undefined,
+    transactionCountByMethod: raw.transactionCountByMethod && typeof raw.transactionCountByMethod === "object" ? raw.transactionCountByMethod as Record<string, number> : undefined,
+    revenueBySource: raw.revenueBySource && typeof raw.revenueBySource === "object" ? raw.revenueBySource as Record<string, number> : undefined,
   };
 }
 
@@ -69,17 +74,19 @@ function normalizeTransactions(value: unknown): TransactionsList {
   const data: Transaction[] = rows.map((entry, index) => {
     const row = object(entry);
     const id = row.id ?? row.transactionId;
-    const recordedAt = row.recordedAt ?? row.time;
-    const method = row.paymentMethod ?? row.method;
+    const recordedAt = row.recordedAt ?? row.time ?? row.confirmedAt ?? row.createdAt;
+    const method = row.paymentMethod ?? row.method ?? "—";
     const description = row.description ?? row.desc;
+    const amount = row.amount ?? (row.type === "refund" ? row.refundAmount : row.grossAmount);
+    const status = row.status ?? row.reconciliationStatus;
     if (
       (typeof id !== "string" && typeof id !== "number") ||
       (typeof recordedAt !== "string") ||
       (typeof method !== "string") ||
       typeof row.type !== "string" ||
       typeof description !== "string" ||
-      typeof row.status !== "string" ||
-      typeof row.amount !== "number" || !Number.isFinite(row.amount)
+      typeof status !== "string" ||
+      typeof amount !== "number" || !Number.isFinite(amount)
     ) {
       throw new Error(`Réponse API invalide : transaction ${index + 1} incomplète.`);
     }
@@ -88,9 +95,9 @@ function normalizeTransactions(value: unknown): TransactionsList {
       time: recordedAt,
       type: row.type,
       desc: description,
-      amount: row.amount,
+      amount: row.type === "refund" ? -(amount as number) : amount as number,
       method: method === "orange_money" ? "om" : method === "mtn_momo" ? "mtn" : method === "credit_card" ? "card" : method,
-      status: row.status,
+      status: status === "confirmed" || status === "completed" ? "ok" : status,
       reference: typeof row.reference === "string" ? row.reference : undefined,
       reservationId: typeof row.reservationId === "string" ? row.reservationId : undefined,
       guestName: typeof row.guestName === "string" ? row.guestName : undefined,
@@ -114,7 +121,7 @@ export async function getFinanceSummary(params?: {
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
     const qs = new URLSearchParams();
-    if (params?.period) qs.set("period", params.period);
+    if (params?.period) qs.set("period", params.period === "day" ? "today" : params.period);
     if (params?.date) qs.set("date", params.date);
     const query = qs.toString() ? `?${qs}` : "";
     const data = await backendFetch<unknown>(`/pms/finances/summary${query}`, { accessToken });

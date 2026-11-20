@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useDeferredValue } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
 import { BookingStatusPill, PayBadge, AppBadge, SourceBadge, Icon, KPICard, Button, Skeleton } from "../shared";
@@ -21,6 +21,9 @@ export function Reservations() {
   const filter    = searchParams.get("status") ?? "all";
   const search    = searchParams.get("q") ?? "";
   const payFilter = searchParams.get("pay") ?? "all";
+  const pageParam = Number(searchParams.get("page") ?? "1");
+  const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1;
+  const deferredSearch = useDeferredValue(search);
 
   function updateParams(patch: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -28,6 +31,7 @@ export function Reservations() {
       if (!value || value === "all") params.delete(key);
       else params.set(key, value);
     }
+    if (!("page" in patch)) params.delete("page");
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
@@ -35,26 +39,18 @@ export function Reservations() {
   const setSearch    = (v: string) => updateParams({ q: v });
   const setPayFilter = (v: string) => updateParams({ pay: v });
 
-  // Fetch all reservations (let API paginate at 100 max for client-side filtering)
-  const { data, isLoading, error } = useReservations({ limit: 100 });
-  const allBookings: Booking[] = data?.data ?? [];
-
-  // Client-side filtering
-  const list = useMemo(() => {
-    let res = allBookings;
-    if (filter !== "all") res = res.filter(b => b.status === (filter as BookingStatus));
-    if (search) res = res.filter(b =>
-      String(b.guest ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      String(b.ref ?? b.id ?? "").toLowerCase().includes(search.toLowerCase())
-    );
-    if (payFilter !== "all") res = res.filter(b => b.payment === payFilter);
-    return res;
-  }, [allBookings, filter, search, payFilter]);
-
-  const count = (status: BookingStatus) => allBookings.filter(b => b.status === status).length;
+  const paymentMethod = ({ wave: "wave", om: "orange_money", mtn: "mtn", card: "credit_card" } as Record<string, string>)[payFilter];
+  const { data, isLoading, error } = useReservations({ page, limit: 20, status: filter === "all" ? undefined : filter as BookingStatus, search: deferredSearch || undefined, paymentMethod });
+  const list: Booking[] = data?.data ?? [];
+  const allCountQ = useReservations({ limit: 1 });
+  const pendingCountQ = useReservations({ limit: 1, status: "pending" });
+  const confirmedCountQ = useReservations({ limit: 1, status: "confirmed" });
+  const checkedInCountQ = useReservations({ limit: 1, status: "checked_in" });
+  const checkingOutCountQ = useReservations({ limit: 1, status: "checking_out" });
+  const count = (status: BookingStatus) => ({ pending: pendingCountQ.data?.total, confirmed: confirmedCountQ.data?.total, checked_in: checkedInCountQ.data?.total, checking_out: checkingOutCountQ.data?.total } as Record<string, number | undefined>)[status] ?? "—";
 
   const kpis = [
-    { id:"all",          label:"Toutes",             count:allBookings.length,          icon:"list",      iconBg:"var(--color-surface-2)",  iconColor:"var(--color-ink-2)"  },
+    { id:"all",          label:"Toutes",             count:allCountQ.data?.total ?? "—", icon:"list",      iconBg:"var(--color-surface-2)",  iconColor:"var(--color-ink-2)"  },
     { id:"pending",      label:"En attente",          count:count("pending"),            icon:"clock",     iconBg:"var(--color-amber-bg)",   iconColor:"var(--color-amber)"  },
     { id:"confirmed",    label:"Confirmées",          count:count("confirmed"),          icon:"check",     iconBg:"var(--color-primary-50)", iconColor:"var(--color-primary)"},
     { id:"checked_in",   label:"Sur place",           count:count("checked_in"),         icon:"user",      iconBg:"var(--color-teal-bg)",    iconColor:"var(--color-teal)"   },
@@ -68,7 +64,7 @@ export function Reservations() {
         sub={
           isLoading
             ? "Chargement…"
-            : `${allBookings.length} réservations · ${count("pending")} en attente d'acompte`
+            : error ? "Impossible de charger les réservations" : `${allCountQ.data?.total ?? "—"} réservations · ${count("pending")} en attente d'acompte`
         }
         actions={
           <>
@@ -121,7 +117,7 @@ export function Reservations() {
               />
             ))}
           </ChipGroup>
-          <div className="ml-auto text-[12px] text-ink-3">{list.length} résultats</div>
+          <div className="ml-auto text-[12px] text-ink-3">{data?.total ?? "—"} résultats</div>
         </div>
       </div>
 
@@ -134,7 +130,7 @@ export function Reservations() {
         ) : error ? (
           <div className="py-12 text-center text-ink-3 text-[13px]">
             <Icon name="x" size={20} color="var(--color-warn)" />
-            <div className="mt-2">Impossible de charger les réservations</div>
+            <div className="mt-2">Impossible de charger les réservations : {(error as Error).message}</div>
           </div>
         ) : list.length === 0 ? (
           <div className="py-12 text-center text-ink-3 text-[13px]">Aucune réservation trouvée</div>
@@ -209,6 +205,11 @@ export function Reservations() {
           </table>
         )}
       </div>
+      {data && data.total > data.limit && <div className="flex items-center justify-end gap-3 mt-4 text-sm">
+        <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => updateParams({ page: String(page - 1) })}>Précédent</Button>
+        <span>Page {page} sur {Math.ceil(data.total / data.limit)}</span>
+        <Button variant="ghost" size="sm" disabled={page >= Math.ceil(data.total / data.limit)} onClick={() => updateParams({ page: String(page + 1) })}>Suivant</Button>
+      </div>}
     </div>
   );
 }

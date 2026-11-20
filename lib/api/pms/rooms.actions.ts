@@ -22,6 +22,24 @@ export interface HousekeepingTask {
   date: string;
 }
 
+function normalizeRoom(value: unknown): Room {
+  const room = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const roomType = room.roomType && typeof room.roomType === "object" ? room.roomType as Room["roomType"] : undefined;
+  const currentGuest = room.currentGuest && typeof room.currentGuest === "object" ? room.currentGuest as Record<string, unknown> : {};
+  return {
+    id: String(room.id ?? ""),
+    num: String(room.num ?? room.roomNumber ?? ""),
+    type: String(room.type ?? roomType?.name ?? "—"),
+    typeName: roomType?.name,
+    roomType,
+    floor: Number(room.floor ?? 0),
+    status: String(room.status ?? "free") as RoomStatus,
+    guest: typeof room.guest === "string" ? room.guest : typeof room.currentGuestName === "string" ? room.currentGuestName :
+      [currentGuest.firstName, currentGuest.lastName].filter(part => typeof part === "string").join(" ") || undefined,
+    checkout: typeof room.checkout === "string" ? room.checkout : typeof room.checkoutDate === "string" ? room.checkoutDate : undefined,
+  };
+}
+
 export async function getRooms(params?: RoomsListParams): Promise<ActionResult<{ rooms: Room[] }>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
@@ -31,8 +49,18 @@ export async function getRooms(params?: RoomsListParams): Promise<ActionResult<{
     if (params?.floor !== undefined) qs.set("floor", String(params.floor));
     if (params?.roomTypeId) qs.set("roomTypeId", params.roomTypeId);
     const query = qs.toString() ? `?${qs}` : "";
-    const data = await backendFetch<{ rooms: Room[] }>(`/pms/rooms${query}`, { accessToken });
-    return { ok: true, data };
+    const response = await backendFetch<unknown>(`/pms/rooms${query}`, { accessToken });
+    const raw = response && typeof response === "object" ? response as Record<string, unknown> : {};
+    const floors = Array.isArray(raw.floors) ? raw.floors : [];
+    const rows = Array.isArray(raw.rooms) ? raw.rooms : floors.flatMap(floor => {
+      const group = floor && typeof floor === "object" ? floor as Record<string, unknown> : {};
+      return Array.isArray(group.rooms) ? group.rooms : [];
+    });
+    if (!Array.isArray(raw.rooms) && !Array.isArray(raw.floors)) {
+      throw new Error("Réponse API invalide : liste des chambres absente.");
+    }
+    const rooms: Room[] = rows.map(normalizeRoom);
+    return { ok: true, data: { rooms } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
@@ -42,8 +70,8 @@ export async function getRoom(id: string): Promise<ActionResult<Room>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<Room>(`/pms/rooms/${id}`, { accessToken });
-    return { ok: true, data };
+    const data = await backendFetch<unknown>(`/pms/rooms/${id}`, { accessToken });
+    return { ok: true, data: normalizeRoom(data) };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
@@ -52,11 +80,11 @@ export async function getRoom(id: string): Promise<ActionResult<Room>> {
 export async function updateRoomStatus(
   id: string,
   status: RoomStatus
-): Promise<ActionResult<Room>> {
+): Promise<ActionResult<{ roomId: string; status: RoomStatus }>> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
-    const data = await backendFetch<Room>(`/pms/rooms/${id}/status`, {
+    const data = await backendFetch<{ roomId: string; status: RoomStatus }>(`/pms/rooms/${id}/status`, {
       method: "PATCH",
       json: { status },
       accessToken,

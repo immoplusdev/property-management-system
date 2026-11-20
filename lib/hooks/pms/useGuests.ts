@@ -1,6 +1,8 @@
 "use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  getGuestDuplicates,
+  mergeGuests,
   getGuests,
   getGuest,
   updateGuest,
@@ -12,7 +14,32 @@ export const guestKeys = {
   all:    () => ["guests"] as const,
   list:   (params?: object) => ["guests", "list", params] as const,
   detail: (id: string) => ["guests", "detail", id] as const,
+  duplicates: () => ["guests", "duplicates"] as const,
 };
+
+export function useGuestDuplicates() {
+  return useQuery({
+    queryKey: guestKeys.duplicates(),
+    queryFn: async () => {
+      const res = await getGuestDuplicates();
+      if (!res.ok) throw new Error(res.error.message);
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useMergeGuests() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { primaryGuestId: string; duplicateGuestId: string; reason: string }) => {
+      const result = await mergeGuests(payload);
+      if (!result.ok) throw new Error(result.error.message);
+      return result.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: guestKeys.all() }),
+  });
+}
 
 export function useGuests(params?: { page?: number; limit?: number; type?: GuestType; search?: string }) {
   return useQuery({

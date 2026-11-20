@@ -11,9 +11,6 @@ export interface HotelSettings {
   phone: string;
   email: string;
   address: string;
-  nightAccessCode?: string;
-  reception24h: boolean;
-  autoCheckout: boolean;
   whatsappBusinessNumber?: string;
   paymentMethods: string[];
   cancellationPolicy?: string;
@@ -39,7 +36,7 @@ export async function getHotelSettings(): Promise<ActionResult<HotelSettings>> {
   if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
   try {
     const data = await backendFetch<HotelSettings>("/pms/settings/hotel", { accessToken });
-    return { ok: true, data };
+    return { ok: true, data: { ...data, paymentMethods: (data.paymentMethods ?? []).map(method => method === "mtn_momo" || method === "mtn_money" ? "mtn" : method) } };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }
@@ -101,6 +98,17 @@ export async function updateNotificationSettings(
       json: payload,
       accessToken,
     });
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: toFormError(err) };
+  }
+}
+
+export async function getNotificationSettings(): Promise<ActionResult<NotificationSettings>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<NotificationSettings>("/pms/settings/notifications", { accessToken });
     return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };

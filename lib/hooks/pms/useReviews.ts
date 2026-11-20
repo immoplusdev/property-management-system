@@ -12,7 +12,7 @@ export const reviewKeys = {
   suggestion: (reviewId: string) => ["reviews", "suggestion", reviewId] as const,
 };
 
-export function useReviews(params?: { page?: number; limit?: number; minRating?: number; needsReply?: boolean }) {
+export function useReviews(params?: { page?: number; limit?: number; minRating?: number; needsReply?: boolean; guestId?: string }) {
   return useQuery({
     queryKey: reviewKeys.list(params),
     queryFn: async () => {
