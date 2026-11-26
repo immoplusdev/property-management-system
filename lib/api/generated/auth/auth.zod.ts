@@ -61,7 +61,7 @@ export const AuthControllerRegisterProEntrepriseResponse = zod.void()
 export const AuthControllerLoginBody = zod.object({
   "username": zod.string(),
   "password": zod.string(),
-  "source": zod.enum(['customer_app', 'pro_app', 'admin_app'])
+  "source": zod.enum(['customer_app', 'pro_app', 'admin_app', 'hotel_app'])
 })
 
 export const AuthControllerLoginResponse = zod.void()
@@ -70,7 +70,7 @@ export const AuthControllerSocialLoginBody = zod.object({
   "provider": zod.enum(['google', 'facebook', 'apple']),
   "token": zod.string(),
   "email": zod.string(),
-  "source": zod.enum(['customer_app', 'pro_app', 'admin_app'])
+  "source": zod.enum(['customer_app', 'pro_app', 'admin_app', 'hotel_app'])
 })
 
 export const AuthControllerSocialLoginResponse = zod.void()
@@ -78,7 +78,7 @@ export const AuthControllerSocialLoginResponse = zod.void()
 export const AuthControllerLoginWithPhoneNumberOtpBody = zod.object({
   "phoneNumber": zod.string(),
   "otp": zod.string(),
-  "source": zod.enum(['customer_app', 'pro_app', 'admin_app'])
+  "source": zod.enum(['customer_app', 'pro_app', 'admin_app', 'hotel_app'])
 })
 
 export const AuthControllerLoginWithPhoneNumberOtpResponse = zod.void()
@@ -86,7 +86,7 @@ export const AuthControllerLoginWithPhoneNumberOtpResponse = zod.void()
 export const AuthControllerLoginWithEmailOtpBody = zod.object({
   "email": zod.string(),
   "otp": zod.string(),
-  "source": zod.enum(['customer_app', 'pro_app', 'admin_app'])
+  "source": zod.enum(['customer_app', 'pro_app', 'admin_app', 'hotel_app'])
 })
 
 export const AuthControllerLoginWithEmailOtpResponse = zod.void()

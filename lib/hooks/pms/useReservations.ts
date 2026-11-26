@@ -7,6 +7,8 @@ import {
   addReservationPayment,
   cancelReservation,
   refundReservation,
+  assignReservationRoom,
+  rescheduleReservation,
   type RefundPaymentMethod,
   type ReservationsListParams,
   type CreateReservationPayload,
@@ -52,6 +54,39 @@ export function useCreateReservation() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: reservationKeys.all() });
+    },
+  });
+}
+
+export function useAssignReservationRoom() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, roomId }: { id: string; roomId: string }) => {
+      const result = await assignReservationRoom(id, roomId);
+      if (!result.ok) throw new Error(result.error.message);
+      return result.data;
+    },
+    onSuccess: (_result, { id }) => {
+      qc.invalidateQueries({ queryKey: reservationKeys.all() });
+      qc.invalidateQueries({ queryKey: reservationKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: ["rooms"] });
+    },
+  });
+}
+
+export function useRescheduleReservation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, checkInDate, checkOutDate, roomTypeId }: { id: string; checkInDate: string; checkOutDate: string; roomTypeId?: string }) => {
+      const result = await rescheduleReservation(id, { checkInDate, checkOutDate, roomTypeId });
+      if (!result.ok) throw new Error(result.error.message);
+      return result.data;
+    },
+    onSuccess: (_result, { id }) => {
+      qc.invalidateQueries({ queryKey: reservationKeys.all() });
+      qc.invalidateQueries({ queryKey: reservationKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: ["folio", id] });
+      qc.invalidateQueries({ queryKey: ["rooms"] });
     },
   });
 }

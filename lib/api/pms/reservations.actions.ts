@@ -69,6 +69,7 @@ function normalizeBooking(value: unknown): Booking {
   const balance = raw.balanceDue ?? raw.balance;
   return {
     id,
+    roomTypeId: text(raw.roomTypeId, "") || undefined,
     ref: sourceRef,
     guest: guestName || "Client inconnu",
     guestId: typeof guestId === "string" ? guestId : undefined,
@@ -159,6 +160,40 @@ export async function getReservation(id: string): Promise<ActionResult<Booking>>
     const data = await backendFetch<unknown>(`/pms/reservations/${id}`, { accessToken });
     const root = record(data);
     return { ok: true, data: normalizeBooking(root.data ?? data) };
+  } catch (err) {
+    return { ok: false, error: toFormError(err) };
+  }
+}
+
+export async function assignReservationRoom(
+  id: string,
+  roomId: string,
+): Promise<ActionResult<{ reservationId: string; roomId: string; roomNumber: string }>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ reservationId: string; roomId: string; roomNumber: string }>(
+      `/pms/reservations/${id}/room`,
+      { method: "PATCH", json: { roomId }, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() } },
+    );
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: toFormError(err) };
+  }
+}
+
+export async function rescheduleReservation(
+  id: string,
+  payload: { checkInDate: string; checkOutDate: string; roomTypeId?: string },
+): Promise<ActionResult<{ reservationId: string; status: string; balanceDue: number }>> {
+  const accessToken = await getAccessToken();
+  if (!accessToken) return { ok: false, error: { message: "Session introuvable. Reconnectez-vous." } };
+  try {
+    const data = await backendFetch<{ reservationId: string; status: string; balanceDue: number }>(
+      `/pms/reservations/${id}/reschedule`,
+      { method: "POST", json: payload, accessToken, headers: { "Idempotency-Key": crypto.randomUUID() } },
+    );
+    return { ok: true, data };
   } catch (err) {
     return { ok: false, error: toFormError(err) };
   }

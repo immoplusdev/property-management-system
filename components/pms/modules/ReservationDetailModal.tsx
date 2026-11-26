@@ -6,6 +6,8 @@ import { formatFCFA, formatDate, type Booking } from "../data";
 import { useCancelReservation } from "@/lib/hooks/pms/useReservations";
 import { useHotel } from "@/lib/pms/HotelContext";
 import { RefundReservationPanel } from "./RefundReservationPanel";
+import { ReservationArrivalGuidance } from "./ReservationArrivalGuidance";
+import { ReservationRoomAssignment } from "./ReservationRoomAssignment";
 
 export function ReservationDetailModal({ booking }: { booking: Booking }) {
   const router = useRouter();
@@ -18,7 +20,7 @@ export function ReservationDetailModal({ booking }: { booking: Booking }) {
   }
 
   function go(id: "checkin" | "checkout") {
-    router.push(`/pms/${hotel}/${id}`);
+    router.push(`/pms/${hotel}/${id}${id === "checkin" ? `?reservation=${encodeURIComponent(booking.ref)}` : ""}`);
   }
 
   async function handleCancel() {
@@ -45,13 +47,13 @@ export function ReservationDetailModal({ booking }: { booking: Booking }) {
           <Button
             variant="ghost"
             onClick={handleCancel}
-            disabled={cancelMut.isPending || ["cancelled", "checked_out"].includes(booking.status)}
+            disabled={cancelMut.isPending || !["pending", "confirmed"].includes(booking.status)}
           >
             <Icon name="trash" size={13} /> Annuler
           </Button>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={close}>Fermer</Button>
-            {booking.status === "confirmed" && (
+            {booking.status === "confirmed" && booking.room !== "—" && (
               <Button variant="primary" onClick={() => go("checkin")}>
                 <Icon name="arrowRight" size={13} /> Check-in
               </Button>
@@ -94,6 +96,8 @@ export function ReservationDetailModal({ booking }: { booking: Booking }) {
           Solde restant : {formatFCFA(balance)}
         </div>
       )}
+      <ReservationArrivalGuidance booking={booking} />
+      <ReservationRoomAssignment booking={booking} />
       <RefundReservationPanel reservationId={booking.id} reference={booking.ref} paid={booking.paid} />
     </Modal>
   );

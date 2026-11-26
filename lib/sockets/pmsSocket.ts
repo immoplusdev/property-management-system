@@ -6,10 +6,7 @@ import { io, type Socket } from "socket.io-client";
  *
  * Conforms to the backend contract documented in PMS_WEBSOCKET.md:
  *   - Namespace:  `/pms-ws`
- *   - Auth:       `auth.token` (JWT) + `x-hotel-id` header (both mandatory)
- *   - Transport:  websocket, with polling fallback so the `x-hotel-id` header
- *                 actually reaches the server in the browser (custom headers can
- *                 only be sent on the polling handshake, not a raw WS upgrade).
+ *   - Auth:       `auth.token` (JWT) + `auth.hotelId`, checked against hotel staff.
  *
  * Singleton so the connection is shared across the whole PMS app.
  */
@@ -69,9 +66,8 @@ class PmsSocketManager {
     this.key = key;
     this.socket = io(`${wsUrl}/pms-ws`, {
       path: "/socket.io",
-      auth: { token, "x-hotel-id": hotelId },
-      // Header for transports that support it (polling handshake); auth carries
-      // the same values for the websocket transport.
+      auth: { token, hotelId },
+      // Polling can send custom headers; websocket uses auth.hotelId.
       extraHeaders: { "x-hotel-id": hotelId },
       query: { hotelId },
       transports: ["websocket", "polling"],

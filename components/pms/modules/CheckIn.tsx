@@ -2,7 +2,7 @@
 import { PaymentMethodIcon } from "../PaymentMethodIcon";
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
 import { SectionHead, Icon, showToast, Button } from "../shared";
 import { Pill } from "@/components/ui/Pill";
@@ -19,6 +19,7 @@ import { uploadFile } from "@/lib/api/files/files.client";
 import { DashboardExportAction } from "@/components/pms/DashboardExportAction";
 import { useHotel } from "@/lib/pms/HotelContext";
 import { useReservationFolio } from "@/lib/hooks/pms/useFolio";
+import { ReservationRoomAssignment } from "./ReservationRoomAssignment";
 
 const STEPS_IN  = ["Identification","Identité","Paiement","Confirmation"];
 
@@ -26,13 +27,16 @@ type StepTarget = "checkin" | "walkin";
 
 export function CheckIn() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hotel = useHotel();
   const queryClient = useQueryClient();
-  const [mode, setMode]     = useState<StepTarget>("checkin");
+  const [mode, setMode]     = useState<StepTarget>(() => searchParams.get("mode") === "walkin" ? "walkin" : "checkin");
   const [step, setStep]     = useState(0);
-  const [reservationSearch, setReservationSearch] = useState("");
+  const [reservationSearch, setReservationSearch] = useState(() => searchParams.get("reservation") ?? "");
   const [selectedReservation, setSelectedReservation] = useState<Booking | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"wave" | "orange_money" | "mtn" | "cash">("cash");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [checkInStarted, setCheckInStarted] = useState(false);
@@ -52,12 +56,14 @@ export function CheckIn() {
   const STEPS = STEPS_IN;
 
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Abidjan", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  const arrivalsQ   = useReservations({ status: "confirmed", checkInDate: todayStr, search: reservationSearch.trim() || undefined, limit: 100 });
+  const arrivalsQ   = useReservations({ status: "confirmed", search: reservationSearch.trim() || undefined, limit: 100 });
+  const todayArrivalsQ = useReservations({ status: "confirmed", checkInDate: todayStr, limit: 100 });
   const departuresQ = useReservations({ status: "checked_in", checkOutDate: todayStr, limit: 100 });
   const roomsQ      = useRooms({ status: "free" });
   const folioQ      = useReservationFolio(selectedReservation?.id ?? "", !!selectedReservation);
 
   const arrivals = arrivalsQ.data?.data ?? [];
+  const todayArrivals = todayArrivalsQ.data?.data ?? [];
   const departures = departuresQ.data?.data ?? [];
   const availRooms = roomsQ.data?.rooms ?? [];
   const reservationTotal = folioQ.data?.folio?.totalTtc;
@@ -65,8 +71,10 @@ export function CheckIn() {
   const balanceDue = folioQ.data?.balanceDue;
   const currentBalanceDue = serverBalanceDue ?? balanceDue;
   const hasValidReservationAmount = typeof balanceDue === "number" && Number.isFinite(balanceDue) && balanceDue >= 0;
+  const amountToCollect = paymentAmount.trim() ? Number(paymentAmount) : balanceDue;
+  const canCollectAmount = typeof amountToCollect === "number" && Number.isInteger(amountToCollect) && amountToCollect > 0 && typeof balanceDue === "number" && amountToCollect <= balanceDue;
   const isPaymentConfirmed = paymentStatus === "already_paid" || (!!paymentStatus && ["confirmed", "succeeded", "success", "paid", "completed"].includes(paymentStatus.toLowerCase()));
-  const isPaymentPending = !!paymentStatus && paymentStatus !== "already_paid" && !isPaymentConfirmed;
+  const isPaymentPending = !!paymentStatus && paymentStatus !== "already_paid" && paymentStatus !== "not_collected" && !isPaymentConfirmed;
 
   async function handleStartCheckIn(booking: Booking) {
     if (checkInBusy) return;
@@ -129,7 +137,7 @@ export function CheckIn() {
   }
 
   async function handleCompleteCheckIn() {
-    if (!selectedReservation || !checkInStarted || !identityVerified || !isPaymentConfirmed || checkInBusy) return;
+    if (!selectedReservation || !checkInStarted || !identityVerified || !hasValidReservationAmount || isPaymentPending || checkInBusy) return;
     setCheckInBusy(true);
     try {
       const result = await completeCheckIn(selectedReservation.id);
@@ -155,12 +163,14 @@ export function CheckIn() {
       setStep(3);
       return;
     }
+    if (!canCollectAmount || amountToCollect === undefined) return;
     setPaymentBusy(true);
     try {
       const result = await addStayPayment(selectedReservation.id, {
-        amount: balanceDue,
+        amount: amountToCollect,
         paymentMethod,
-        description: `Solde encaissé au check-in — ${selectedReservation.ref}`,
+        ...(paymentMethod !== "cash" ? { reference: paymentReference.trim() } : {}),
+        description: `Paiement au check-in — ${selectedReservation.ref}`,
       });
       if (!result.ok) throw new Error(result.error.message);
       if (typeof result.data.status !== "string" || !result.data.status) throw new Error("Réponse API invalide : statut du paiement absent.");
@@ -168,6 +178,8 @@ export function CheckIn() {
       setPaymentStatus(result.data.status);
       setServerBalanceDue(result.data.balanceDue);
       setPaymentTransactionId(result.data.transactionId || null);
+      setPaymentAmount("");
+      setPaymentReference("");
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
       queryClient.invalidateQueries({ queryKey: ["folio", selectedReservation.id] });
       const pending = !["confirmed", "succeeded", "success", "paid", "completed"].includes(result.data.status.toLowerCase());
@@ -273,7 +285,7 @@ export function CheckIn() {
                 <>
                   {step === 0 && (
                     <div>
-                      <SectionHead icon="user" title="Identification du client" sub="Entrez le nom ou la référence de réservation" />
+                      <SectionHead icon="user" title="Identification du client" sub="Choisissez une réservation confirmée ou recherchez un nom ou une référence" />
                       <div className="h-12 bg-surface border border-border rounded-[10px] px-4 flex items-center gap-3 mt-4 focus-within:border-primary">
                         <Icon name="eye" size={16} color="var(--color-ink-3)" />
                         <input className="flex-1 text-[14px] outline-none bg-transparent placeholder:text-ink-4" placeholder="Nom, prénom ou référence RES-2026-…" value={reservationSearch} onChange={event => setReservationSearch(event.target.value)} />
@@ -282,22 +294,32 @@ export function CheckIn() {
                         {arrivalsQ.isError && <div role="alert" className="text-[12px] text-danger">Impossible de charger les arrivées : {(arrivalsQ.error as Error).message}</div>}
                         {arrivalsQ.isLoading && <div className="py-5 text-center text-[13px] text-ink-3">Chargement des arrivées…</div>}
                         {arrivals.map(b => (
-                          <button type="button" key={b.id} disabled={checkInBusy} className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-primary cursor-pointer transition-all duration-120 disabled:opacity-60" onClick={() => handleStartCheckIn(b)}>
-                            <div className="w-9.5 h-9.5 rounded-full inline-grid place-items-center text-white font-semibold text-[13px] shrink-0"
-                              style={{ background: AV_COLORS[b.guest.charCodeAt(0) % 8] }}>
-                              {b.guest.split(" ").map((x: string) => x[0]).join("").slice(0,2)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-[13.5px]">{b.guest}</div>
-                              <div className="text-[11.5px] text-ink-3">{b.ref} · {b.roomType} · {b.nights} nuit{b.nights>1?"s":""}</div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[12.5px] font-semibold">{formatFCFA(b.amount)}</div>
-                              <Pill kind={b.paid >= b.amount ? "success" : "warn"} dot>{b.paid >= b.amount ? "Payé" : "Acompte"}</Pill>
-                            </div>
-                          </button>
+                          <div key={b.id} className="rounded-xl border border-border overflow-hidden">
+                            <button type="button" disabled={checkInBusy || b.room === "—"} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:border-primary cursor-pointer transition-all duration-120 disabled:cursor-default disabled:opacity-80" onClick={() => handleStartCheckIn(b)}>
+                              <div className="w-9.5 h-9.5 rounded-full inline-grid place-items-center text-white font-semibold text-[13px] shrink-0"
+                                style={{ background: AV_COLORS[b.guest.charCodeAt(0) % 8] }}>
+                                {b.guest.split(" ").map((x: string) => x[0]).join("").slice(0,2)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-[13.5px]">{b.guest}</div>
+                                <div className="text-[11.5px] text-ink-3">{b.ref} · Arrivée {formatDate(b.checkin)} · {b.roomType} · {b.room === "—" ? "Chambre à attribuer" : `Chambre ${b.room}`} · {b.nights} nuit{b.nights>1?"s":""}</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[12.5px] font-semibold">{formatFCFA(b.amount)}</div>
+                                <Pill kind={b.paid >= b.amount ? "success" : "warn"} dot>{b.paid >= b.amount ? "Payé" : "Acompte"}</Pill>
+                              </div>
+                            </button>
+                            {b.room === "—" && <div className="px-3 pb-3"><ReservationRoomAssignment booking={b} /></div>}
+                          </div>
                         ))}
-                        {!arrivalsQ.isLoading && !arrivalsQ.isError && arrivals.length === 0 && <div className="py-5 text-center text-[13px] text-ink-3">Aucune réservation confirmée correspondante.</div>}
+                        {!arrivalsQ.isLoading && !arrivalsQ.isError && arrivals.length === 0 && (
+                          <div className="py-5 text-center text-[13px] text-ink-3">
+                            <p>{reservationSearch.trim() ? "Aucune réservation confirmée correspondante." : "Aucune réservation confirmée disponible."}</p>
+                            <p className="mt-1">Les réservations « Non présent » ne peuvent plus être utilisées pour un check-in. Pour une nouvelle arrivée sans réservation active, créez un walk-in.</p>
+                            <button type="button" className="mt-2 font-semibold text-primary underline" onClick={() => { setMode("walkin"); setReservationSearch(""); }}>Créer un walk-in</button>
+                          </div>
+                        )}
+                        {!arrivalsQ.isLoading && !arrivalsQ.isError && (arrivalsQ.data?.total ?? 0) > arrivals.length && <div className="text-center text-[12px] text-ink-3">{arrivals.length} réservations affichées sur {arrivalsQ.data?.total}. Recherchez un nom ou une référence pour trouver les autres.</div>}
                       </div>
                     </div>
                   )}
@@ -305,11 +327,11 @@ export function CheckIn() {
                     <div>
                       <SectionHead icon="user" title="Vérification de l'identité" sub="Téléversez le recto et le verso de la pièce, puis confirmez leur vérification" />
                       <div className="grid gap-3 mt-4">
-                        <label className="grid gap-1 text-[12px] text-ink-2">Recto de la pièce d'identité
+                        <label className="grid gap-1 text-[12px] text-ink-2">Recto de la pièce d&apos;identité
                           <input type="file" accept="image/*,application/pdf" disabled={identityBusy} onChange={event => uploadIdentity(event.target.files?.[0], "front")} />
                           <span className="text-[11px] text-ink-3">{identityFrontId ? "Document envoyé" : "Document non envoyé"}</span>
                         </label>
-                        <label className="grid gap-1 text-[12px] text-ink-2">Verso de la pièce d'identité
+                        <label className="grid gap-1 text-[12px] text-ink-2">Verso de la pièce d&apos;identité
                           <input type="file" accept="image/*,application/pdf" disabled={identityBusy} onChange={event => uploadIdentity(event.target.files?.[0], "back")} />
                           <span className="text-[11px] text-ink-3">{identityBackId ? "Document envoyé" : "Document non envoyé"}</span>
                         </label>
@@ -324,7 +346,7 @@ export function CheckIn() {
                   )}
                   {step === 2 && (
                     <div>
-                      <SectionHead icon="creditCard" title="Paiement & solde" sub="Vérifiez et encaissez le solde restant" />
+                      <SectionHead icon="creditCard" title="Paiement & solde" sub="Vérifiez l'acompte reçu ; le solde peut être réglé plus tard" />
                       <div className="mt-4 grid gap-2.5">
                         {[
                           { label:"Montant total",     value:formatFCFA(reservationTotal), color:"var(--color-ink)"     },
@@ -338,6 +360,13 @@ export function CheckIn() {
                         ))}
                       </div>
                       {folioQ.isError && <div role="alert" className="mt-2 text-[12px] text-danger">Impossible de charger le folio : {(folioQ.error as Error).message}</div>}
+                      {balanceDue !== undefined && balanceDue > 0 && (
+                        <div className="mt-4 text-[12px] text-ink-2">
+                          <label htmlFor="checkin-payment-amount" className="font-semibold">Montant à encaisser maintenant (optionnel)</label>
+                          <input id="checkin-payment-amount" type="number" min={1} max={balanceDue} step={1} value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} placeholder={String(balanceDue)} className="mt-2 block w-full rounded-[9px] border border-border bg-surface px-3 py-2 text-[13px]" />
+                          <p className="mt-1 text-ink-3">Laisser vide pour encaisser tout le solde.</p>
+                        </div>
+                      )}
                       <div className="mt-4">
                         <div className="text-[12px] font-semibold mb-2.5 text-ink-2">Mode de paiement du solde</div>
                         <div className="flex gap-2 flex-wrap">
@@ -352,12 +381,23 @@ export function CheckIn() {
                             );
                           })}
                         </div>
+                        {paymentMethod !== "cash" && (
+                          <label className="mt-3 block text-[12px] text-ink-2">
+                            Référence du paiement
+                            <input type="text" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} className="mt-2 block w-full rounded-[9px] border border-border bg-surface px-3 py-2 text-[13px]" placeholder="Référence du prestataire" />
+                          </label>
+                        )}
                       </div>
-                      <div className="flex justify-between mt-5.5">
+                      <div className="flex flex-wrap justify-between gap-2 mt-5.5">
                         <Button variant="ghost" onClick={() => setStep(1)}><Icon name="chevronLeft" size={14} /> Retour</Button>
-                        <Button variant="primary" disabled={!selectedReservation || !identityVerified || !hasValidReservationAmount || folioQ.isLoading || folioQ.isError || paymentBusy} onClick={balanceDue !== 0 ? collectBalance : () => { setPaymentStatus("already_paid"); setStep(3); }}>
-                          {paymentBusy ? "Enregistrement…" : balanceDue !== 0 ? "Encaisser & Continuer" : "Continuer sans solde"} <Icon name="chevronRight" size={14} />
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="ghost" disabled={!selectedReservation || !identityVerified || !hasValidReservationAmount || folioQ.isLoading || folioQ.isError || paymentBusy} onClick={() => { setPaymentStatus(balanceDue === 0 ? "already_paid" : "not_collected"); setStep(3); }}>
+                            Continuer sans encaisser
+                          </Button>
+                          {balanceDue !== 0 && <Button variant="primary" disabled={!selectedReservation || !identityVerified || !canCollectAmount || (paymentMethod !== "cash" && !paymentReference.trim()) || folioQ.isLoading || folioQ.isError || paymentBusy} onClick={collectBalance}>
+                            {paymentBusy ? "Enregistrement…" : "Encaisser et continuer"} <Icon name="chevronRight" size={14} />
+                          </Button>}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -367,13 +407,13 @@ export function CheckIn() {
                         <Icon name={checkInCompleted ? "check" : isPaymentPending ? "clock" : "user"} size={32} color={checkInCompleted ? "var(--color-success)" : isPaymentPending ? "var(--color-warn)" : "var(--color-ink-3)"} />
                       </div>
                       <div className="text-[22px] font-bold tracking-[-0.02em] mb-2">
-                        {checkInCompleted ? "Check-in confirmé" : isPaymentPending ? "Paiement en attente" : "Prêt à finaliser le check-in"}
+                        {checkInCompleted ? "Check-in confirmé" : isPaymentPending ? "Paiement en attente" : "Vérification finale du check-in"}
                       </div>
                       <div className="text-[14px] text-ink-2">{selectedReservation?.ref} · Solde : {formatFCFA(currentBalanceDue)}</div>
                       {paymentTransactionId && <div className="text-[11px] text-ink-3 mt-1">Transaction : {paymentTransactionId}</div>}
-                      <div className="text-[12px] text-ink-3 mt-3 mb-5.5">{checkInCompleted ? "Le serveur a confirmé la finalisation du check-in." : isPaymentPending ? "Le paiement doit être confirmé par le prestataire avant la finalisation." : "L'identité est validée. Finalisez le check-in pour enregistrer l'arrivée."}</div>
+                      <div className="text-[12px] text-ink-3 mt-3 mb-5.5">{checkInCompleted ? "Le serveur a confirmé la finalisation du check-in." : isPaymentPending ? "Le paiement doit être confirmé par le prestataire avant la finalisation." : "Le serveur vérifiera la chambre, le ménage, l'identité et l'acompte requis avant de confirmer l'arrivée. Le solde restant pourra être réglé plus tard."}</div>
                       <div className="flex gap-2 justify-center">
-                        {!checkInCompleted ? <Button variant="primary" disabled={!isPaymentConfirmed || currentBalanceDue !== 0 || checkInBusy} onClick={handleCompleteCheckIn}>{checkInBusy ? "Finalisation…" : "Finaliser le check-in"}</Button> :
+                        {!checkInCompleted ? <Button variant="primary" disabled={isPaymentPending || !hasValidReservationAmount || checkInBusy} onClick={handleCompleteCheckIn}>{checkInBusy ? "Finalisation…" : "Finaliser le check-in"}</Button> :
                           <Button variant="primary" onClick={() => { setStep(0); setSelectedReservation(null); setPaymentStatus(null); setPaymentTransactionId(null); setCheckInStarted(false); setIdentityVerified(false); setCheckInCompleted(false); }}>Nouveau check-in</Button>}
                       </div>
                     </div>
@@ -388,8 +428,8 @@ export function CheckIn() {
           {mode === "walkin" && (
             <div className="grid grid-cols-2 gap-3.5">
               <div className="bg-surface border border-border rounded-[18px] p-5.5">
-                <SectionHead icon="arrowRight" title="Arrivées du jour" sub={`${arrivals.length} réservations`} />
-                {arrivals.map(b => (
+                <SectionHead icon="arrowRight" title="Arrivées du jour" sub={`${todayArrivalsQ.data?.total ?? todayArrivals.length} réservations`} />
+                {todayArrivals.map(b => (
                   <ArrivalRow key={b.id} b={b} color={AV_COLORS[b.guest.charCodeAt(0) % 8]} />
                 ))}
               </div>
@@ -409,7 +449,7 @@ export function CheckIn() {
             <SectionHead icon="barChart" title="Aujourd'hui" sub="Vue d'ensemble" />
             <div className="grid gap-2.5 mt-1">
               {[
-                { label:"Arrivées prévues",     value:arrivals.length,   bg:"var(--color-primary-50)", cl:"var(--color-primary)" },
+                { label:"Arrivées prévues",     value:todayArrivalsQ.data?.total ?? todayArrivals.length,   bg:"var(--color-primary-50)", cl:"var(--color-primary)" },
                 { label:"Départs prévus",       value:departures.length, bg:"var(--color-warn-bg)",    cl:"var(--color-warn)"    },
                 { label:"Chambres disponibles", value:availRooms.length, bg:"var(--color-success-bg)", cl:"var(--color-success)" },
               ].map(s => (

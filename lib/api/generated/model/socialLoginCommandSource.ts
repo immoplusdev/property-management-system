@@ -12,4 +12,5 @@ export const SocialLoginCommandSource = {
   customer_app: 'customer_app',
   pro_app: 'pro_app',
   admin_app: 'admin_app',
+  hotel_app: 'hotel_app',
 } as const;

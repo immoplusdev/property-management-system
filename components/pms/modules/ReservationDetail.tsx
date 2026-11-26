@@ -8,11 +8,13 @@ import { formatFCFA, formatDate, type Booking } from "../data";
 import { useCancelReservation } from "@/lib/hooks/pms/useReservations";
 import { useHotel } from "@/lib/pms/HotelContext";
 import { RefundReservationPanel } from "./RefundReservationPanel";
+import { ReservationArrivalGuidance } from "./ReservationArrivalGuidance";
+import { ReservationRoomAssignment } from "./ReservationRoomAssignment";
 
 export function ReservationDetail({ booking }: { booking: Booking }) {
   const router = useRouter();
   const hotel = useHotel();
-  const go = (id: "checkin" | "checkout") => router.push(`/pms/${hotel}/${id}`);
+  const go = (id: "checkin" | "checkout") => router.push(`/pms/${hotel}/${id}${id === "checkin" ? `?reservation=${encodeURIComponent(booking.ref)}` : ""}`);
   const cancelMut = useCancelReservation();
   const balance = booking.balance;
 
@@ -45,11 +47,11 @@ export function ReservationDetail({ booking }: { booking: Booking }) {
             <Button
               variant="ghost"
               onClick={handleCancel}
-              disabled={cancelMut.isPending || ["cancelled", "checked_out"].includes(booking.status)}
+              disabled={cancelMut.isPending || !["pending", "confirmed"].includes(booking.status)}
             >
               <Icon name="trash" size={13} /> Annuler
             </Button>
-            {booking.status === "confirmed" && (
+            {booking.status === "confirmed" && booking.room !== "—" && (
               <Button variant="primary" onClick={() => go("checkin")}>
                 <Icon name="arrowRight" size={13} /> Check-in
               </Button>
@@ -93,6 +95,8 @@ export function ReservationDetail({ booking }: { booking: Booking }) {
             Solde restant : {formatFCFA(balance)}
           </div>
         )}
+        <ReservationArrivalGuidance booking={booking} />
+        <ReservationRoomAssignment booking={booking} />
         <RefundReservationPanel reservationId={booking.id} reference={booking.ref} paid={booking.paid} />
       </div>
     </div>

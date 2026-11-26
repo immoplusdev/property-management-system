@@ -30,7 +30,7 @@ import { LoginCommandSource } from "@/lib/api/generated/model";
  * Flux d'inscription :
  *   1. sendOtp({ email })           → /users/send-otp      → envoie le code par e-mail
  *   2. verifyOtp({ email, otp })    → /users/verify-otp    → retourne un token OTP
- *   3. registerCustomer({ ...form, token }) → /auth/register-customer → session + cookies
+ *   3. registerHotel({ ...form, token }) → /auth/register-hotel → session + cookies
  */
 
 export type ActionResult<T = void> =
@@ -85,7 +85,7 @@ export async function sendOtp(input: SendOtpInput): Promise<ActionResult> {
 
 /**
  * Étape 2 — vérifie le code OTP via /users/verify-otp.
- * Retourne le token à passer à registerCustomer.
+ * Retourne le token à passer à registerHotel.
  */
 export async function verifyOtp(
   input: VerifyOtpInput,
@@ -113,7 +113,7 @@ export async function verifyOtp(
  * Étape 3 — inscription finale. `token` vient de verifyOtp.
  * L'API connecte automatiquement l'utilisateur et retourne la session.
  */
-export async function registerCustomer(
+export async function registerHotel(
   input: RegisterInput,
 ): Promise<ActionResult<UserDto>> {
   const parsed = registerSchema.safeParse(input);
@@ -125,7 +125,7 @@ export async function registerCustomer(
 
   try {
     const envelope = await backendFetch<WrapperResponseLoginCommandResponseDto>(
-      "/auth/register-customer",
+      "/auth/register-hotel",
       {
         method: "POST",
         json: {
@@ -159,7 +159,7 @@ export async function login(input: LoginInput): Promise<ActionResult<UserDto>> {
         json: {
           username: parsed.data.email,
           password: parsed.data.password,
-          source: env.AUTH_SOURCE as LoginCommandSource,
+          source: env.AUTH_SOURCE satisfies LoginCommandSource,
         },
       },
     );
