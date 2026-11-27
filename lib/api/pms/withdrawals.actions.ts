@@ -42,9 +42,18 @@ async function call<T>(path: string, method = "GET", json?: unknown): Promise<Re
   }
 }
 
-export const getHotelWithdrawalBalance = () => call<WithdrawalBalance>("/pms/withdrawals/balance");
-export const getHotelWithdrawals = (page = 1) => call<{ data: HotelWithdrawal[]; total: number }>(`/pms/withdrawals?page=${Math.max(1, page)}&limit=20`);
-export const saveHotelPayoutAccount = (account: PayoutAccount) =>
-  call<{ payoutAccount: PayoutAccount }>("/pms/withdrawals/payout-account", "PATCH", account);
-export const requestHotelWithdrawal = (amount: number, account: PayoutAccount) =>
-  call<HotelWithdrawal>("/pms/withdrawals", "POST", { amount, ...account });
+export async function getHotelWithdrawalBalance(): Promise<Result<WithdrawalBalance>> {
+  return call<WithdrawalBalance>("/pms/withdrawals/balance");
+}
+
+export async function getHotelWithdrawals(page = 1): Promise<Result<{ data: HotelWithdrawal[]; total: number }>> {
+  return call<{ data: HotelWithdrawal[]; total: number }>(`/pms/withdrawals?page=${Math.max(1, page)}&limit=20`);
+}
+
+export async function saveHotelPayoutAccount(account: PayoutAccount): Promise<Result<{ payoutAccount: PayoutAccount }>> {
+  return call<{ payoutAccount: PayoutAccount }>("/pms/withdrawals/payout-account", "PATCH", account);
+}
+
+export async function requestHotelWithdrawal(amount: number, account: PayoutAccount): Promise<Result<HotelWithdrawal>> {
+  return call<HotelWithdrawal>("/pms/withdrawals", "POST", { amount, ...account });
+}
