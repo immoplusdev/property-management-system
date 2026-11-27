@@ -9,7 +9,7 @@ import { Logo } from "@/components/Logo";
 import {
   sendOtp,
   verifyOtp,
-  registerCustomer,
+  registerHotel,
 } from "@/lib/api/auth/auth.actions";
 import { startOnboarding } from "@/lib/api/onboarding/onboarding.actions";
 
@@ -518,7 +518,7 @@ function OtpScreen({
     }
 
     // Étape 3 — inscription finale avec le token OTP.
-    const registerRes = await registerCustomer({
+    const registerRes = await registerHotel({
       fullName:    pending.fullName,
       phoneNumber: pending.phoneNumber,
       email,

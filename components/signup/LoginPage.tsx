@@ -47,7 +47,10 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <LoginForm onSwitchToSignUp={() => router.push("/inscription")} />
+        <LoginForm onSwitchToSignUp={() => {
+          const next = new URLSearchParams(window.location.search).get("next");
+          router.push(next?.startsWith("/invitation?token=") ? next : "/inscription");
+        }} />
 
         <div className="shrink-0 pt-3 mt-auto">
           <div className="inline-flex items-center gap-1.5 text-[11px] text-ink-4">

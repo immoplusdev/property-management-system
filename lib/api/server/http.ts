@@ -56,9 +56,10 @@ export async function backendFetch<T = unknown>(
   const method = rest.method ?? "GET";
 
   const url  = `${env.API_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-  const done = logRequest({ source: "SRV", method, path, body: json });
+  const logPath = path.startsWith("/pms/staff/invitations/") ? "/pms/staff/invitations/[token]" : path;
+  const done = logRequest({ source: "SRV", method, path: logPath, body: json });
 
-  const hotelId = path.startsWith("/pms/") && !path.startsWith("/pms/onboarding/") && accessToken
+  const hotelId = path.startsWith("/pms/") && !path.startsWith("/pms/onboarding/") && !path.startsWith("/pms/staff/invitations/") && accessToken
     ? await resolveHotelId(accessToken)
     : await getHotelId();
   const requestHeaders: Record<string, string> = {

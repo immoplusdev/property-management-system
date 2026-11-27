@@ -2,12 +2,17 @@
 import React, { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { PMSSidebar } from "./PMSSidebar";
+import { FloatingTabHelp } from "./FloatingTabHelp";
 import { ToastProvider } from "./shared";
 import { usePmsSocket } from "@/lib/hooks/pms/usePmsSocket";
 import type { UserDto } from "@/lib/api/generated/model";
 
 export function PMSShell({ user, hotelName, children }: { user: UserDto | null; hotelName: string; children: React.ReactNode }) {
   const pathname = usePathname();
+  const pathSegments = pathname.split("/");
+  const helpKey = pathSegments[3] === "settings" && pathSegments[4]
+    ? `settings/${pathSegments[4]}`
+    : pathSegments[3] ?? "dashboard";
 
   usePmsSocket();
 
@@ -22,6 +27,7 @@ export function PMSShell({ user, hotelName, children }: { user: UserDto | null; 
         <main className="flex-1 min-w-0 px-9 pt-7 pb-15">
           {children}
         </main>
+        <FloatingTabHelp key={helpKey} />
       </div>
     </ToastProvider>
   );

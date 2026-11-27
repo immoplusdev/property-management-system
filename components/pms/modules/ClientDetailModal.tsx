@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Modal, SectionHead, StarRating, Icon, Button } from "../shared";
+import { Modal, SectionHead, StarRating, Icon, Button, BookingStatusPill } from "../shared";
 import { Tabs } from "@/components/ui/Tabs";
 import { Pill } from "@/components/ui/Pill";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -86,7 +86,7 @@ export function ClientDetailModal({ client }: { client: Guest }) {
         onChange={setTab}
         tabs={[
           { id: "info",    label: "Informations" },
-          { id: "history", label: `Historique · ${client.totalStays} séjours` },
+          { id: "history", label: `Réservations · ${bookingsQ.data?.total ?? "…"}` },
           { id: "reviews", label: "Avis postés" },
           { id: "prefs",   label: "Préférences & notes" },
         ]}
@@ -94,7 +94,8 @@ export function ClientDetailModal({ client }: { client: Guest }) {
 
       {/* Info */}
       {tab === "info" && (
-        <div className="grid grid-cols-2 gap-2">
+        <div>
+          <div className="grid grid-cols-2 gap-2">
           <DetailRow label="Téléphone" value={client.phone} />
           <DetailRow label="Email" value={client.email} valueClass="text-[13px]" />
           <DetailRow label="Pays / Nationalité" value={client.nationality} />
@@ -116,6 +117,12 @@ export function ClientDetailModal({ client }: { client: Guest }) {
               </div>
             </div>
           )}
+          </div>
+          <div className="mt-3 text-[12px] text-ink-3">
+            {bookingsQ.isLoading ? "Chargement des réservations…" : bookingsQ.isError
+              ? "Impossible de charger les réservations de ce client."
+              : `${bookingsQ.data?.total ?? 0} réservation(s) associée(s) · ${client.totalStays} séjour(s) effectué(s)`}
+          </div>
         </div>
       )}
 
@@ -127,13 +134,18 @@ export function ClientDetailModal({ client }: { client: Guest }) {
             <StatBox label="Panier moyen" value={`${client.totalStays > 0 ? Math.round(client.totalSpent / client.totalStays / 1000) : 0}k`} unit="FCFA" />
             <StatBox label="Total dépensé" value={`${(client.totalSpent / 1000).toFixed(0)}k`} unit="FCFA" valueClass="text-primary" />
           </div>
-          {clientBookings.length > 0 ? (
+          {bookingsQ.isLoading ? (
+            <div className="py-5 text-center text-[13px] text-ink-3">Chargement des réservations…</div>
+          ) : bookingsQ.isError ? (
+            <div role="alert" className="py-5 text-center text-[13px] text-danger">Impossible de charger les réservations : {(bookingsQ.error as Error).message}</div>
+          ) : clientBookings.length > 0 ? (
             <div className="relative pl-5 border-l-2 border-border grid gap-3.5">
               {clientBookings.map(b => (
                 <div key={b.id} className="relative">
                   <div className="absolute -left-6.25 top-1 w-2.5 h-2.5 rounded-full border-2 border-primary bg-surface" />
                   <div className="flex items-center gap-2">
                     <div className="font-semibold text-[13px]">Chambre {b.room} · {b.roomType} · {b.nights} nuit{b.nights > 1 ? "s" : ""}</div>
+                    <BookingStatusPill status={b.status} />
                     <span className="text-[11px] text-ink-3 ml-auto">{formatDate(b.checkin)}</span>
                   </div>
                   <div className="text-[11px] text-ink-3">{b.ref} · via {b.source} · {b.payment.toUpperCase()}</div>
@@ -142,7 +154,7 @@ export function ClientDetailModal({ client }: { client: Guest }) {
               ))}
             </div>
           ) : (
-            <EmptyState icon="calendar" title="Aucun séjour enregistré" sub="Les réservations de ce client apparaîtront ici" />
+            <EmptyState icon="calendar" title="Aucune réservation associée" sub="Les réservations de ce client apparaîtront ici" />
           )}
         </div>
       )}

@@ -153,7 +153,8 @@ export function LoginForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }
     setError("");
     const res = await login({ email: email.trim(), password });
     if (res.ok) {
-      router.push("/pms");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next?.startsWith("/invitation?token=") ? next : "/pms");
       router.refresh();
     } else {
       setLoading(false);

@@ -8,6 +8,7 @@ import { formatFCFA } from "../data";
 import { useFinanceSummary, useTransactions } from "@/lib/hooks/pms/useFinances";
 import { ExportAction } from "@/components/pms/ExportAction";
 import { CashDeskSection } from "./CashDeskSection";
+import { HotelWithdrawals } from "./HotelWithdrawals";
 
 const PAY_COLORS: Record<string, string> = {
   wave: "var(--color-pay-wave)", om: "var(--color-pay-om)", mtn: "var(--color-pay-mtn)",
@@ -66,6 +67,8 @@ export function Finances() {
           </>
         }
       />
+
+      <HotelWithdrawals />
 
       {(summaryQ.isError || transactionsQ.isError) && <div role="alert" className="mb-4 text-sm text-danger">
         {summaryQ.isError && `Résumé financier : ${(summaryQ.error as Error).message} `}

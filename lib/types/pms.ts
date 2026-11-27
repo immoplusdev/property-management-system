@@ -58,6 +58,7 @@ export type BookingStatus =
 
 export interface Booking {
   id: string;
+  roomTypeId?: string;
   ref: string;
   guest: string;
   guestId?: string;

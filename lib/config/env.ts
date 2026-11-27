@@ -9,17 +9,10 @@ import { z } from "zod";
  */
 const schema = z.object({
   API_URL: z.string().url().transform((u) => u.replace(/\/+$/, "")),
-  AUTH_SOURCE: z
-    .enum(["customer_app", "pro_app", "admin_app"])
-    .default("customer_app"),
 });
-
-// ── Force AUTH_SOURCE to customer_app (hardcoded for reliability) ──
-const AUTH_SOURCE_OVERRIDE = "customer_app";
 
 const parsed = schema.safeParse({
   API_URL: process.env.API_URL,
-  AUTH_SOURCE: process.env.AUTH_SOURCE,
 });
 
 if (!parsed.success) {
@@ -31,5 +24,6 @@ if (!parsed.success) {
 
 export const env = {
   ...parsed.data,
-  AUTH_SOURCE: AUTH_SOURCE_OVERRIDE, // Always use customer_app
+  // This frontend is the PMS. Existing accounts retain their original user role.
+  AUTH_SOURCE: "hotel_app" as const,
 };

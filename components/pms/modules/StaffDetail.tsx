@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PMSHeader } from "../PMSHeader";
-import { Icon, Button, Skeleton, toastPromise } from "../shared";
+import { Icon, Button, toastPromise } from "../shared";
 import { Pill } from "@/components/ui/Pill";
 import { useRevokeStaff } from "@/lib/hooks/pms/useStaff";
 import type { StaffMember, StaffRole } from "@/lib/api/pms/staff.actions";
@@ -21,8 +21,8 @@ export function StaffDetail({ member }: { member: StaffMember }) {
   const hotel = useHotel();
   const revokeM = useRevokeStaff();
   const rc = ROLE_CONFIG[member.role];
-  const name = `${member.user.firstName} ${member.user.lastName}`;
-  const initials = `${member.user.firstName[0] ?? ""}${member.user.lastName[0] ?? ""}`.toUpperCase();
+  const name = member.status === "pending" ? "Invitation en attente" : `${member.user.firstName} ${member.user.lastName}`;
+  const initials = `${member.user.firstName?.[0] ?? ""}${member.user.lastName?.[0] ?? ""}`.toUpperCase();
 
   async function handleRevoke() {
     if (!confirm(`Révoquer l'accès de ${name} ? Cette action est irréversible.`)) return;
@@ -48,7 +48,7 @@ export function StaffDetail({ member }: { member: StaffMember }) {
         search={false}
         actions={
           <>
-            {member.role !== "director" && (
+            {(member.status === "pending" || member.role !== "director") && (
               <Button variant="ghost" size="sm" onClick={handleRevoke} disabled={revokeM.isPending}>
                 <Icon name="trash" size={13} /> {revokeM.isPending ? "Révocation…" : "Révoquer l'accès"}
               </Button>

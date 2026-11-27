@@ -18,12 +18,12 @@ const ROLE_CONFIG: Record<StaffRole, { label: string; color: string; bg: string 
 
 const avatarBg  = (id: string) => AV_COLORS[id.charCodeAt(1) % AV_COLORS.length];
 const initials  = (m: StaffMember) =>
-  `${m.user.firstName[0] ?? ""}${m.user.lastName[0] ?? ""}`.toUpperCase();
+  `${m.user.firstName?.[0] ?? ""}${m.user.lastName?.[0] ?? ""}`.toUpperCase();
 
 export function Staff() {
   const router = useRouter();
   const hotel = useHotel();
-  const { data, isLoading } = useStaff();
+  const { data, isLoading, error: loadError, refetch } = useStaff();
   const inviteM  = useInviteStaff();
   const revokeM  = useRevokeStaff();
 
@@ -56,7 +56,7 @@ export function Staff() {
 
   async function handleRevoke() {
     if (!revokeTarget) return;
-    const who = `${revokeTarget.user.firstName} ${revokeTarget.user.lastName}`;
+    const who = revokeTarget.status === "pending" ? revokeTarget.user.email : `${revokeTarget.user.firstName} ${revokeTarget.user.lastName}`;
     try {
       await toastPromise(revokeM.mutateAsync(revokeTarget.id), {
         loading: "Révocation…",
@@ -110,6 +110,10 @@ export function Staff() {
 
       {/* Table */}
       <div className="bg-surface border border-border rounded-[18px] overflow-hidden">
+        {loadError && <div role="alert" className="p-4 text-sm text-red-700 bg-red-50 flex items-center justify-between gap-3">
+          <span>Impossible de charger le personnel : {loadError.message}</span>
+          <Button variant="ghost" size="sm" onClick={() => void refetch()}>Réessayer</Button>
+        </div>}
         {isLoading ? (
           <div className="p-4 grid gap-2">
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14" />)}
@@ -137,7 +141,7 @@ export function Staff() {
                           {m.status === "pending" ? <Icon name="mail" size={14} /> : initials(m)}
                         </div>
                         <div>
-                          <div className="font-semibold">{m.user.firstName} {m.user.lastName}</div>
+                            <div className="font-semibold">{m.status === "pending" ? "Invitation en attente" : `${m.user.firstName} ${m.user.lastName}`}</div>
                           <div className="text-[11.5px] text-ink-3">{m.user.email}</div>
                         </div>
                       </div>
@@ -160,7 +164,7 @@ export function Staff() {
                     <td className="px-4 py-3.5 text-ink-3">—</td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5 justify-end">
-                        {m.role !== "director" && (
+                        {(m.status === "pending" || m.role !== "director") && (
                           <Button variant="ghost" size="sm" onClick={() => setRevokeTarget(m)}>
                             <Icon name="trash" size={13} />
                           </Button>
@@ -173,7 +177,7 @@ export function Staff() {
             </tbody>
           </table>
         )}
-        {!isLoading && list.length === 0 && (
+        {!isLoading && !loadError && list.length === 0 && (
           <div className="py-12 text-center text-ink-3 text-[13px]">Aucun membre trouvé</div>
         )}
       </div>
@@ -271,8 +275,7 @@ export function Staff() {
           <div className="mb-2">
             <div className="font-bold text-[17px] tracking-[-0.02em] mb-1">Révoquer l&apos;accès ?</div>
             <div className="text-[13px] text-ink-3">
-              {revokeTarget.user.firstName} {revokeTarget.user.lastName} n&apos;aura plus accès au PMS.
-              Cette action est irréversible — un nouvel accès nécessitera une nouvelle invitation.
+              {revokeTarget.status === "pending" ? `L'invitation de ${revokeTarget.user.email} sera annulée.` : `${revokeTarget.user.firstName} ${revokeTarget.user.lastName} n'aura plus accès au PMS.`}
             </div>
           </div>
         </Modal>
